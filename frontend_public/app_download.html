@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+  <title>NEXO - Descarga App</title>
+  <style>
+    :root{--bg:#0b1220;--card:#111a2e;--line:#22314f;--txt:#e8eeff;--muted:#a7b4d6;--blue:#2563eb}
+    body{margin:0;font-family:Inter,system-ui,sans-serif;background:var(--bg);color:var(--txt)}
+    .wrap{max-width:920px;margin:0 auto;padding:16px}
+    .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px}
+    .grid{display:grid;grid-template-columns:1fr;gap:12px}
+    @media(min-width:760px){.grid{grid-template-columns:1fr 1fr}}
+    .btn{display:block;width:100%;text-align:center;padding:12px;border-radius:10px;background:var(--blue);color:white;text-decoration:none;font-weight:700}
+    .muted{color:var(--muted);font-size:.92rem}
+    .qr{width:220px;height:220px;border-radius:10px;border:1px solid var(--line);background:white}
+    code{background:#0f1730;padding:2px 6px;border-radius:6px}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <h2>📲 NEXO SOBERANO - Instalar en teléfono</h2>
+      <div class="muted" id="baseUrl">Cargando enlaces...</div>
+    </div>
+
+    <div class="grid">
+      <div class="card">
+        <h3>App Usuario</h3>
+        <a id="userLink" class="btn" href="#">Abrir App Usuario</a>
+        <div class="muted" id="userUrl"></div>
+        <img id="userQr" class="qr" alt="QR usuario" />
+      </div>
+      <div class="card">
+        <h3>App Admin</h3>
+        <a id="adminLink" class="btn" href="#">Abrir App Admin</a>
+        <div class="muted" id="adminUrl"></div>
+        <img id="adminQr" class="qr" alt="QR admin" />
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Cómo instalar (Android/iPhone)</h3>
+      <ol>
+        <li>Abrir uno de los enlaces desde tu navegador del teléfono.</li>
+        <li>Tocar <b>Compartir</b> y luego <b>Agregar a pantalla de inicio</b>.</li>
+        <li>Repetir para Usuario y Admin si quieres ambos accesos directos.</li>
+      </ol>
+      <div class="muted">Si quieres que funcione para todo internet, configura <code>NEXO_PUBLIC_BASE_URL</code> con tu dominio HTTPS.</div>
+    </div>
+  </div>
+
+  <script>
+    async function loadPackage(){
+      const r = await fetch('/agente/mobile-package');
+      const data = await r.json();
+      const p = data.package || {};
+      const links = p.links || {};
+      const qr = p.qr || {};
+
+      document.getElementById('baseUrl').textContent = `Base pública detectada: ${p.base_url || 'N/A'}`;
+
+      const user = document.getElementById('userLink');
+      user.href = links.app_user || '#';
+      document.getElementById('userUrl').textContent = links.app_user || 'N/A';
+      document.getElementById('userQr').src = qr.app_user || '';
+
+      const admin = document.getElementById('adminLink');
+      admin.href = links.app_admin || '#';
+      document.getElementById('adminUrl').textContent = links.app_admin || 'N/A';
+      document.getElementById('adminQr').src = qr.app_admin || '';
+    }
+
+    loadPackage().catch(()=>{
+      document.getElementById('baseUrl').textContent = 'No se pudo cargar enlaces';
+    });
+  </script>
+</body>
+</html>

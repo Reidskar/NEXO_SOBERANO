@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NEXO Control Center</title>
+  <style>
+    :root { color-scheme: dark; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #0f1115;
+      color: #e8edf2;
+    }
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    .title {
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: #00a8e8;
+    }
+    .actions { display: flex; gap: 8px; }
+    button {
+      border: none;
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-weight: 600;
+      cursor: pointer;
+      background: #00a8e8;
+      color: #fff;
+    }
+    button.secondary { background: #2a3240; }
+    button:disabled { opacity: 0.55; cursor: wait; }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    .card {
+      background: #171b23;
+      border: 1px solid #263042;
+      border-radius: 12px;
+      padding: 14px;
+    }
+    .card h3 {
+      margin: 0 0 8px;
+      font-size: 0.95rem;
+      color: #9cc8d8;
+      font-weight: 600;
+    }
+    .value {
+      font-size: 1.3rem;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+    .meta {
+      color: #9aa8b7;
+      font-size: 0.85rem;
+      line-height: 1.35;
+    }
+
+    .panel {
+      background: #171b23;
+      border: 1px solid #263042;
+      border-radius: 12px;
+      padding: 14px;
+      margin-bottom: 12px;
+    }
+    .panel h4 {
+      margin: 0 0 10px;
+      color: #9cc8d8;
+    }
+
+    .line {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 8px 0;
+      border-bottom: 1px solid #222a36;
+      font-size: 0.92rem;
+    }
+    .line:last-child { border-bottom: none; }
+
+    .badge {
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 0.78rem;
+      font-weight: 700;
+    }
+    .ok { background: #225e35; color: #b2f0c4; }
+    .warn { background: #6b4a18; color: #ffdca0; }
+    .err { background: #67242b; color: #ffb5bf; }
+
+    pre {
+      background: #0f131a;
+      border: 1px solid #263042;
+      border-radius: 8px;
+      padding: 10px;
+      overflow: auto;
+      max-height: 360px;
+      font-size: 0.82rem;
+      margin: 0;
+    }
+    .small { font-size: 0.8rem; color: #8ea0b2; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="topbar">
+      <div>
+        <div class="title">NEXO Control Center</div>
+        <div class="small" id="updatedAt">Actualizando...</div>
+      </div>
+      <div class="actions">
+        <button class="secondary" id="refreshBtn">Refrescar</button>
+        <button id="runBtn">Iniciar clasificación Drive</button>
+        <button id="runUnifiedBtn">Sync completo (Workspace+M365)</button>
+        <button id="runExtractorBtn">Extraer código para otras IA</button>
+        <button class="secondary" id="downloadExtractorBtn">Descargar contexto</button>
+        <button class="secondary" id="copyPromptBtn">Copiar prompt IA</button>
+      </div>
+    </div>
+
+    <div class="grid">
+      <div class="card">
+        <h3>Backend</h3>
+        <div class="value" id="backendStatus">-</div>
+        <div class="meta" id="backendMeta">-</div>
+      </div>
+      <div class="card">
+        <h3>Preflight general</h3>
+        <div class="value" id="preflightStatus">-</div>
+        <div class="meta" id="preflightMeta">-</div>
+      </div>
+      <div class="card">
+        <h3>Clasificación Drive</h3>
+        <div class="value" id="syncStatus">-</div>
+        <div class="meta" id="syncMeta">-</div>
+      </div>
+      <div class="card">
+        <h3>IA (RAG)</h3>
+        <div class="value" id="aiStatus">-</div>
+        <div class="meta" id="aiMeta">-</div>
+      </div>
+      <div class="card">
+        <h3>Google Workspace</h3>
+        <div class="value" id="workspaceStatus">-</div>
+        <div class="meta" id="workspaceMeta">-</div>
+      </div>
+      <div class="card">
+        <h3>Microsoft 365</h3>
+        <div class="value" id="m365Status">-</div>
+        <div class="meta" id="m365Meta">-</div>
+      </div>
+      <div class="card">
+        <h3>Sync Unificado</h3>
+        <div class="value" id="unifiedStatus">-</div>
+        <div class="meta" id="unifiedMeta">-</div>
+      </div>
+      <div class="card">
+        <h3>Extractor Código</h3>
+        <div class="value" id="extractorStatus">-</div>
+        <div class="meta" id="extractorMeta">-</div>
+      </div>
+      <div class="card">
+        <h3>Último resumen</h3>
+        <div class="value" id="summaryValue">-</div>
+        <div class="meta" id="summaryMeta">-</div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h4>Administración unificada (IA + Web + Archivos)</h4>
+      <div id="appsLinks" class="small">Cargando enlaces...</div>
+    </div>
+
+    <div class="panel">
+      <h4>Analítica visual</h4>
+      <div id="chartDrive" class="small">Cargando gráfico Drive...</div>
+      <div id="chartCloud" class="small" style="margin-top:10px;">Cargando gráfico Cloud...</div>
+      <div id="chartUnified" class="small" style="margin-top:10px;">Cargando gráfico Sync...</div>
+    </div>
+
+    <div class="panel">
+      <h4>Errores recientes</h4>
+      <div id="errorsList" class="small">Sin datos todavía.</div>
+    </div>
+
+    <div class="panel">
+      <h4>Reportes JSON disponibles</h4>
+      <div id="reportsList" class="small">Cargando...</div>
+    </div>
+
+    <div class="panel">
+      <h4>Detalle de reporte seleccionado</h4>
+      <pre id="reportDetail">{}</pre>
+    </div>
+  </div>
+
+  <script>
+    const qs = (id) => document.getElementById(id);
+
+    function badge(status) {
+      if (["ok", "done", "ready", true].includes(status)) return '<span class="badge ok">OK</span>';
+      if (["running", "already_running"].includes(status)) return '<span class="badge warn">RUNNING</span>';
+      if (["error", false].includes(status)) return '<span class="badge err">ERROR</span>';
+      return '<span class="badge warn">' + String(status).toUpperCase() + '</span>';
+    }
+
+    function renderBars(containerId, title, labels, values) {
+      const total = Math.max(1, ...(values || [0]));
+      const rows = (labels || []).map((label, idx) => {
+        const value = Number(values[idx] || 0);
+        const width = Math.max(2, Math.round((value / total) * 100));
+        return `<div class="line"><div style="width:210px">${label}</div><div style="flex:1;background:#101620;border-radius:6px;overflow:hidden;height:12px"><div style="height:12px;width:${width}%;background:#00a8e8"></div></div><div style="width:56px;text-align:right">${value}</div></div>`;
+      }).join("");
+      qs(containerId).innerHTML = `<div class="small" style="margin-bottom:6px">${title}</div>${rows || '<span class="small">Sin datos</span>'}`;
+    }
+
+    async function apiGet(url) {
+      const r = await fetch(url, { cache: "no-store" });
+      if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
+      return r.json();
+    }
+
+    async function apiPost(url, payload = {}) {
+      const r = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload || {}) });
+      if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
+      return r.json();
+    }
+
+    function notifyResult(title, payload) {
+      const text = typeof payload === "string" ? payload : JSON.stringify(payload || {}, null, 2);
+      alert(`${title}\n\n${text.substring(0, 1200)}`);
+    }
+
+    async function loadReport(name) {
+      const payload = await apiGet(`/agente/control-center/report/${encodeURIComponent(name)}`);
+      qs("reportDetail").textContent = JSON.stringify(payload.data || {}, null, 2);
+    }
+
+    async function refreshAll() {
+      try {
+        const [status, reports, errors, analytics, unified] = await Promise.all([
+          apiGet("/agente/control-center/status"),
+          apiGet("/agente/control-center/reports"),
+          apiGet("/agente/control-center/errors?limit=30"),
+          apiGet("/agente/control-center/analytics"),
+          apiGet("/agente/control-center/sync-unified-status"),
+        ]);
+
+        qs("updatedAt").textContent = `Última actualización: ${new Date().toLocaleString()}`;
+
+        qs("backendStatus").innerHTML = badge(status?.health?.status || "error");
+        qs("backendMeta").textContent = status?.health?.service || "sin servicio";
+
+        const preReady = !!status?.preflight?.ready;
+        qs("preflightStatus").innerHTML = badge(preReady ? "ready" : "error");
+        const ffmpeg = status?.preflight?.ffmpeg?.found ? "ffmpeg OK" : "ffmpeg faltante";
+        qs("preflightMeta").textContent = `${ffmpeg} | tokens Drive: ${status?.preflight?.files?.drive_token_write ? "sí" : "no"} | YouTube: ${status?.preflight?.files?.youtube_token_upload ? "sí" : "no"}`;
+
+        const syncState = status?.sync?.status?.status || "unknown";
+        qs("syncStatus").innerHTML = badge(syncState);
+        const totals = status?.sync?.status?.totals || status?.sync?.last_report?.totals || {};
+        qs("syncMeta").textContent = `analyzed=${totals.analyzed ?? 0} | classified=${totals.classified ?? 0} | skipped=${totals.skipped ?? 0} | errors=${totals.errors ?? 0}`;
+
+        const rag = status?.ai?.health || {};
+        const ragLoaded = rag?.rag_loaded === true;
+        qs("aiStatus").innerHTML = badge(ragLoaded ? "ok" : "warn");
+        qs("aiMeta").textContent = `docs=${rag?.total_documentos ?? 0} | presupuesto=${status?.ai?.budget?.presupuesto_restante_usd ?? "n/d"}`;
+
+        const workspace = analytics?.workspace || {};
+        qs("workspaceStatus").innerHTML = badge(!!workspace.ok);
+        qs("workspaceMeta").textContent = `Drive=${workspace.drive_recent ?? 0} | Photos=${workspace.photos_recent ?? 0}`;
+
+        const m365 = analytics?.microsoft365 || {};
+        qs("m365Status").innerHTML = badge(!!m365.ok);
+        qs("m365Meta").textContent = `OneDrive=${m365.onedrive_recent ?? 0} | MB=${m365.onedrive_total_size_mb ?? 0}`;
+
+        const unifiedStatus = unified?.status?.status || "unknown";
+        qs("unifiedStatus").innerHTML = badge(unifiedStatus);
+        const us = unified?.report?.summary || {};
+        qs("unifiedMeta").textContent = `Drive=${us?.google_drive?.classified ?? 0} | Photos=${us?.google_photos?.imported ?? 0} | OneDrive=${us?.onedrive?.imported ?? 0}`;
+
+        const extractor = status?.extractor || {};
+        const extractorState = extractor?.status?.status || (extractor?.lock ? "running" : "idle");
+        qs("extractorStatus").innerHTML = badge(extractorState === "idle" ? "ok" : extractorState);
+        const er = extractor?.report || {};
+        qs("extractorMeta").textContent = `files=${er?.files_scanned ?? 0} | output=${extractor?.output_file ?? 'n/d'}`;
+
+        const rounds = status?.sync?.last_report?.rounds || [];
+        qs("summaryValue").textContent = `${rounds.length} rondas`;
+        qs("summaryMeta").textContent = (status?.sync?.last_report?.timestamp || "sin timestamp");
+
+        const errList = errors?.errors || [];
+        if (!errList.length) {
+          qs("errorsList").innerHTML = '<span class="badge ok">SIN ERRORES</span>';
+        } else {
+          qs("errorsList").innerHTML = errList
+            .map(e => `<div class="line"><div>${e.source} / ${e.type}</div><div>${e.error || "errors=" + e.errors}</div></div>`)
+            .join("");
+        }
+
+        const reps = reports?.reports || [];
+        if (!reps.length) {
+          qs("reportsList").textContent = "No hay reportes en logs.";
+        } else {
+          qs("reportsList").innerHTML = reps
+            .map(r => `<div class="line"><button class="secondary" onclick="loadReport('${r.name}')">${r.name}</button><div>${(r.size || 0)} bytes</div></div>`)
+            .join("");
+          if (reps[0]?.name) {
+            await loadReport(reps[0].name);
+          }
+        }
+
+        const web = status?.web || {};
+        const links = [
+          ["Control Center", web.control_center],
+          ["API Docs", web.api_docs],
+          ["Admin Dashboard", web.admin_dashboard],
+          ["Warroom", web.warroom],
+          ["Sync completo (API)", "/agente/control-center/run-unified-sync"],
+          ["Extractor código (API)", "/agente/control-center/run-code-extractor"],
+          ["Estado extractor (API)", "/agente/control-center/extractor-status"],
+        ].filter(x => !!x[1]);
+        qs("appsLinks").innerHTML = links
+          .map(([label, href]) => `<div class="line"><div>${label}</div><div><a href="${href}" style="color:#00a8e8" target="_blank">${href}</a></div></div>`)
+          .join("");
+
+        const charts = analytics?.charts || {};
+        renderBars("chartDrive", "Drive: análisis actual", charts?.drive_sync?.labels || [], charts?.drive_sync?.values || []);
+        renderBars("chartCloud", "Workspace vs Microsoft 365", charts?.workspace_vs_m365?.labels || [], charts?.workspace_vs_m365?.values || []);
+        renderBars("chartUnified", "Sync unificado histórico", charts?.unified_sync?.labels || [], charts?.unified_sync?.values || []);
+      } catch (e) {
+        qs("updatedAt").textContent = `Error al cargar: ${e.message}`;
+      }
+    }
+
+    qs("refreshBtn").addEventListener("click", refreshAll);
+    qs("runBtn").addEventListener("click", async () => {
+      const btn = qs("runBtn");
+      btn.disabled = true;
+      try {
+        const result = await apiPost("/agente/control-center/run-drive-classification");
+        notifyResult("Clasificación Drive iniciada", result);
+      } catch (e) {
+        alert("No se pudo iniciar la clasificación: " + e.message);
+      } finally {
+        btn.disabled = false;
+        await refreshAll();
+      }
+    });
+
+    qs("runUnifiedBtn").addEventListener("click", async () => {
+      const btn = qs("runUnifiedBtn");
+      btn.disabled = true;
+      try {
+        const result = await apiPost("/agente/control-center/run-unified-sync", {
+          dry_run: false,
+          photos_limit: 20,
+          drive_limit: 80,
+          onedrive_limit: 30,
+          onedrive_max_mb: 50,
+          youtube_per_channel: 0,
+          youtube_channels: [],
+          drive_include_trashed: true,
+          drive_full_scan: false,
+          drive_auto_rename: true,
+          retry_attempts: 2,
+          retry_backoff_seconds: 1.0
+        });
+        notifyResult("Sync unificado iniciado", result);
+      } catch (e) {
+        alert("No se pudo iniciar sync unificado: " + e.message);
+      } finally {
+        btn.disabled = false;
+        await refreshAll();
+      }
+    });
+
+    qs("runExtractorBtn").addEventListener("click", async () => {
+      const btn = qs("runExtractorBtn");
+      btn.disabled = true;
+      try {
+        const result = await apiPost("/agente/control-center/run-code-extractor");
+        notifyResult("Extractor iniciado", result);
+      } catch (e) {
+        alert("No se pudo iniciar extractor: " + e.message);
+      } finally {
+        btn.disabled = false;
+        await refreshAll();
+      }
+    });
+
+    qs("downloadExtractorBtn").addEventListener("click", () => {
+      window.open("/agente/control-center/extractor-download", "_blank");
+    });
+
+    qs("copyPromptBtn").addEventListener("click", async () => {
+      try {
+        const payload = await apiGet("/agente/control-center/extractor-prompt");
+        await navigator.clipboard.writeText(payload?.prompt || "");
+        alert("Prompt copiado al portapapeles.");
+      } catch (e) {
+        alert("No se pudo copiar el prompt: " + e.message);
+      }
+    });
+
+    refreshAll();
+    setInterval(refreshAll, 10000);
+  </script>
+</body>
+</html>

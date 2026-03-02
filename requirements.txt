@@ -1,0 +1,37 @@
+python-docx
+python-dotenv
+google-generativeai
+sentence-transformers
+chromadb
+fastapi
+uvicorn
+pydantic
+google-api-python-client
+google-auth-oauthlib
+msal
+requests
+tweepy
+youtube-transcript-api
+moviepy
+
+# Email SMTP
+secure-smtplib
+Jinja2
+
+# Email Dispatcher & Scheduling
+APScheduler
+pytz
+
+# Microsoft OAuth
+msgraph-core
+azure-identity
+
+# JWT Authentication
+PyJWT
+
+# Database
+sqlalchemy
+
+# Additional utilities
+python-multipart
+aiofiles

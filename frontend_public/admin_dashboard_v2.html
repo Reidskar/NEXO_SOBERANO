@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nexo - Admin Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0f172a;
+            color: #e2e8f0;
+            min-height: 100vh;
+        }
+
+        .container {
+            display: flex;
+            height: 100vh;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 250px;
+            background: #1e293b;
+            border-right: 1px solid #334155;
+            padding: 20px;
+            overflow-y: auto;
+            position: fixed;
+            left: 0;
+            top: 0;
+            height: 100vh;
+        }
+
+        .sidebar h2 {
+            color: #00a8e8;
+            margin-bottom: 20px;
+            font-size: 20px;
+        }
+
+        .nav-item {
+            padding: 12px 15px;
+            margin-bottom: 8px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            color: #cbd5e1;
+        }
+
+        .nav-item:hover {
+            background: #334155;
+            color: #00a8e8;
+        }
+
+        .nav-item.active {
+            background: #00a8e8;
+            color: white;
+        }
+
+        /* Main Content */
+        .main {
+            margin-left: 250px;
+            padding: 30px;
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            border-bottom: 1px solid #334155;
+            padding-bottom: 20px;
+        }
+
+        .header h1 {
+            font-size: 28px;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: #00a8e8;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+        }
+
+        /* Cards */
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .card {
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 10px;
+            padding: 20px;
+            transition: all 0.3s ease;
+        }
+
+        .card:hover {
+            border-color: #00a8e8;
+            transform: translateY(-5px);
+        }
+
+        .card-icon {
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+
+        .card-label {
+            color: #94a3b8;
+            font-size: 12px;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+        }
+
+        .card-value {
+            font-size: 28px;
+            font-weight: bold;
+            color: #00a8e8;
+            margin-bottom: 10px;
+        }
+
+        .card-change {
+            font-size: 12px;
+            color: #10b981;
+        }
+
+        /* Tables */
+        .table-container {
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-bottom: 30px;
+        }
+
+        .table-header {
+            padding: 15px 20px;
+            border-bottom: 1px solid #334155;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th {
+            padding: 12px 20px;
+            text-align: left;
+            border-bottom: 1px solid #334155;
+            color: #94a3b8;
+            font-weight: 600;
+            font-size: 12px;
+            text-transform: uppercase;
+        }
+
+        td {
+            padding: 12px 20px;
+            border-bottom: 1px solid #1e293b;
+        }
+
+        tr:hover {
+            background: #0f172a;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .badge.success {
+            background: #10b98133;
+            color: #10b981;
+        }
+
+        .badge.warning {
+            background: #f5991633;
+            color: #f59916;
+        }
+
+        .badge.error {
+            background: #ef444433;
+            color: #ef4444;
+        }
+
+        .badge.info {
+            background: #00a8e833;
+            color: #00a8e8;
+        }
+
+        /* Buttons */
+        button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            background: #00a8e8;
+            color: white;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        button:hover {
+            background: #0099cc;
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* Charts */
+        .chart {
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 30px;
+        }
+
+        .chart-title {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 20px;
+        }
+
+        .bar {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+            gap: 15px;
+        }
+
+        .bar-label {
+            width: 100px;
+            font-size: 13px;
+        }
+
+        .bar-fill {
+            flex: 1;
+            height: 8px;
+            background: #334155;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .bar-progress {
+            height: 100%;
+            background: linear-gradient(90deg, #00a8e8, #00d4ff);
+            transition: width 0.3s ease;
+        }
+
+        .bar-value {
+            width: 50px;
+            text-align: right;
+            font-weight: 600;
+        }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: #1e293b;
+            border-radius: 10px;
+            padding: 30px;
+            max-width: 500px;
+            width: 100%;
+        }
+
+        .modal-header {
+            margin-bottom: 20px;
+            border-bottom: 1px solid #334155;
+            padding-bottom: 15px;
+        }
+
+        .modal-close {
+            float: right;
+            font-size: 24px;
+            cursor: pointer;
+            color: #94a3b8;
+        }
+
+        /* Status Indicator */
+        .status {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        .status.online {
+            background: #10b981;
+            animation: pulse 2s infinite;
+        }
+
+        .status.offline {
+            background: #ef4444;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .sidebar {
+                display: none;
+            }
+            .main {
+                margin-left: 0;
+                padding: 15px;
+            }
+            .grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <h2>🧠 Nexo</h2>
+            <div class="nav-item active" onclick="showSection('overview')">📊 Resumen</div>
+            <div class="nav-item" onclick="showSection('emails')">📧 Emails</div>
+            <div class="nav-item" onclick="showSection('users')">👥 Usuarios</div>
+            <div class="nav-item" onclick="showSection('preferences')">⚙️ Preferencias</div>
+            <div class="nav-item" onclick="showSection('engagement')">📈 Engagement</div>
+            <div class="nav-item" onclick="showSection('calendar')">📅 Calendario</div>
+            <div class="nav-item" onclick="showSection('settings')">🔧 Configuración</div>
+            <hr style="margin: 20px 0; border: none; border-top: 1px solid #334155;">
+            <button style="width: 100%;" onclick="logout()">Cerrar Sesión</button>
+        </div>
+
+        <!-- Main -->
+        <div class="main">
+            <div class="header">
+                <h1>Dashboard Administrativo</h1>
+                <div class="user-info">
+                    <span>Admin</span>
+                    <div class="user-avatar">A</div>
+                </div>
+            </div>
+
+            <!-- OVERVIEW SECTION -->
+            <div id="overview" class="section active">
+                <div class="grid">
+                    <div class="card">
+                        <div class="card-icon">📧</div>
+                        <div class="card-label">Emails Enviados</div>
+                        <div class="card-value" id="emailsSent">1,234</div>
+                        <div class="card-change">↑ 12% hoy</div>
+                    </div>
+                    <div class="card">
+                        <div class="card-icon">👥</div>
+                        <div class="card-label">Usuarios Activos</div>
+                        <div class="card-value" id="usersActive">342</div>
+                        <div class="card-change">↑ 8% semana</div>
+                    </div>
+                    <div class="card">
+                        <div class="card-icon">📈</div>
+                        <div class="card-label">Open Rate</div>
+                        <div class="card-value" id="openRate">45.2%</div>
+                        <div class="card-change">↓ 2.1% semana</div>
+                    </div>
+                    <div class="card">
+                        <div class="card-icon">⚡</div>
+                        <div class="card-label">Click Through</div>
+                        <div class="card-value" id="ctr">12.8%</div>
+                        <div class="card-change">↑ 1.5% semana</div>
+                    </div>
+                </div>
+
+                <!-- Email Queue Chart -->
+                <div class="chart">
+                    <div class="chart-title">📋 Estado de Queue de Emails</div>
+                    <div class="bar">
+                        <div class="bar-label">Enviados</div>
+                        <div class="bar-fill"><div class="bar-progress" style="width: 85%;"></div></div>
+                        <div class="bar-value" id="chartSent">2,134</div>
+                    </div>
+                    <div class="bar">
+                        <div class="bar-label">Pendientes</div>
+                        <div class="bar-fill"><div class="bar-progress" style="width: 12%; background: #f59916;"></div></div>
+                        <div class="bar-value" id="chartPending">245</div>
+                    </div>
+                    <div class="bar">
+                        <div class="bar-label">Fallidos</div>
+                        <div class="bar-fill"><div class="bar-progress" style="width: 3%; background: #ef4444;"></div></div>
+                        <div class="bar-value" id="chartFailed">52</div>
+                    </div>
+                </div>
+
+                <!-- Dispatcher Control -->
+                <div class="table-container">
+                    <div class="table-header">
+                        <span>📬 Email Dispatcher</span>
+                        <div>
+                            <span id="dispatcherStatus" style="margin-right: 20px;">
+                                <span class="status online"></span> En línea
+                            </span>
+                            <button onclick="startDispatcher()">Iniciar</button>
+                            <button onclick="stopDispatcher()" style="background: #EF4444;">Detener</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- EMAILS SECTION -->
+            <div id="emails" class="section" style="display:none;">
+                <h2>Historia de Emails</h2>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Usuario</th>
+                                <th>Asunto</th>
+                                <th>Enviado</th>
+                                <th>Estado</th>
+                            </tr>
+                        </thead>
+                        <tbody id="emailsTable">
+                            <tr>
+                                <td>#1234</td>
+                                <td>user@example.com</td>
+                                <td>Nexo - Resumen Diario</td>
+                                <td>Hoy 9:30am</td>
+                                <td><span class="badge success">Enviado</span></td>
+                            </tr>
+                            <tr>
+                                <td>#1233</td>
+                                <td>other@example.com</td>
+                                <td>⚠️ BREAKING: Nueva Noticia</td>
+                                <td>Hoy 8:45am</td>
+                                <td><span class="badge success">Enviado</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- USERS SECTION -->
+            <div id="users" class="section" style="display:none;">
+                <h2>Gestión de Usuarios</h2>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Usuario</th>
+                                <th>Email</th>
+                                <th>Perfil Cognitivo</th>
+                                <th>Notificaciones</th>
+                                <th>Estado</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Juan García</td>
+                                <td>juan@example.com</td>
+                                <td>Visual / Technology</td>
+                                <td>Daily</td>
+                                <td><span class="badge success">Activo</span></td>
+                            </tr>
+                            <tr>
+                                <td>María López</td>
+                                <td>maria@example.com</td>
+                                <td>Reading / Business</td>
+                                <td>Weekly</td>
+                                <td><span class="badge success">Activo</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- PREFERENCES SECTION -->
+            <div id="preferences" class="section" style="display:none;">
+                <h2>Preferencias de Usuarios</h2>
+                <div class="chart">
+                    <div class="chart-title">📊 Distribución de Estilos de Aprendizaje</div>
+                    <div class="bar">
+                        <div class="bar-label">Visual</div>
+                        <div class="bar-fill"><div class="bar-progress" style="width: 45%;"></div></div>
+                        <div class="bar-value">45%</div>
+                    </div>
+                    <div class="bar">
+                        <div class="bar-label">Reading</div>
+                        <div class="bar-fill"><div class="bar-progress" style="width: 30%; background: #10b981;"></div></div>
+                        <div class="bar-value">30%</div>
+                    </div>
+                    <div class="bar">
+                        <div class="bar-label">Auditory</div>
+                        <div class="bar-fill"><div class="bar-progress" style="width: 15%; background: #f59916;"></div></div>
+                        <div class="bar-value">15%</div>
+                    </div>
+                    <div class="bar">
+                        <div class="bar-label">Kinesthetic</div>
+                        <div class="bar-fill"><div class="bar-progress" style="width: 10%; background: #00a8e8;"></div></div>
+                        <div class="bar-value">10%</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ENGAGEMENT SECTION -->
+            <div id="engagement" class="section" style="display:none;">
+                <h2>Métricas de Engagement</h2>
+                <div class="grid">
+                    <div class="card">
+                        <div class="card-icon">👁️</div>
+                        <div class="card-label">Emails Abiertos</div>
+                        <div class="card-value">3,421</div>
+                    </div>
+                    <div class="card">
+                        <div class="card-icon">🔗</div>
+                        <div class="card-label">Clicks</div>
+                        <div class="card-value">542</div>
+                    </div>
+                    <div class="card">
+                        <div class="card-icon">🚫</div>
+                        <div class="card-label">Unsubscribes</div>
+                        <div class="card-value">23</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- CALENDAR SECTION -->
+            <div id="calendar" class="section" style="display:none;">
+                <h2>Sincronización de Calendarios</h2>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Noticia</th>
+                                <th>Usuario</th>
+                                <th>Calendario</th>
+                                <th>Fecha</th>
+                                <th>Estado</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>AI Model Release</td>
+                                <td>juan@example.com</td>
+                                <td>Google Calendar</td>
+                                <td>2024-12-15</td>
+                                <td><span class="badge success">Sincronizado</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- SETTINGS SECTION -->
+            <div id="settings" class="section" style="display:none;">
+                <h2>Configuración</h2>
+                <div class="card" style="max-width: 500px;">
+                    <div style="margin-bottom: 20px;">
+                        <label style="display: block; margin-bottom: 8px;">SMTP Host</label>
+                        <input type="text" value="smtp.gmail.com" style="width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #334155; background: #0f172a; color: white;">
+                    </div>
+                    <div style="margin-bottom: 20px;">
+                        <label style="display: block; margin-bottom: 8px;">SMTP Port</label>
+                        <input type="text" value="587" style="width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #334155; background: #0f172a; color: white;">
+                    </div>
+                    <button style="width: 100%;">Guardar Configuración</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function showSection(section) {
+            // Hide all sections
+            document.querySelectorAll('.section').forEach(s => s.style.display = 'none');
+            
+            // Hide nav items
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+            
+            // Show selected section
+            document.getElementById(section).style.display = 'block';
+            
+            // Highlight nav
+            event.target.classList.add('active');
+        }
+
+        function startDispatcher() {
+            fetch('/admin/dispatcher/start', { method: 'POST' })
+                .then(r => r.json())
+                .then(d => {
+                    alert('✅ Dispatcher iniciado');
+                    document.getElementById('dispatcherStatus').innerHTML = '<span class="status online"></span> En línea';
+                });
+        }
+
+        function stopDispatcher() {
+            fetch('/admin/dispatcher/stop', { method: 'POST' })
+                .then(r => r.json())
+                .then(d => {
+                    alert('⏹️ Dispatcher detenido');
+                    document.getElementById('dispatcherStatus').innerHTML = '<span class="status offline"></span> Offline';
+                });
+        }
+
+        function logout() {
+            localStorage.removeItem('token');
+            window.location.href = '/login';
+        }
+
+        // Load stats
+        async function loadStats() {
+            fetch('/admin/dispatcher/stats')
+                .then(r => r.json())
+                .then(data => {
+                    document.getElementById('chartSent').innerText = data.queue.sent;
+                    document.getElementById('chartPending').innerText = data.queue.pending;
+                    document.getElementById('chartFailed').innerText = data.queue.failed;
+                });
+        }
+
+        // Cargar estadísticas cada 30 segundos
+        setInterval(loadStats, 30000);
+        loadStats();
+    </script>
+</body>
+</html>

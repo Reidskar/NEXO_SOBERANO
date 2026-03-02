@@ -1,0 +1,43 @@
+{
+  "full_name": "",
+  "headline": "Desarrollador Backend / IA",
+  "summary": "Experiencia en Python, APIs, automatización e integración de modelos de IA.",
+  "roles_preferred": [
+    "backend",
+    "python",
+    "ia",
+    "api"
+  ],
+  "skills_must": [
+    "python",
+    "backend"
+  ],
+  "skills_bonus": [
+    "fastapi",
+    "sql",
+    "docker",
+    "openai",
+    "automation"
+  ],
+  "seniority_preferred": [
+    "semi senior",
+    "senior"
+  ],
+  "locations_preferred": [
+    "remoto",
+    "híbrido"
+  ],
+  "industries_preferred": [
+    "tecnología",
+    "software"
+  ],
+  "exclude_keywords": [
+    "práctica",
+    "practica",
+    "trainee",
+    "becario",
+    "call center"
+  ],
+  "salary_min_clp": 1200000,
+  "remote_preferred": true
+}

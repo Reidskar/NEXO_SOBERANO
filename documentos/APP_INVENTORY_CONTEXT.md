@@ -1,0 +1,184 @@
+# Contexto de Apps (PC + Teléfono)
+
+Generado: 2026-03-02T20:48:19.702246+00:00
+
+## Teléfono Android
+- Conectado: True
+- Serial: 45KZZHE6JB6TJFIJ
+- Apps detectadas (3rd party): 190
+
+### Tags de riesgo/operación
+- remote_control: 5
+- finance_crypto: 5
+- social_heavy: 5
+
+### Top apps Android (primeras 80)
+- ai.chatbot.ask.chat.deep.seek.assistant.search.free
+- ai.x.grok
+- app.cleandrive.my.twa
+- atws.app
+- ch.rmy.android.http_shortcuts
+- cl.android
+- cl.bci.sismo.mach
+- cl.entel.appswlsdesa
+- cl.movistar.android
+- cl.movistarplay
+- cl.santander.smartphone
+- cl.sosafe.panicbuttonandroid.app
+- cl.tapp
+- cl.walmart.liderapp
+- cl.walmartchile.milugar
+- cl.wom.transformacion.appwommobile
+- cn.wps.xiaomi.abroad.lite
+- co.appnation.geniechat
+- co.mangotechnologies.clickup
+- coded.toolbox.termuxtutorial
+- com.activision.callofduty.shooter
+- com.alibaba.aliexpresshd
+- com.amazon.mShop.android.shopping
+- com.android.deskclock
+- com.android.soundrecorder
+- com.anthropic.claude
+- com.anydesk.adcontrol.ad1
+- com.anydesk.anydeskandroid
+- com.azure.authenticator
+- com.bigwinepot.nwdn.international
+- com.binance.dev
+- com.bmbapp
+- com.brewers.pdf.translator
+- com.bumex.android.laborum
+- com.cabify.rider
+- com.canva.editor
+- com.capital.etf.trade
+- com.cbs.ca
+- com.celzero.bravedns
+- com.chess
+- com.chineseskill
+- com.cl.srcei.cedapp
+- com.cnn.mobile.android.phone
+- com.comunidadfeliz.residents
+- com.cron.calendar
+- com.dexscreener
+- com.didiglobal.passenger
+- com.discord
+- com.disney.disneyplus
+- com.double_rhyme.hoenickf.doppelreim
+- com.dropbox.android
+- com.duokan.phone.remotecontroller
+- com.e9foreverfs.note
+- com.einnovation.temu
+- com.evernote
+- com.facebook.katana
+- com.facebook.orca
+- com.flightradar24free
+- com.foxnews.android
+- com.fun.mxw
+- com.fusionmedia.investing
+- com.geovictoria.GeoVictoriaApp
+- com.google.android.apps.adm
+- com.google.android.apps.chromecast.app
+- com.google.android.apps.docs.editors.docs
+- com.google.android.apps.docs.editors.sheets
+- com.google.android.apps.docs.editors.slides
+- com.google.android.apps.healthdata
+- com.google.android.apps.nbu.files
+- com.google.android.apps.translate
+- com.google.android.apps.walletnfcrel
+- com.google.android.apps.work.clouddpc
+- com.google.android.contactkeys
+- com.google.android.keep
+- com.google.android.safetycore
+- com.google.ar.core
+- com.google.earth
+- com.grability.rappi
+- com.happymod.apk
+- com.headway.marine.traffic.vessel.finder.cruise.finder.ship.tracker
+
+## PC (winget)
+- Apps detectadas: 326
+
+### Apps PC (muestra)
+- -
+- /
+- AI Suite 3
+- ASIO4ALL
+- ASUS Framework Service
+- ASUS Motherboard
+- AURA Creator
+- AURA Service
+- AURA lighting effect add-on
+- AURA lighting effect add-on x64
+- AV1 Video Extension
+- AirDroid Cast 1.2.4.1
+- Android SDK Platform-Tools
+- AniMe Matrix MB EN
+- Antares Auto-Tune Pro
+- AntiCheatExpert
+- AnyConnect
+- AnyDesk
+- Aplicación Experiencias de inicio
+- Apple Mobile Device Support
+- Armoury Crate
+- Armoury Crate Service
+- Asistencia rápida
+- Avast Free Antivirus
+- Battle.net
+- Bloc de notas de Windows
+- BlueStacks
+- BlueStacks Services
+- Bonjour
+- BreeZip
+- CPUID CPU-Z 2.09
+- Cakewalk Demo Projects
+- Cakewalk Drum Replacer
+- Cakewalk Studio Instruments Suite
+- Cakewalk Theme Editor
+- Cakewalk by BandLab
+- Calculadora de Windows
+- Call of Duty
+- CapCut
+- Centro de opiniones
+- Cheat Engine 7.5
+- Chrome Remote Desktop Host
+- Claude
+- Compañero de la consola Xbox
+- Comprobación de estado de PC Windows
+- Contactos de Microsoft
+- Copilot
+- Correo y Calendario
+- Cámara de Windows
+- DDJ-RB Driver
+- DJ-202 Driver
+- Dead By Daylight
+- Deezer 7.0.1
+- Deezloader Remix 4.3.0
+- DirectX
+- Discord
+- Disney+
+- Dragon Ball Sparking ZERO MULTi16 - El… ARP\Machine\X86\{223CC40E-9657-4694-B8… 1.0
+- DroidKit
+- EA SPORTS FC 24
+- EA app
+- ELDEN RING
+- English (United States) Local Experien… MSIX\Microsoft.LanguageExperiencePacke… 26100.128.141.0
+- Enlace Móvil
+- Epic Games Launcher
+- Epic Online Services
+- Escritorio remoto de Chrome
+- Escritorio remoto de Microsoft
+- Extensiones de contenido multimedia web MSIX\Microsoft.WebMediaExtensions_1.2.… 1.2.17.0
+- Extensiones de vídeo VP9
+- Extensión de imagen WebP
+- Extensión de imágenes HEIF
+- Extensión de video MPEG-2
+- Extensión de video del codificador AVC
+- F1® 22
+- FFmpeg
+- FL Cloud Plugins version 1.7.2
+- FL Studio 2024
+- FL Studio ASIO
+- Fallout 2 (PC)
+
+## Uso para IA
+- Este archivo puede ser indexado por el pipeline RAG para adaptar respuestas y sugerencias a tu stack real de apps.
+- Fuente JSON completa: reports/security/app_inventory_20260302_174819.json

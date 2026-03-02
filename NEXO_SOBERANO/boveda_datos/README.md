@@ -1,0 +1,1 @@
+Esta carpeta almacena archivos y datos procesados por NEXO Soberano.

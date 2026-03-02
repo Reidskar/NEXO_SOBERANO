@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+  <title>NEXO Usuario</title>
+  <style>
+    :root { --bg:#0b1220; --card:#111a2e; --line:#22314f; --txt:#e8eeff; --muted:#a7b4d6; --ok:#22c55e; --warn:#f59e0b; --bad:#ef4444; }
+    * { box-sizing: border-box; }
+    body { margin:0; font-family: Inter, system-ui, sans-serif; background:var(--bg); color:var(--txt); }
+    .wrap { max-width: 720px; margin:0 auto; padding:14px; }
+    .title { font-size: 1.2rem; font-weight: 800; margin: 8px 0 14px; }
+    .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:12px; margin-bottom:12px; }
+    .row { display:flex; gap:8px; align-items:center; justify-content:space-between; }
+    .muted { color:var(--muted); font-size:.9rem; }
+    .chip { font-size:.8rem; padding:2px 8px; border-radius:999px; border:1px solid var(--line); }
+    .ok { color:var(--ok); } .warn{ color:var(--warn);} .bad{ color:var(--bad);} 
+    textarea,input,select,button { width:100%; border-radius:10px; border:1px solid var(--line); background:#0f1730; color:var(--txt); padding:10px; }
+    button { background:#1d4ed8; border:none; font-weight:700; }
+    button:disabled { opacity:.6; }
+    .list { display:grid; gap:8px; }
+    a { color:#93c5fd; }
+    pre { white-space: pre-wrap; font-size:.9rem; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="title">📱 NEXO Usuario</div>
+
+    <div class="card">
+      <div class="row"><b>Estado Plataforma</b><span id="statusChip" class="chip warn">cargando</span></div>
+      <div class="muted" id="statusText">Consultando backend...</div>
+    </div>
+
+    <div class="card">
+      <b>🧠 Tutor de Evidencia</b>
+      <textarea id="pregunta" rows="3" placeholder="Pregunta geopolítica..."></textarea>
+      <button id="btnTutor">Consultar</button>
+      <pre id="respuesta"></pre>
+      <div id="fuentes" class="muted"></div>
+    </div>
+
+    <div class="card">
+      <b>📥 Aporte comunitario</b>
+      <textarea id="aporte" rows="2" placeholder="Comparte texto o link"></textarea>
+      <input id="usuario" placeholder="Tu alias" value="usuario_mobile" />
+      <button id="btnAporte">Enviar aporte</button>
+      <div id="aporteOut" class="muted"></div>
+    </div>
+
+    <div class="card">
+      <b>🎬 Videos recientes</b>
+      <div class="list" id="videos"></div>
+    </div>
+  </div>
+
+  <script>
+    const API = window.location.origin;
+    const $ = (id) => document.getElementById(id);
+
+    async function loadStatus(){
+      try {
+        const [health, pre] = await Promise.all([
+          fetch(`${API}/health`).then(r=>r.json()),
+          fetch(`${API}/agente/go-live/preflight`).then(r=>r.json())
+        ]);
+        const ok = health.status === 'ok';
+        $('statusChip').textContent = ok ? 'online' : 'offline';
+        $('statusChip').className = `chip ${ok ? 'ok' : 'bad'}`;
+        $('statusText').textContent = `Backend: ${health.version || 'N/A'} • Preflight: ${pre.ready ? 'ready' : 'parcial'}`;
+      } catch {
+        $('statusChip').textContent = 'offline';
+        $('statusChip').className = 'chip bad';
+        $('statusText').textContent = 'No se pudo conectar al backend';
+      }
+    }
+
+    async function loadVideos(){
+      try {
+        const data = await fetch(`${API}/agente/youtube/recent`, {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({channel_id:'UC_x5XG1OV2P6uZZ5FSM9Ttw', max_results:5})
+        }).then(r=>r.json());
+        $('videos').innerHTML = (data.videos||[]).map(v => `<div class='card' style='margin:0'><a href='${v.url}' target='_blank'>${v.title}</a><div class='muted'>${v.published_at||''}</div></div>`).join('') || '<div class="muted">Sin videos</div>';
+      } catch { $('videos').innerHTML = '<div class="muted">No disponible</div>'; }
+    }
+
+    $('btnTutor').onclick = async () => {
+      const pregunta = $('pregunta').value.trim(); if(!pregunta) return;
+      $('btnTutor').disabled = true; $('respuesta').textContent = 'Consultando...'; $('fuentes').textContent='';
+      try {
+        const r = await fetch(`${API}/agente/consultar-rag`, {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({pregunta, usuario_id:'mobile-user'})
+        }).then(x=>x.json());
+        $('respuesta').textContent = r.respuesta || 'Sin respuesta';
+        $('fuentes').innerHTML = (r.fuentes||[]).map((f,i)=>`<div><a href='${f}' target='_blank'>Fuente ${i+1}</a></div>`).join('');
+      } catch { $('respuesta').textContent = 'Error consultando'; }
+      $('btnTutor').disabled = false;
+    };
+
+    $('btnAporte').onclick = async () => {
+      const contenido = $('aporte').value.trim(); const usuario = $('usuario').value.trim() || 'usuario_mobile';
+      if(!contenido) return;
+      $('btnAporte').disabled = true; $('aporteOut').textContent='Enviando...';
+      try {
+        const r = await fetch(`${API}/agente/drive/upload-aporte`, {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({contenido, usuario, files:[]})
+        }).then(x=>x.json());
+        $('aporteOut').textContent = r.ok ? `Aporte recibido. ID: ${r.aporte_id}` : `No enviado: ${r.motivo || 'error'}`;
+      } catch { $('aporteOut').textContent = 'Error enviando aporte'; }
+      $('btnAporte').disabled = false;
+    };
+
+    loadStatus(); loadVideos();
+  </script>
+</body>
+</html>

@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nexo - Quiz Cognitivo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 600px;
+            width: 100%;
+            padding: 40px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            color: #333;
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #eee;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            transition: width 0.3s ease;
+        }
+
+        .question {
+            margin-bottom: 30px;
+            display: none;
+        }
+
+        .question.active {
+            display: block;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .question-title {
+            font-size: 18px;
+            color: #333;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+
+        .option {
+            display: flex;
+            align-items: center;
+            padding: 15px;
+            margin-bottom: 12px;
+            border: 2px solid #eee;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .option:hover {
+            border-color: #667eea;
+            background: #f8f9ff;
+        }
+
+        .option input[type="radio"] {
+            margin-right: 12px;
+            cursor: pointer;
+            width: 20px;
+            height: 20px;
+        }
+
+        .option label {
+            cursor: pointer;
+            flex-grow: 1;
+            font-size: 15px;
+            color: #333;
+        }
+
+        .option.selected {
+            border-color: #667eea;
+            background: #f0f4ff;
+        }
+
+        .slider-group {
+            margin-bottom: 20px;
+        }
+
+        .slider-label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            font-size: 14px;
+            color: #666;
+        }
+
+        .slider {
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: #ddd;
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: #667eea;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .slider::-webkit-slider-thumb:hover {
+            background: #764ba2;
+        }
+
+        .slider::-moz-range-thumb {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: #667eea;
+            cursor: pointer;
+            border: none;
+        }
+
+        .buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 30px;
+        }
+
+        button {
+            flex: 1;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-prev {
+            background: #eee;
+            color: #333;
+        }
+
+        .btn-prev:hover {
+            background: #ddd;
+        }
+
+        .btn-next {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-next:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-prev:disabled,
+        .btn-next:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .result {
+            text-align: center;
+            display: none;
+            animation: slideIn 0.3s ease;
+        }
+
+        .result.active {
+            display: block;
+        }
+
+        .result h2 {
+            color: #333;
+            font-size: 24px;
+            margin-bottom: 20px;
+        }
+
+        .profile-card {
+            background: #f8f9ff;
+            border-left: 4px solid #667eea;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            text-align: left;
+        }
+
+        .profile-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+
+        .profile-item label {
+            color: #666;
+            font-weight: 600;
+        }
+
+        .profile-item value {
+            color: #333;
+            font-family: monospace;
+        }
+
+        .btn-complete {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 30px;
+            margin-top: 20px;
+            font-size: 16px;
+        }
+
+        .btn-complete:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .scale-options {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+
+        .scale-option {
+            flex: 1;
+            text-align: center;
+            margin: 0 5px;
+        }
+
+        .scale-option input[type="radio"] {
+            margin-right: 0;
+            margin-bottom: 5px;
+        }
+
+        .scale-option label {
+            display: block;
+            font-size: 12px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🧠 Perfil Cognitivo Nexo</h1>
+            <p>Ayúdanos a personalizar tu experiencia</p>
+        </div>
+
+        <div class="progress-bar">
+            <div class="progress-fill" id="progressFill"></div>
+        </div>
+
+        <!-- Question 1: Learning Style -->
+        <div class="question active" data-question="0">
+            <div class="question-title">1. ¿Cómo aprendes mejor?</div>
+            <div class="option">
+                <input type="radio" name="learning_style" value="visual">
+                <label>👁️ Viendo - Prefiero videos, gráficos e imágenes</label>
+            </div>
+            <div class="option">
+                <input type="radio" name="learning_style" value="auditory">
+                <label>👂 Escuchando - Prefiero explicaciones verbales y podcasts</label>
+            </div>
+            <div class="option">
+                <input type="radio" name="learning_style" value="reading">
+                <label>📝 Leyendo - Prefiero texto detallado y documentos</label>
+            </div>
+            <div class="option">
+                <input type="radio" name="learning_style" value="kinesthetic">
+                <label>🎮 Practicando - Prefiero ejemplos interactivos</label>
+            </div>
+        </div>
+
+        <!-- Question 2: Content Length Preference -->
+        <div class="question" data-question="1">
+            <div class="question-title">2. ¿Cuánto detalle prefieres?</div>
+            <div class="scale-options">
+                <div class="scale-option">
+                    <input type="radio" name="content_length" value="short">
+                    <label>Resumen (1-2 párrafos)</label>
+                </div>
+                <div class="scale-option">
+                    <input type="radio" name="content_length" value="medium" checked>
+                    <label>Medio (3-5 párrafos)</label>
+                </div>
+                <div class="scale-option">
+                    <input type="radio" name="content_length" value="long">
+                    <label>Completo (10+ párrafos)</label>
+                </div>
+            </div>
+        </div>
+
+        <!-- Question 3: Vocabulary Level -->
+        <div class="question" data-question="2">
+            <div class="question-title">3. Nivel de vocabulario técnico</div>
+            <div class="scale-options">
+                <div class="scale-option">
+                    <input type="radio" name="vocabulary_level" value="simple">
+                    <label>Simple</label>
+                </div>
+                <div class="scale-option">
+                    <input type="radio" name="vocabulary_level" value="intermediate" checked>
+                    <label>Intermedio</label>
+                </div>
+                <div class="scale-option">
+                    <input type="radio" name="vocabulary_level" value="technical">
+                    <label>Técnico</label>
+                </div>
+            </div>
+        </div>
+
+        <!-- Question 4: Expertise Area -->
+        <div class="question" data-question="3">
+            <div class="question-title">4. ¿Cuál es tu área de expertise?</div>
+            <div class="option">
+                <input type="radio" name="expertise" value="technology">
+                <label>💻 Tecnología y Software</label>
+            </div>
+            <div class="option">
+                <input type="radio" name="expertise" value="business">
+                <label>💼 Negocios y Economía</label>
+            </div>
+            <div class="option">
+                <input type="radio" name="expertise" value="science">
+                <label>🔬 Ciencia y Investigación</label>
+            </div>
+            <div class="option">
+                <input type="radio" name="expertise" value="general">
+                <label>🌐 Generales - Múltiples campos</label>
+            </div>
+        </div>
+
+        <!-- Question 5: Notification Frequency -->
+        <div class="question" data-question="4">
+            <div class="question-title">5. ¿Con qué frecuencia quieres noticias?</div>
+            <div class="scale-options">
+                <div class="scale-option">
+                    <input type="radio" name="notification_frequency" value="daily">
+                    <label>Diaria</label>
+                </div>
+                <div class="scale-option">
+                    <input type="radio" name="notification_frequency" value="weekly" checked>
+                    <label>Semanal</label>
+                </div>
+                <div class="scale-option">
+                    <input type="radio" name="notification_frequency" value="monthly">
+                    <label>Mensual</label>
+                </div>
+            </div>
+        </div>
+
+        <!-- Question 6: Information Processing -->
+        <div class="question" data-question="5">
+            <div class="question-title">6. ¿Cómo prefieres procesar información?</div>
+            <div class="option">
+                <input type="radio" name="processing_style" value="analytical">
+                <label>🔍 Analítico - Quiero datos y estadísticas</label>
+            </div>
+            <div class="option">
+                <input type="radio" name="processing_style" value="contextual">
+                <label>🌍 Contextual - Quiero ver el panorama completo</label>
+            </div>
+            <div class="option">
+                <input type="radio" name="processing_style" value="practical">
+                <label>⚙️ Práctico - Quiero aplicaciones reales</label>
+            </div>
+        </div>
+
+        <!-- Question 7: Response Tone -->
+        <div class="question" data-question="6">
+            <div class="question-title">7. Tono preferido de respuestas</div>
+            <div class="scale-options">
+                <div class="scale-option">
+                    <input type="radio" name="response_tone" value="formal">
+                    <label>Formal</label>
+                </div>
+                <div class="scale-option">
+                    <input type="radio" name="response_tone" value="conversational" checked>
+                    <label>Conversacional</label>
+                </div>
+                <div class="scale-option">
+                    <input type="radio" name="response_tone" value="creative">
+                    <label>Creativo</label>
+                </div>
+            </div>
+        </div>
+
+        <!-- Question 8: Calendar Sync -->
+        <div class="question" data-question="7">
+            <div class="question-title">8. ¿Qué calendarios quieres sincronizar?</div>
+            <div class="option">
+                <input type="checkbox" name="calendar_sync" value="google">
+                <label>📅 Google Calendar</label>
+            </div>
+            <div class="option">
+                <input type="checkbox" name="calendar_sync" value="outlook">
+                <label>📅 Microsoft Outlook</label>
+            </div>
+            <div class="option">
+                <input type="checkbox" name="calendar_sync" value="none">
+                <label>Ninguno - Sin sincronización</label>
+            </div>
+        </div>
+
+        <!-- Question 9: Breaking News -->
+        <div class="question" data-question="8">
+            <div class="question-title">9. ¿Quieres alertas de breaking news?</div>
+            <div class="scale-options">
+                <div class="scale-option">
+                    <input type="radio" name="breaking_alerts" value="instant">
+                    <label>Inmediata</label>
+                </div>
+                <div class="scale-option">
+                    <input type="radio" name="breaking_alerts" value="daily" checked>
+                    <label>Resumen Diario</label>
+                </div>
+                <div class="scale-option">
+                    <input type="radio" name="breaking_alerts" value="never">
+                    <label>Desactivar</label>
+                </div>
+            </div>
+        </div>
+
+        <!-- Question 10: Privacy -->
+        <div class="question" data-question="9">
+            <div class="question-title">10. Preferencia de privacidad</div>
+            <div class="option">
+                <input type="radio" name="privacy_level" value="maximum">
+                <label>🔒 Máxima - No compartir datos personales</label>
+            </div>
+            <div class="option">
+                <input type="radio" name="privacy_level" value="balanced" checked>
+                <label>⚖️ Balanceada - Compartir anónimamente para mejorar</label>
+            </div>
+            <div class="option">
+                <input type="radio" name="privacy_level" value="open">
+                <label>🌐 Abierta - Compartir para análisis avanzado</label>
+            </div>
+        </div>
+
+        <!-- Results -->
+        <div class="result" id="result">
+            <h2>✨ ¡Perfil Creado!</h2>
+            <div class="profile-card">
+                <div class="profile-item">
+                    <label>Estilo de Aprendizaje:</label>
+                    <value id="result-learning-style"></value>
+                </div>
+                <div class="profile-item">
+                    <label>Longitud de Contenido:</label>
+                    <value id="result-content-length"></value>
+                </div>
+                <div class="profile-item">
+                    <label>Nivel Técnico:</label>
+                    <value id="result-vocabulary"></value>
+                </div>
+                <div class="profile-item">
+                    <label>Área de Expertise:</label>
+                    <value id="result-expertise"></value>
+                </div>
+                <div class="profile-item">
+                    <label>Frecuencia de Notificaciones:</label>
+                    <value id="result-frequency"></value>
+                </div>
+            </div>
+            <button class="btn-complete" onclick="submitProfile()">Guardar y Completar</button>
+        </div>
+
+        <!-- Navigation -->
+        <div class="buttons">
+            <button class="btn-prev" id="btnPrev" onclick="previousQuestion()" disabled>← Anterior</button>
+            <button class="btn-next" id="btnNext" onclick="nextQuestion()">Siguiente →</button>
+        </div>
+    </div>
+
+    <script>
+        let currentQuestion = 0;
+        const totalQuestions = 10;
+
+        function updateProgress() {
+            const percentage = ((currentQuestion + 1) / totalQuestions) * 100;
+            document.getElementById('progressFill').style.width = percentage + '%';
+        }
+
+        function showQuestion(index) {
+            document.querySelectorAll('.question').forEach(q => q.classList.remove('active'));
+            document.getElementById('result').classList.remove('active');
+            
+            if (index < totalQuestions) {
+                document.querySelector(`.question[data-question="${index}"]`).classList.add('active');
+                document.getElementById('btnPrev').disabled = index === 0;
+                document.getElementById('btnNext').innerText = index === totalQuestions - 1 ? '✓ Completar' : 'Siguiente →';
+            } else {
+                showResults();
+            }
+            
+            updateProgress();
+        }
+
+        function nextQuestion() {
+            const currentDiv = document.querySelector(`.question[data-question="${currentQuestion}"]`);
+            const radios = currentDiv.querySelectorAll('input[type="radio"]');
+            const checkboxes = currentDiv.querySelectorAll('input[type="checkbox"]');
+            
+            const hasSelection = Array.from(radios).some(r => r.checked) || 
+                                Array.from(checkboxes).some(c => c.checked);
+            
+            if (!hasSelection) {
+                alert('Por favor selecciona una opción');
+                return;
+            }
+
+            currentQuestion++;
+            if (currentQuestion >= totalQuestions) {
+                showResults();
+            } else {
+                showQuestion(currentQuestion);
+            }
+        }
+
+        function previousQuestion() {
+            if (currentQuestion > 0) {
+                currentQuestion--;
+                showQuestion(currentQuestion);
+            }
+        }
+
+        function showResults() {
+            const formData = new FormData();
+            
+            document.querySelectorAll('input[type="radio"]:checked').forEach(radio => {
+                formData.append(radio.name, radio.value);
+            });
+
+            const calendars = Array.from(document.querySelectorAll('input[name="calendar_sync"]:checked'))
+                .map(c => c.value).join(',');
+            if (calendars) formData.append('calendar_sync', calendars);
+
+            // Show results
+            document.querySelectorAll('.question').forEach(q => q.classList.remove('active'));
+            document.getElementById('result').classList.add('active');
+            
+            // Populate results
+            document.getElementById('result-learning-style').innerText = formData.get('learning_style') || '-';
+            document.getElementById('result-content-length').innerText = formData.get('content_length') || '-';
+            document.getElementById('result-vocabulary').innerText = formData.get('vocabulary_level') || '-';
+            document.getElementById('result-expertise').innerText = formData.get('expertise') || '-';
+            document.getElementById('result-frequency').innerText = formData.get('notification_frequency') || '-';
+
+            window.profileData = Object.fromEntries(formData);
+        }
+
+        function submitProfile() {
+            fetch('/api/preferences/cognitive-profile', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': 'Bearer ' + localStorage.getItem('token')
+                },
+                body: JSON.stringify(window.profileData)
+            })
+            .then(r => r.json())
+            .then(data => {
+                alert('✅ Perfil guardado correctamente!');
+                window.location.href = '/dashboard';
+            })
+            .catch(e => {
+                alert('❌ Error guardando perfil: ' + e.message);
+            });
+        }
+
+        // Add click handlers to options
+        document.querySelectorAll('.option').forEach(opt => {
+            opt.addEventListener('click', function() {
+                const input = this.querySelector('input');
+                if (input.type === 'radio') {
+                    document.querySelectorAll(`.option input[name="${input.name}"]`).forEach(r => {
+                        r.closest('.option').classList.remove('selected');
+                    });
+                    input.checked = true;
+                    this.classList.add('selected');
+                } else if (input.type === 'checkbox') {
+                    input.checked = !input.checked;
+                    this.classList.toggle('selected');
+                }
+            });
+        });
+
+        // Initialize
+        showQuestion(0);
+    </script>
+</body>
+</html>

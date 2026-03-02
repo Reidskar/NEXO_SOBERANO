@@ -1,0 +1,1 @@
+Esta carpeta contiene módulos experimentales de IA y pruebas para NEXO Soberano.

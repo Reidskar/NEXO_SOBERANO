@@ -1,0 +1,152 @@
+{
+  "application": {
+    "name": "Nexo Soberano",
+    "version": "2.0",
+    "environment": "production",
+    "debug": false
+  },
+  
+  "server": {
+    "host": "0.0.0.0",
+    "port": 8000,
+    "workers": 4,
+    "reload": false,
+    "log_level": "info"
+  },
+
+  "database": {
+    "type": "sqlite",
+    "path": "/app/data/nexo.db",
+    "backup_interval_hours": 24,
+    "upgrade_to_postgres": {
+      "enabled": false,
+      "host": "postgres-server",
+      "port": 5432,
+      "user": "nexo",
+      "database": "nexo_prod"
+    }
+  },
+
+  "ai": {
+    "providers": {
+      "openai": {
+        "enabled": true,
+        "model": "gpt-4",
+        "timeout": 30,
+        "max_retries": 3
+      },
+      "gemini": {
+        "enabled": true,
+        "model": "gemini-pro",
+        "timeout": 30,
+        "max_retries": 3
+      }
+    },
+    "default_provider": "auto",
+    "fallback_provider": "gemini",
+    "cache_responses": true,
+    "cache_duration_minutes": 30
+  },
+
+  "auth": {
+    "jwt_secret": "from_env_SECRET_KEY",
+    "jwt_algorithm": "HS256",
+    "token_expiry_hours": 24,
+    "require_https": true,
+    "max_login_attempts": 5,
+    "lockout_duration_minutes": 15
+  },
+
+  "channels": {
+    "telegram": {
+      "enabled": true,
+      "polling_interval": 1,
+      "max_workers": 4
+    },
+    "whatsapp": {
+      "enabled": false,
+      "api": "twilio",
+      "webhook_path": "/omni/webhook/whatsapp"
+    },
+    "facebook": {
+      "enabled": false,
+      "api": "meta",
+      "webhook_path": "/omni/webhook/facebook"
+    },
+    "instagram": {
+      "enabled": false,
+      "api": "meta",
+      "webhook_path": "/omni/webhook/instagram"
+    }
+  },
+
+  "rate_limiting": {
+    "enabled": true,
+    "api": {
+      "requests_per_second": 10,
+      "burst": 20
+    },
+    "chat": {
+      "requests_per_minute": 30,
+      "burst": 5
+    },
+    "per_user": {
+      "requests_per_minute": 100
+    }
+  },
+
+  "security": {
+    "cors": {
+      "allowed_origins": [
+        "*"
+      ],
+      "allowed_methods": ["*"],
+      "allowed_headers": ["*"],
+      "allow_credentials": true
+    },
+    "headers": {
+      "strict_transport_security": "max-age=31536000; includeSubDomains",
+      "x_content_type_options": "nosniff",
+      "x_frame_options": "SAMEORIGIN",
+      "x_xss_protection": "1; mode=block"
+    },
+    "disable_default_docs": false
+  },
+
+  "logging": {
+    "level": "INFO",
+    "format": "json",
+    "file": "/app/logs/nexo.log",
+    "retention_days": 30,
+    "max_size_mb": 100
+  },
+
+  "monitoring": {
+    "enabled": true,
+    "metrics_port": 9090,
+    "health_check_interval": 30,
+    "sentry": {
+      "enabled": false,
+      "dsn": "from_env_SENTRY_DSN"
+    }
+  },
+
+  "performance": {
+    "cache": {
+      "enabled": true,
+      "type": "memory",
+      "ttl_seconds": 3600
+    },
+    "connection_pooling": {
+      "enabled": true,
+      "max_connections": 100
+    }
+  },
+
+  "compliance": {
+    "gdpr": true,
+    "data_retention_days": 90,
+    "encryption_at_rest": true,
+    "audit_logging": true
+  }
+}

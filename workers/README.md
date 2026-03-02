@@ -1,0 +1,1 @@
+Carpeta reservada para workers y tareas asíncronas del sistema.

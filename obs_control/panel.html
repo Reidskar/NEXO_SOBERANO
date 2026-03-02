@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<title>Panel táctico OBS</title>
+<style>
+body{
+  font-family:sans-serif;
+  background:#0f1115;
+  color:white;
+  text-align:center;
+}
+h1{margin-top:20px}
+.grid{
+  display:grid;
+  grid-template-columns:repeat(2,1fr);
+  gap:20px;
+  padding:40px;
+}
+button{
+  padding:25px;
+  font-size:1.3rem;
+  background:#1e2430;
+  color:white;
+  border:none;
+  border-radius:12px;
+}
+button:hover{
+  background:#2d3646;
+}
+.active{
+  background:#00c853 !important;
+}
+.controls{
+  margin-top:30px;
+}
+.controls input[type=text]{
+  width:60%;
+  padding:8px;
+  font-size:1rem;
+  border-radius:6px;
+  border:1px solid #444;
+}
+.controls label{
+  display:block;
+  margin:10px 0 5px;
+}
+</style>
+</head>
+<body>
+
+<h1>Panel táctico OBS</h1>
+
+<!-- escenas -->
+<div class="grid">
+  <button data-scene="War Room">War Room</button>
+  <button data-scene="Pantalla Completa">Pantalla Completa</button>
+  <button data-scene="Cámara + Pantalla">Cámara + Pantalla</button>
+  <button data-scene="Mapa táctico">Mapa táctico</button>
+  <button data-scene="Standby">Standby</button>
+</div>
+
+<!-- macros -->
+<div class="controls">
+  <h2>Macros</h2>
+  <button id="macro-analisis">Modo Análisis</button>
+  <button id="macro-standby">Reset / Standby</button>
+</div>
+
+<!-- overlays y texto dinámico -->
+<div class="controls">
+  <h2>Overlays</h2>
+  <label><input type="checkbox" id="ovl-news" /> Noticias</label>
+  <label><input type="checkbox" id="ovl-map" /> Mapa</label>
+  <label>Tickers / Texto dinámico:</label>
+  <input type="text" id="ticker" placeholder="Escribe y presiona Enter" />
+</div>
+
+<script>
+let ws;
+const OBS_IP = "ws://192.168.0.15:4455"; // actualizar a tu IP
+const PASSWORD = "";              // añadir contraseña si la usas
+let nextReqId = 1;
+
+function send(req){
+  req.d = req.d || {};
+  req.d.requestId = String(nextReqId++);
+  ws.send(JSON.stringify(req));
+}
+
+function connect() {
+  ws = new WebSocket(OBS_IP);
+  ws.onopen = () => console.log("Conectado a OBS");
+  ws.onmessage = (msg) => {
+    const data = JSON.parse(msg.data);
+    // autenticación
+    if(data.op === 2) authenticate(data.d.authentication);
+    // respuesta escena actual
+    if(data.op === 7 && data.d.requestType === "GetCurrentProgramScene"){
+      highlightActive(data.d.responseData.currentProgramSceneName);
+    }
+  };
+  ws.onclose = () => setTimeout(connect,2000);
+}
+
+function authenticate(auth){
+  ws.send(JSON.stringify({
+    op:1,
+    d:{rpcVersion:1, authentication:PASSWORD}
+  }));
+}
+
+function setScene(scene){
+  send({op:6,d:{requestType:"SetCurrentProgramScene",requestData:{sceneName:scene}}});
+  setTimeout(getCurrentScene,300);
+}
+
+function getCurrentScene(){
+  send({op:6,d:{requestType:"GetCurrentProgramScene"}});
+}
+
+function highlightActive(scene){
+  document.querySelectorAll("button").forEach(b=>{
+    b.classList.remove("active");
+    if(b.dataset.scene === scene) b.classList.add("active");
+  });
+}
+
+// controles de overlays
+function toggleSource(source, enable){
+  send({op:6,d:{requestType:"SetSceneItemEnabled",requestData:{sceneName:getActiveScene(),item:source,sceneItemEnabled:enable}}});
+}
+
+function updateText(source,text){
+  send({op:6,d:{requestType:"SetTextGDIPlusProperties",requestData:{source:source,text:text}}});
+}
+
+function getActiveScene(){
+  // se asume el nombre en el botón activo
+  const b = document.querySelector('button.active');
+  return b ? b.dataset.scene : null;
+}
+
+// macros
+function macroAnalisis(){
+  setScene('War Room');
+  toggleSource('OverlayNoticias', true);
+  toggleSource('OverlayCamara', true);
+}
+function macroStandby(){
+  setScene('Standby');
+  toggleSource('OverlayNoticias', false);
+  toggleSource('OverlayCamara', false);
+}
+
+// eventos
+document.querySelectorAll('.grid button').forEach(b=>{
+  b.addEventListener('click',()=>setScene(b.dataset.scene));
+});
+document.getElementById('macro-analisis').addEventListener('click',macroAnalisis);
+document.getElementById('macro-standby').addEventListener('click',macroStandby);
+
+// overlay toggles
+['news','map'].forEach(id=>{
+  document.getElementById('ovl-'+id).addEventListener('change',e=>{
+    const scene = getActiveScene();
+    const src = id==='news' ? 'OverlayNoticias' : 'OverlayMapa';
+    toggleSource(src, e.target.checked);
+  });
+});
+
+// ticker text
+const ticker = document.getElementById('ticker');
+ticker.addEventListener('keypress',e=>{
+  if(e.key === 'Enter'){
+    updateText('Ticker', ticker.value);
+    ticker.value = '';
+  }
+});
+
+connect();
+getCurrentScene();
+</script>
+
+</body>
+</html>

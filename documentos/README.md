@@ -1,0 +1,1 @@
+Carpeta para documentos de ingesta y pruebas de NEXO Soberano.

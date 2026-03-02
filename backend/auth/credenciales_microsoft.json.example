@@ -1,0 +1,5 @@
+{
+  "client_id": "YOUR_MICROSOFT_APP_CLIENT_ID",
+  "client_secret": "YOUR_MICROSOFT_APP_CLIENT_SECRET",
+  "tenant_id": "YOUR_TENANT_ID"
+}

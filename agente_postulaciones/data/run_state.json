@@ -1,0 +1,14 @@
+{
+  "status": "ok",
+  "started_at": "2026-03-02T22:03:54.735982+00:00",
+  "finished_at": "2026-03-02T22:03:57.091808+00:00",
+  "summary": {
+    "device_id": "DESKTOP-1",
+    "jobs_scraped": 20,
+    "jobs_filtered": 3,
+    "jobs_processed": 3,
+    "jobs_applied": 3,
+    "max_applications_per_cycle": 1,
+    "dry_run": true
+  }
+}

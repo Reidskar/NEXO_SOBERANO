@@ -1,0 +1,961 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NEXO SOBERANO — Guía Google Stitch + App Móvil</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Barlow+Condensed:wght@400;600;700;900&family=Barlow:wght@300;400;500&display=swap');
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg: #060914;
+            --bg2: #0d1424;
+            --bg3: #111d35;
+            --cyan: #00e5ff;
+            --amber: #ffa726;
+            --green: #00e676;
+            --red: #ff1744;
+            --purple: #ce93d8;
+            --text: #e0e8ff;
+            --text2: #8899bb;
+            --text3: #3d5070;
+            --border: rgba(0, 229, 255, 0.12);
+            --font-mono: 'JetBrains Mono', monospace;
+            --font-ui: 'Barlow Condensed', sans-serif;
+            --font: 'Barlow', sans-serif;
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: var(--font);
+            line-height: 1.7;
+        }
+
+        .wrap {
+            max-width: 960px;
+            margin: 0 auto;
+            padding: 40px 24px;
+        }
+
+        h1 {
+            font-family: var(--font-ui);
+            font-size: 42px;
+            font-weight: 900;
+            color: var(--cyan);
+            letter-spacing: 0.04em;
+            margin-bottom: 6px;
+            text-shadow: 0 0 30px rgba(0, 229, 255, 0.3);
+        }
+
+        h2 {
+            font-family: var(--font-ui);
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--amber);
+            margin: 36px 0 14px;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        h2::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: rgba(255, 167, 38, 0.2);
+        }
+
+        h3 {
+            font-family: var(--font-ui);
+            font-size: 17px;
+            font-weight: 600;
+            color: var(--cyan);
+            margin: 20px 0 10px;
+            letter-spacing: 0.04em;
+        }
+
+        p {
+            font-size: 14px;
+            color: var(--text2);
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            font-family: var(--font-ui);
+            font-size: 17px;
+            color: var(--text2);
+            margin-bottom: 32px;
+            letter-spacing: 0.04em;
+        }
+
+        .step-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 14px;
+            margin: 20px 0;
+        }
+
+        .step-card {
+            background: var(--bg3);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 18px;
+            position: relative;
+            transition: border-color 0.2s;
+        }
+
+        .step-card:hover {
+            border-color: rgba(0, 229, 255, 0.3);
+        }
+
+        .step-num {
+            position: absolute;
+            top: -10px;
+            left: 16px;
+            background: var(--cyan);
+            color: #000;
+            font-family: var(--font-mono);
+            font-size: 10px;
+            font-weight: 700;
+            padding: 2px 8px;
+            border-radius: 10px;
+        }
+
+        .step-title {
+            font-family: var(--font-ui);
+            font-size: 15px;
+            font-weight: 700;
+            margin-bottom: 6px;
+            margin-top: 8px;
+        }
+
+        .step-body {
+            font-size: 12px;
+            color: var(--text2);
+            line-height: 1.6;
+        }
+
+        code {
+            font-family: var(--font-mono);
+            font-size: 11px;
+            background: rgba(0, 229, 255, 0.08);
+            color: var(--cyan);
+            padding: 2px 6px;
+            border-radius: 3px;
+            border: 1px solid rgba(0, 229, 255, 0.15);
+        }
+
+        pre {
+            background: #050810;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 16px;
+            font-family: var(--font-mono);
+            font-size: 11px;
+            color: #8be9fd;
+            overflow-x: auto;
+            margin: 12px 0;
+            line-height: 1.7;
+        }
+
+        pre .comment {
+            color: var(--text3);
+        }
+
+        pre .string {
+            color: #f1fa8c;
+        }
+
+        pre .key {
+            color: var(--purple);
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-family: var(--font-mono);
+            font-size: 9px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            margin-right: 4px;
+        }
+
+        .b-cyan {
+            background: rgba(0, 229, 255, 0.12);
+            color: var(--cyan);
+            border: 1px solid rgba(0, 229, 255, 0.25);
+        }
+
+        .b-amber {
+            background: rgba(255, 167, 38, 0.12);
+            color: var(--amber);
+            border: 1px solid rgba(255, 167, 38, 0.25);
+        }
+
+        .b-green {
+            background: rgba(0, 230, 118, 0.12);
+            color: var(--green);
+            border: 1px solid rgba(0, 230, 118, 0.25);
+        }
+
+        .b-red {
+            background: rgba(255, 23, 68, 0.12);
+            color: var(--red);
+            border: 1px solid rgba(255, 23, 68, 0.25);
+        }
+
+        .info-box {
+            border-left: 3px solid var(--cyan);
+            background: rgba(0, 229, 255, 0.05);
+            padding: 12px 16px;
+            border-radius: 0 6px 6px 0;
+            margin: 14px 0;
+            font-size: 13px;
+        }
+
+        .warn-box {
+            border-left: 3px solid var(--amber);
+            background: rgba(255, 167, 38, 0.05);
+            padding: 12px 16px;
+            border-radius: 0 6px 6px 0;
+            margin: 14px 0;
+            font-size: 13px;
+        }
+
+        .checklist {
+            list-style: none;
+            margin: 12px 0;
+        }
+
+        .checklist li {
+            padding: 6px 0;
+            font-size: 13px;
+            color: var(--text2);
+            display: flex;
+            gap: 8px;
+            align-items: flex-start;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+        }
+
+        .checklist li::before {
+            content: '☐';
+            color: var(--cyan);
+            flex-shrink: 0;
+            font-size: 14px;
+        }
+
+        .phone-mockup {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin: 20px 0;
+        }
+
+        .phone {
+            width: 180px;
+            background: var(--bg3);
+            border: 2px solid var(--border);
+            border-radius: 28px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .phone-notch {
+            width: 60px;
+            height: 20px;
+            background: var(--bg);
+            border-radius: 0 0 12px 12px;
+            margin: 0 auto;
+        }
+
+        .phone-screen {
+            padding: 10px;
+            min-height: 280px;
+        }
+
+        .phone-label {
+            text-align: center;
+            font-family: var(--font-mono);
+            font-size: 9px;
+            color: var(--text3);
+            padding: 8px;
+            border-top: 1px solid var(--border);
+        }
+
+        .screen-header {
+            background: linear-gradient(135deg, #0b1220, #1a2640);
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 8px;
+        }
+
+        .screen-title {
+            font-family: var(--font-ui);
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--cyan);
+        }
+
+        .screen-card {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 7px;
+            margin-bottom: 5px;
+        }
+
+        .screen-card-title {
+            font-family: var(--font-ui);
+            font-size: 10px;
+            font-weight: 600;
+            color: var(--text2);
+        }
+
+        .screen-val {
+            font-family: var(--font-mono);
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--cyan);
+        }
+
+        .screen-bar {
+            height: 3px;
+            background: var(--bg);
+            border-radius: 2px;
+            margin-top: 4px;
+            overflow: hidden;
+        }
+
+        .screen-bar-fill {
+            height: 100%;
+            border-radius: 2px;
+        }
+
+        .arch-diagram {
+            background: var(--bg2);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 20px;
+            margin: 16px 0;
+            font-family: var(--font-mono);
+            font-size: 11px;
+            color: var(--text2);
+            line-height: 2;
+        }
+
+        .arch-diagram .node {
+            color: var(--cyan);
+        }
+
+        .arch-diagram .arrow {
+            color: var(--text3);
+        }
+
+        .arch-diagram .label {
+            color: var(--amber);
+        }
+
+        .prompt-box {
+            background: #050810;
+            border: 1px solid var(--amber);
+            border-radius: 6px;
+            padding: 16px;
+            margin: 12px 0;
+            font-size: 13px;
+            position: relative;
+        }
+
+        .prompt-box::before {
+            content: 'PROMPT PARA VSCode IA →';
+            position: absolute;
+            top: -10px;
+            left: 12px;
+            background: #050810;
+            color: var(--amber);
+            font-family: var(--font-mono);
+            font-size: 9px;
+            padding: 0 6px;
+            font-weight: 700;
+        }
+
+        .prompt-box p {
+            color: var(--text1);
+            font-size: 13px;
+            line-height: 1.8;
+            margin: 0;
+        }
+
+        hr {
+            border: none;
+            border-top: 1px solid var(--border);
+            margin: 32px 0;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+            margin: 12px 0;
+        }
+
+        th {
+            text-align: left;
+            color: var(--text3);
+            font-family: var(--font-mono);
+            font-size: 9px;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            padding: 8px 10px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        td {
+            padding: 9px 10px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+            color: var(--text);
+        }
+
+        tr:hover td {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .toc {
+            background: var(--bg2);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 16px 20px;
+            margin-bottom: 32px;
+        }
+
+        .toc-title {
+            font-family: var(--font-ui);
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--text3);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-bottom: 10px;
+        }
+
+        .toc a {
+            display: block;
+            font-family: var(--font-ui);
+            font-size: 13px;
+            color: var(--text2);
+            text-decoration: none;
+            padding: 3px 0;
+            transition: color 0.15s;
+        }
+
+        .toc a:hover {
+            color: var(--cyan);
+        }
+
+        .header-bar {
+            background: linear-gradient(90deg, var(--bg), #0d1e3a, var(--bg));
+            border-bottom: 1px solid var(--border);
+            padding: 16px 24px;
+            margin-bottom: 0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="header-bar">
+        <span style="font-family:var(--font-ui);font-size:20px;font-weight:900;color:var(--cyan);">NEXO<span
+                style="color:var(--text2);font-weight:300;">·</span>SOBERANO</span>
+        <span style="font-family:var(--font-mono);font-size:10px;color:var(--text3);">GUÍA DE INTEGRACIÓN — v3.0</span>
+    </div>
+
+    <div class="wrap">
+
+        <h1>Google Stitch + App Móvil</h1>
+        <div class="subtitle">Guía completa para crear la app de teléfono y web profesional de NEXO SOBERANO con IA
+        </div>
+
+        <div class="toc">
+            <div class="toc-title">CONTENIDO</div>
+            <a href="#que-es-stitch">1. ¿Qué es Google Stitch?</a>
+            <a href="#crear-cuenta">2. Crear cuenta y proyecto</a>
+            <a href="#prompt-vscode">3. Prompt para VSCode IA → Stitch</a>
+            <a href="#arquitectura">4. Arquitectura de la app</a>
+            <a href="#app-movil">5. App móvil profesional</a>
+            <a href="#web-app">6. Web App sin errores</a>
+            <a href="#integraciones">7. Integraciones con NEXO Backend</a>
+            <a href="#supervisor">8. Sistema auto-supervisor en VSCode</a>
+            <a href="#deploy">9. Deploy y publicación</a>
+        </div>
+
+        <h2 id="que-es-stitch">🧩 1. ¿Qué es Google Stitch?</h2>
+        <div class="info-box"><strong>Google Stitch</strong> es la plataforma de Google (integrada en Firebase / Google
+            Cloud) que permite crear apps móviles y web con IA generativa. Combina <strong>Gemini AI</strong>,
+            <strong>Firebase</strong>, <strong>Firestore</strong>, <strong>Auth</strong>, y deployment automático en un
+            solo flujo.</div>
+
+        <div class="step-grid">
+            <div class="step-card">
+                <div class="step-num">¿QUÉ ES?</div>
+                <div class="step-title">App Builder + IA</div>
+                <div class="step-body">Genera código React Native (móvil) y React Web desde prompts. Conecta con tu
+                    backend automáticamente.</div>
+            </div>
+            <div class="step-card">
+                <div class="step-num">¿PARA QUÉ?</div>
+                <div class="step-title">Apps NEXO en minutos</div>
+                <div class="step-body">App iOS/Android y Web profesional conectada al backend FastAPI de NEXO SOBERANO
+                    con IA integrada.</div>
+            </div>
+            <div class="step-card">
+                <div class="step-num">¿COSTO?</div>
+                <div class="step-title">Gratuito con límites</div>
+                <div class="step-body">Plan Spark gratis incluye hosting, auth, Firestore. Plan Blaze (pay-as-you-go)
+                    para producción.</div>
+            </div>
+        </div>
+
+        <h2 id="crear-cuenta">🔑 2. Crear cuenta y proyecto en Stitch</h2>
+        <h3>Paso a paso para crear la cuenta:</h3>
+        <div class="step-grid">
+            <div class="step-card">
+                <div class="step-num">PASO 1</div>
+                <div class="step-title">Ir a Firebase Console</div>
+                <div class="step-body">Ve a <code>console.firebase.google.com</code> con tu cuenta Google. Click en
+                    <strong>"Agregar proyecto"</strong>.</div>
+            </div>
+            <div class="step-card">
+                <div class="step-num">PASO 2</div>
+                <div class="step-title">Nombre del proyecto</div>
+                <div class="step-body">Escribe <code>nexo-soberano-app</code>. Acepta Google Analytics (recomendado para
+                    métricas de uso).</div>
+            </div>
+            <div class="step-card">
+                <div class="step-num">PASO 3</div>
+                <div class="step-title">Habilitar Stitch / Gemini</div>
+                <div class="step-body">En Firebase Console → <strong>"Build"</strong> → <strong>"App Hosting"</strong> →
+                    <strong>"Extensions"</strong> → buscar <strong>"Generative AI"</strong> con Gemini.</div>
+            </div>
+            <div class="step-card">
+                <div class="step-num">PASO 4</div>
+                <div class="step-title">Configurar servicios</div>
+                <div class="step-body">Activar: <strong>Authentication</strong> (Email+Google),
+                    <strong>Firestore</strong>, <strong>Storage</strong>, <strong>Functions</strong>, <strong>App
+                        Hosting</strong>.</div>
+            </div>
+            <div class="step-card">
+                <div class="step-num">PASO 5</div>
+                <div class="step-title">Instalar Firebase CLI</div>
+                <div class="step-body">En terminal VSCode: <code>npm install -g firebase-tools</code> luego
+                    <code>firebase login</code> y <code>firebase init</code>.</div>
+            </div>
+            <div class="step-card">
+                <div class="step-num">PASO 6</div>
+                <div class="step-title">Vincular con VSCode</div>
+                <div class="step-body">Instalar extensión <strong>"Firebase"</strong> en VSCode. Ctrl+Shift+P →
+                    <strong>"Firebase: Connect to Project"</strong> → seleccionar <code>nexo-soberano-app</code>.</div>
+            </div>
+        </div>
+
+        <div class="warn-box">⚠️ <strong>Google Stitch</strong> (como producto standalone) está en evolución continua.
+            Si no aparece como "Stitch" exactamente, busca <strong>"Firebase Studio"</strong> o <strong>"Project
+                IDX"</strong> (idx.google.com) — ambos permiten el mismo flujo con Gemini IA integrada para generar
+            apps.</div>
+
+        <h2 id="prompt-vscode">🤖 3. Prompts para VSCode IA → Stitch/Firebase</h2>
+        <div class="info-box">Con <strong>GitHub Copilot</strong> o <strong>Continue.dev</strong> en VSCode, puedes usar
+            estos prompts para que la IA genere el código de las apps automáticamente.</div>
+
+        <div class="prompt-box">
+            <p>Crea una app React Native con Expo para NEXO SOBERANO — centro de comando de inteligencia operacional. La
+                app debe tener: autenticación Firebase (email + Google), pantalla de dashboard con métricas en tiempo
+                real, mapa interactivo (react-native-maps), feed de inteligencia con cards por nivel de severidad
+                (crítico/alto/medio/bajo), módulo de Polymarket con barras de probabilidad, chat con IA (llamadas a mi
+                backend FastAPI en localhost:8000), y pantalla de configuración. Diseño oscuro profesional con paleta:
+                fondo #060914, acento cian #00e5ff, ámbar #ffa726, verde #00e676, rojo #ff1744. Tipografía JetBrains
+                Mono para datos, Barlow Condensed para UI. Navegación con bottom tabs. Estado global con Zustand.
+                Peticiones HTTP con Axios. TypeScript. Sin errores de compilación. Incluir package.json con todas las
+                dependencias.</p>
+        </div>
+        <div class="prompt-box" style="border-color:var(--cyan);">
+            <div
+                style="color:var(--cyan);font-family:var(--font-mono);font-size:9px;font-weight:700;position:absolute;top:-10px;left:12px;background:#050810;padding:0 6px;">
+                PROMPT WEB APP →</div>
+            <p>Crea una web app React (Vite + TypeScript) para NEXO SOBERANO desplegable en Firebase App Hosting.
+                Funcionalidades: autenticación Firebase con guard de rutas protegidas, dashboard principal con métricas
+                (Chart.js), mapa Leaflet con marcadores geoJSON de eventos de inteligencia, módulo OSINT con terminal de
+                análisis interactiva, integración Polymarket con mercados de predicción en tiempo real, chat IA
+                conectado a backend FastAPI, sincronización Google Drive/OneDrive con estado visual, sistema de
+                notificaciones en tiempo real con Firebase Firestore listeners. Diseño: dark command center, misma
+                paleta que NEXO v3. Tailwind CSS + shadcn/ui. React Router v6. TanStack Query para server state. PWA
+                habilitado (funciona offline). Sin errores TypeScript strict. firebase.json y .firebaserc incluidos.</p>
+        </div>
+        <div class="prompt-box" style="border-color:var(--green);">
+            <div
+                style="color:var(--green);font-family:var(--font-mono);font-size:9px;font-weight:700;position:absolute;top:-10px;left:12px;background:#050810;padding:0 6px;">
+                PROMPT BACKEND FIREBASE FUNCTIONS →</div>
+            <p>Crea Firebase Cloud Functions (Node.js TypeScript) que hagan de proxy entre la app y el backend FastAPI
+                de NEXO SOBERANO. Funciones necesarias: /api/chat (proxy a Anthropic Claude API), /api/osint (análisis
+                OSINT básico), /api/markets (caché de Polymarket), /api/intel (CRUD de inteligencia en Firestore),
+                /api/sync-status (estado de sincronización). Incluir autenticación JWT con Firebase Auth, rate limiting,
+                logging con Firebase Logger, y manejo de errores robusto. CORS configurado. Funciones scheduladas para
+                actualizar caché de mercados cada 5 minutos.</p>
+        </div>
+
+        <h2 id="arquitectura">🏗 4. Arquitectura completa</h2>
+        <div class="arch-diagram">
+            <span class="label">USUARIOS</span>
+            │
+            ├── <span class="node">[App Móvil iOS/Android]</span> ← React Native + Expo
+            ├── <span class="node">[Web App]</span> ← React + Vite (Firebase Hosting)
+            └── <span class="node">[War Room HTML]</span> ← NEXO_SOBERANO_v3.html (local)
+            │
+            ▼
+            <span class="label">FIREBASE LAYER</span>
+            ├── <span class="node">Firebase Auth</span> ← Autenticación unificada
+            ├── <span class="node">Firestore</span> ← Intel, usuarios, preferencias
+            ├── <span class="node">Cloud Functions</span> ← API proxy + lógica serverless
+            ├── <span class="node">Firebase Storage</span> ← Archivos, imágenes, exports
+            └── <span class="node">App Hosting</span> ← Deploy web automático
+            │
+            ▼
+            <span class="label">NEXO BACKEND (Local / VPS)</span>
+            ├── <span class="node">FastAPI :8000</span> ← API principal
+            ├── <span class="node">Anthropic Claude API</span> ← IA conversacional
+            ├── <span class="node">SQLite / ChromaDB</span> ← Base de datos + vectorial
+            ├── <span class="node">Google Drive API</span> ← Sincronización
+            ├── <span class="node">OneDrive API</span> ← Sincronización
+            └── <span class="node">Polymarket API</span> ← Mercados de predicción
+        </div>
+
+        <h2 id="app-movil">📱 5. App móvil — Pantallas principales</h2>
+        <div class="phone-mockup">
+            <div class="phone">
+                <div class="phone-notch"></div>
+                <div class="phone-screen">
+                    <div class="screen-header">
+                        <div class="screen-title">⬛ DASHBOARD</div>
+                    </div>
+                    <div class="screen-card">
+                        <div class="screen-card-title">CONSULTAS HOY</div>
+                        <div class="screen-val" style="color:var(--cyan);">247</div>
+                        <div class="screen-bar">
+                            <div class="screen-bar-fill" style="width:70%;background:var(--cyan);"></div>
+                        </div>
+                    </div>
+                    <div class="screen-card">
+                        <div class="screen-card-title">ALERTAS ACTIVAS</div>
+                        <div class="screen-val" style="color:var(--amber);">5</div>
+                        <div class="screen-bar">
+                            <div class="screen-bar-fill" style="width:30%;background:var(--amber);"></div>
+                        </div>
+                    </div>
+                    <div class="screen-card">
+                        <div class="screen-card-title">SISTEMA</div>
+                        <div class="screen-val" style="color:var(--green);">ONLINE</div>
+                    </div>
+                </div>
+                <div class="phone-label">DASHBOARD</div>
+            </div>
+            <div class="phone">
+                <div class="phone-notch"></div>
+                <div class="phone-screen">
+                    <div class="screen-header">
+                        <div class="screen-title">🗺 GEOINT MAP</div>
+                    </div>
+                    <div
+                        style="background:#0a1628;border-radius:4px;height:120px;display:flex;align-items:center;justify-content:center;margin-bottom:6px;position:relative;overflow:hidden;">
+                        <div
+                            style="position:absolute;width:100%;height:100%;background:radial-gradient(circle at 60% 40%,rgba(0,229,255,0.1),transparent 60%)">
+                        </div><span style="font-size:28px;">🗺</span>
+                    </div>
+                    <div class="screen-card" style="display:flex;gap:4px;align-items:center;">
+                        <div style="width:6px;height:6px;border-radius:50%;background:var(--red);"></div>
+                        <div class="screen-card-title" style="flex:1;">Líbano — Crítico</div>
+                    </div>
+                    <div class="screen-card" style="display:flex;gap:4px;align-items:center;">
+                        <div style="width:6px;height:6px;border-radius:50%;background:var(--amber);"></div>
+                        <div class="screen-card-title" style="flex:1;">Moscú — Alto</div>
+                    </div>
+                </div>
+                <div class="phone-label">MAPA GEOINT</div>
+            </div>
+            <div class="phone">
+                <div class="phone-notch"></div>
+                <div class="phone-screen">
+                    <div class="screen-header">
+                        <div class="screen-title">📊 PREDICCIONES</div>
+                    </div>
+                    <div class="screen-card">
+                        <div class="screen-card-title" style="margin-bottom:5px;">Paz Israel-Hamas</div>
+                        <div class="screen-bar" style="height:5px;">
+                            <div class="screen-bar-fill" style="width:28%;background:var(--green);"></div>
+                        </div>
+                        <div
+                            style="display:flex;justify-content:space-between;font-family:var(--font-mono);font-size:8px;margin-top:3px;">
+                            <span style="color:var(--green);">SÍ 28¢</span><span style="color:var(--red);">NO 72¢</span>
+                        </div>
+                    </div>
+                    <div class="screen-card">
+                        <div class="screen-card-title" style="margin-bottom:5px;">Bitcoin +$120K</div>
+                        <div class="screen-bar" style="height:5px;">
+                            <div class="screen-bar-fill" style="width:44%;background:var(--amber);"></div>
+                        </div>
+                        <div
+                            style="display:flex;justify-content:space-between;font-family:var(--font-mono);font-size:8px;margin-top:3px;">
+                            <span style="color:var(--green);">SÍ 44¢</span><span style="color:var(--red);">NO 56¢</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="phone-label">POLYMARKET</div>
+            </div>
+            <div class="phone">
+                <div class="phone-notch"></div>
+                <div class="phone-screen">
+                    <div class="screen-header">
+                        <div class="screen-title">🤖 IA CHAT</div>
+                    </div>
+                    <div style="min-height:140px;display:flex;flex-direction:column;gap:6px;padding:4px 0;">
+                        <div
+                            style="background:rgba(0,229,255,0.08);border-radius:4px 4px 4px 0;padding:8px;font-size:10px;color:var(--text2);">
+                            ¿Cuáles son las alertas más urgentes hoy?</div>
+                        <div
+                            style="background:rgba(255,255,255,0.04);border-radius:4px 4px 0 4px;padding:8px;font-size:10px;color:var(--text);">
+                            Detecté 2 críticos: Líbano (actividad militar) y RCA (conflicto activo). Recomiendo revisión
+                            inmediata.</div>
+                    </div>
+                    <div
+                        style="background:var(--bg);border-radius:4px;padding:6px;display:flex;gap:4px;margin-top:4px;">
+                        <div
+                            style="flex:1;background:rgba(255,255,255,0.05);border-radius:3px;padding:4px;font-size:9px;color:var(--text3);">
+                            Escribe...</div>
+                        <div
+                            style="background:var(--cyan);width:22px;border-radius:3px;display:flex;align-items:center;justify-content:center;color:#000;font-size:12px;">
+                            ▶</div>
+                    </div>
+                </div>
+                <div class="phone-label">CHAT IA</div>
+            </div>
+        </div>
+
+        <h2 id="web-app">🌐 6. Dependencias y configuración</h2>
+        <h3>package.json — App Móvil (React Native + Expo)</h3>
+        <pre><span class="comment">// Instalar: npx create-expo-app nexo-mobile --template typescript</span>
+{
+  <span class="string">"name"</span>: <span class="string">"nexo-soberano-mobile"</span>,
+  <span class="string">"version"</span>: <span class="string">"1.0.0"</span>,
+  <span class="key">"dependencies"</span>: {
+    <span class="string">"expo"</span>: <span class="string">"~52.0.0"</span>,
+    <span class="string">"react-native"</span>: <span class="string">"0.76.0"</span>,
+    <span class="string">"@react-navigation/native"</span>: <span class="string">"^7.0.0"</span>,
+    <span class="string">"@react-navigation/bottom-tabs"</span>: <span class="string">"^7.0.0"</span>,
+    <span class="string">"react-native-maps"</span>: <span class="string">"^1.18.0"</span>,
+    <span class="string">"react-native-chart-kit"</span>: <span class="string">"^6.12.0"</span>,
+    <span class="string">"@react-native-firebase/app"</span>: <span class="string">"^21.0.0"</span>,
+    <span class="string">"@react-native-firebase/auth"</span>: <span class="string">"^21.0.0"</span>,
+    <span class="string">"@react-native-firebase/firestore"</span>: <span class="string">"^21.0.0"</span>,
+    <span class="string">"axios"</span>: <span class="string">"^1.7.0"</span>,
+    <span class="string">"zustand"</span>: <span class="string">"^5.0.0"</span>,
+    <span class="string">"@tanstack/react-query"</span>: <span class="string">"^5.0.0"</span>,
+    <span class="string">"expo-notifications"</span>: <span class="string">"~0.29.0"</span>,
+    <span class="string">"expo-secure-store"</span>: <span class="string">"~14.0.0"</span>,
+    <span class="string">"@expo-google-fonts/jetbrains-mono"</span>: <span class="string">"^0.3.0"</span>
+  }
+}</pre>
+
+        <h3>package.json — Web App (React + Vite + Firebase)</h3>
+        <pre><span class="comment">// Instalar: npm create vite@latest nexo-web -- --template react-ts</span>
+{
+  <span class="string">"name"</span>: <span class="string">"nexo-soberano-web"</span>,
+  <span class="key">"dependencies"</span>: {
+    <span class="string">"react"</span>: <span class="string">"^18.3.0"</span>,
+    <span class="string">"react-dom"</span>: <span class="string">"^18.3.0"</span>,
+    <span class="string">"react-router-dom"</span>: <span class="string">"^6.26.0"</span>,
+    <span class="string">"firebase"</span>: <span class="string">"^11.0.0"</span>,
+    <span class="string">"leaflet"</span>: <span class="string">"^1.9.4"</span>,
+    <span class="string">"react-leaflet"</span>: <span class="string">"^4.2.1"</span>,
+    <span class="string">"chart.js"</span>: <span class="string">"^4.4.0"</span>,
+    <span class="string">"react-chartjs-2"</span>: <span class="string">"^5.2.0"</span>,
+    <span class="string">"axios"</span>: <span class="string">"^1.7.0"</span>,
+    <span class="string">"zustand"</span>: <span class="string">"^5.0.0"</span>,
+    <span class="string">"@tanstack/react-query"</span>: <span class="string">"^5.0.0"</span>,
+    <span class="string">"tailwindcss"</span>: <span class="string">"^3.4.0"</span>,
+    <span class="string">"@shadcn/ui"</span>: <span class="string">"latest"</span>
+  }
+}</pre>
+
+        <h3>Configuración firebase.json</h3>
+        <pre>{
+  <span class="string">"hosting"</span>: {
+    <span class="string">"public"</span>: <span class="string">"dist"</span>,
+    <span class="string">"ignore"</span>: [<span class="string">"firebase.json"</span>, <span class="string">"**/.*"</span>],
+    <span class="string">"rewrites"</span>: [{ <span class="string">"source"</span>: <span class="string">"**"</span>, <span class="string">"destination"</span>: <span class="string">"/index.html"</span> }]
+  },
+  <span class="string">"functions"</span>: { <span class="string">"source"</span>: <span class="string">"functions"</span>, <span class="string">"runtime"</span>: <span class="string">"nodejs20"</span> },
+  <span class="string">"firestore"</span>: { <span class="string">"rules"</span>: <span class="string">"firestore.rules"</span>, <span class="string">"indexes"</span>: <span class="string">"firestore.indexes.json"</span> }
+}</pre>
+
+        <h2 id="integraciones">🔌 7. Integración con el backend NEXO</h2>
+        <h3>Cliente API (TypeScript) — conecta Stitch/Firebase con FastAPI</h3>
+        <pre><span class="comment">// src/api/nexoClient.ts</span>
+<span class="key">import</span> axios <span class="key">from</span> <span class="string">'axios'</span>;
+<span class="key">import</span> { getAuth } <span class="key">from</span> <span class="string">'firebase/auth'</span>;
+
+<span class="key">const</span> BACKEND = <span class="key">import.meta.env</span>.VITE_NEXO_BACKEND || <span class="string">'http://localhost:8000'</span>;
+
+<span class="key">export const</span> nexoApi = axios.create({ baseURL: BACKEND });
+
+nexoApi.interceptors.request.use(<span class="key">async</span> (config) => {
+  <span class="key">const</span> user = getAuth().currentUser;
+  <span class="key">if</span> (user) {
+    <span class="key">const</span> token = <span class="key">await</span> user.getIdToken();
+    config.headers.Authorization = <span class="string">`Bearer ${token}`</span>;
+  }
+  <span class="key">return</span> config;
+});
+
+<span class="key">export const</span> nexoChat = (msg: string) =>
+  nexoApi.post(<span class="string">'/api/chat'</span>, { message: msg, stream: false });
+
+<span class="key">export const</span> nexoIntel = () =>
+  nexoApi.get(<span class="string">'/api/intel'</span>);
+
+<span class="key">export const</span> nexoSyncStatus = () =>
+  nexoApi.get(<span class="string">'/api/sync/status'</span>);</pre>
+
+        <h2 id="supervisor">🔍 8. Sistema auto-supervisor en VSCode</h2>
+        <h3>Instrucciones de instalación y uso:</h3>
+        <ul class="checklist">
+            <li>Copiar <code>nexo_autosupervisor.py</code> en la raíz del proyecto NEXO SOBERANO</li>
+            <li>Copiar <code>vscode_settings.json</code> → <code>.vscode/settings.json</code></li>
+            <li>Copiar <code>vscode_tasks.json</code> → <code>.vscode/tasks.json</code></li>
+            <li>Abrir terminal en VSCode: <code>python nexo_autosupervisor.py --scan</code></li>
+            <li>Para modo continuo: <code>python nexo_autosupervisor.py --watch --fix</code></li>
+            <li>Para mejora con IA: configurar <code>ANTHROPIC_API_KEY</code> en <code>.env</code></li>
+            <li>Ver reporte: <code>python nexo_autosupervisor.py --report</code></li>
+            <li>Instalar extensión VSCode: <strong>Emerald Walk Run on Save</strong> para auto-escaneo</li>
+        </ul>
+        <div class="info-box">💡 <strong>El supervisor genera</strong>: un reporte Markdown legible + JSON detallado en
+            <code>reports/supervisor/</code>. El archivo <code>latest.md</code> siempre tiene el estado actual del
+            proyecto. Backups automáticos antes de cada auto-fix en <code>.supervisor_backups/</code>.</div>
+
+        <h3>Qué detecta y corrige automáticamente:</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>CÓDIGO</th>
+                    <th>TIPO</th>
+                    <th>SEVERIDAD</th>
+                    <th>AUTO-FIX</th>
+                    <th>DESCRIPCIÓN</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><code>SV001-SV010</code></td>
+                    <td>Seguridad</td>
+                    <td><span class="badge b-red">CRÍTICO</span></td>
+                    <td>No</td>
+                    <td>eval, SQL injection, credenciales hardcodeadas</td>
+                </tr>
+                <tr>
+                    <td><code>SY001</code></td>
+                    <td>Sintaxis</td>
+                    <td><span class="badge b-red">CRÍTICO</span></td>
+                    <td>No</td>
+                    <td>Errores de sintaxis Python</td>
+                </tr>
+                <tr>
+                    <td><code>CX001</code></td>
+                    <td>Complejidad</td>
+                    <td><span class="badge b-amber">MEDIO</span></td>
+                    <td>No</td>
+                    <td>Funciones &gt;80 líneas</td>
+                </tr>
+                <tr>
+                    <td><code>ST001</code></td>
+                    <td>Estilo</td>
+                    <td><span class="badge b-amber">MEDIO</span></td>
+                    <td>No</td>
+                    <td>except desnudo</td>
+                </tr>
+                <tr>
+                    <td><code>ST003</code></td>
+                    <td>Estilo</td>
+                    <td><span class="badge b-cyan">INFO</span></td>
+                    <td><span class="badge b-green">SÍ</span></td>
+                    <td>print() → logging</td>
+                </tr>
+                <tr>
+                    <td><code>HT005</code></td>
+                    <td>Seguridad</td>
+                    <td><span class="badge b-amber">ALTO</span></td>
+                    <td>No</td>
+                    <td>innerHTML (XSS)</td>
+                </tr>
+                <tr>
+                    <td><code>HT007</code></td>
+                    <td>Estilo JS</td>
+                    <td><span class="badge b-cyan">BAJO</span></td>
+                    <td><span class="badge b-green">SÍ</span></td>
+                    <td>var → let/const</td>
+                </tr>
+                <tr>
+                    <td><code>AC001</code></td>
+                    <td>Accesibilidad</td>
+                    <td><span class="badge b-cyan">BAJO</span></td>
+                    <td>No</td>
+                    <td>img sin alt</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h2 id="deploy">🚀 9. Deploy y publicación</h2>
+        <h3>Comandos de deploy:</h3>
+        <pre><span class="comment"># 1. Build web app</span>
+npm run build
+
+<span class="comment"># 2. Deploy a Firebase Hosting</span>
+firebase deploy --only hosting
+
+<span class="comment"># 3. Deploy Functions</span>
+firebase deploy --only functions
+
+<span class="comment"># 4. Deploy todo</span>
+firebase deploy
+
+<span class="comment"># 5. Ver URL de la app desplegada</span>
+firebase hosting:channel:list
+
+<span class="comment"># App Móvil — Build con Expo</span>
+npx eas build --platform all --profile production
+npx eas submit --platform ios
+npx eas submit --platform android</pre>
+
+        <div class="warn-box">🔑 <strong>Variables de entorno necesarias</strong> en Firebase Functions →
+            Secrets:<br><code>ANTHROPIC_API_KEY</code>, <code>NEXO_BACKEND_URL</code>, <code>POLYMARKET_API_URL</code>
+        </div>
+        <hr>
+        <div style="text-align:center;padding:20px 0;font-family:var(--font-mono);font-size:10px;color:var(--text3);">
+            NEXO SOBERANO v3.0 — Sistema de Inteligencia Operacional<br>Auto-supervisor activo · Firebase + Stitch · App
+            Móvil + Web</div>
+
+    </div>
+</body>
+
+</html>

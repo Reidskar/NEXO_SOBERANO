@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+  <title>NEXO Admin Mobile</title>
+  <style>
+    :root { --bg:#0b1220; --card:#111a2e; --line:#22314f; --txt:#e8eeff; --muted:#a7b4d6; --ok:#22c55e; --warn:#f59e0b; --bad:#ef4444; }
+    * { box-sizing: border-box; }
+    body { margin:0; font-family: Inter, system-ui, sans-serif; background:var(--bg); color:var(--txt); }
+    .wrap { max-width: 720px; margin:0 auto; padding:14px; }
+    .title { font-size: 1.2rem; font-weight: 800; margin: 8px 0 14px; }
+    .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:12px; margin-bottom:12px; }
+    .muted { color:var(--muted); font-size:.9rem; }
+    button,input,textarea { width:100%; border-radius:10px; border:1px solid var(--line); background:#0f1730; color:var(--txt); padding:10px; margin-top:8px; }
+    button { background:#1d4ed8; border:none; font-weight:700; }
+    .grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+    .ok { color:var(--ok); } .warn{ color:var(--warn);} .bad{ color:var(--bad);} 
+    .pill { border:1px solid var(--line); border-radius:999px; padding:3px 9px; font-size:.8rem; display:inline-block; }
+    pre { white-space: pre-wrap; font-size:.85rem; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="title">🛠️ NEXO Admin Mobile</div>
+
+    <div class="card">
+      <b>Estado General</b>
+      <div id="general" class="muted">Cargando...</div>
+      <div style="margin-top:8px">
+        <a href="/control-center" target="_blank">Abrir Control Center</a> •
+        <a href="/warroom_v2.html" target="_blank">War Room</a>
+      </div>
+    </div>
+
+    <div class="card">
+      <b>Operaciones rápidas</b>
+      <div class="grid">
+        <button id="runDrive">Run Drive Sync</button>
+        <button id="runUnified">Run Unified Sync</button>
+        <button id="runXMonitor">Run X Monitor</button>
+        <button id="testStitch">Test Google Stitch</button>
+        <button id="runExtractor">Run Extractor</button>
+        <button id="shareGrok">Share Code with Grok</button>
+      </div>
+      <div id="opsOut" class="muted" style="margin-top:8px"></div>
+    </div>
+
+    <div class="card">
+      <b>Google Stitch</b>
+      <input id="stitchUrl" placeholder="Webhook URL" />
+      <input id="stitchKey" placeholder="API Key (opcional)" />
+      <button id="saveStitch">Guardar conexión</button>
+      <div id="stitchOut" class="muted"></div>
+    </div>
+
+    <div class="card">
+      <b>📧 Enviar links al correo</b>
+      <input id="emailRecipient" placeholder="correo@dominio.com" />
+      <button id="sendEmailLinks">Enviar link de descarga</button>
+      <div id="emailOut" class="muted"></div>
+    </div>
+
+    <div class="card">
+      <b>Métricas en vivo</b>
+      <pre id="metrics">cargando...</pre>
+    </div>
+  </div>
+
+  <script>
+    const API = window.location.origin;
+    const $ = id => document.getElementById(id);
+
+    async function refresh(){
+      try {
+        const [status, analytics, stitch, xmon] = await Promise.all([
+          fetch(`${API}/agente/control-center/status`).then(r=>r.json()),
+          fetch(`${API}/agente/control-center/analytics`).then(r=>r.json()),
+          fetch(`${API}/agente/google-stitch/status`).then(r=>r.json()),
+          fetch(`${API}/agente/x/monitor-status`).then(r=>r.json())
+        ]);
+
+        const pre = status.preflight || {};
+        $('general').innerHTML = `Backend <span class='pill ok'>online</span> • Preflight <span class='pill ${pre.ready ? 'ok' : 'warn'}'>${pre.ready ? 'ready' : 'parcial'}</span> • X monitor <span class='pill ${xmon?.report?.ok ? 'ok':'warn'}'>${xmon?.report?.ok ? 'ok':'pendiente'}</span>`;
+
+        $('metrics').textContent = JSON.stringify({
+          workspace: analytics.workspace,
+          microsoft365: analytics.microsoft365,
+          ai: analytics.ai,
+          stitch: stitch,
+          x_monitor: xmon.status
+        }, null, 2);
+      } catch(e){
+        $('general').textContent = 'No se pudo cargar estado';
+      }
+    }
+
+    $('runDrive').onclick = async ()=>{
+      const r = await fetch(`${API}/agente/control-center/run-drive-classification`,{method:'POST'}).then(x=>x.json()).catch(()=>({ok:false}));
+      $('opsOut').textContent = JSON.stringify(r);
+      refresh();
+    };
+
+    $('runUnified').onclick = async ()=>{
+      const body = {dry_run:false, photos_limit:20, drive_limit:100, onedrive_limit:50, onedrive_max_mb:20, youtube_per_channel:5};
+      const r = await fetch(`${API}/agente/control-center/run-unified-sync`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}).then(x=>x.json()).catch(()=>({ok:false}));
+      $('opsOut').textContent = JSON.stringify(r);
+      refresh();
+    };
+
+    $('runXMonitor').onclick = async ()=>{
+      const r = await fetch(`${API}/agente/x/monitor-once`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({limit:20})}).then(x=>x.json()).catch(()=>({ok:false}));
+      $('opsOut').textContent = JSON.stringify(r);
+      refresh();
+    };
+
+    $('testStitch').onclick = async ()=>{
+      const r = await fetch(`${API}/agente/google-stitch/test`,{method:'POST'}).then(x=>x.json()).catch(()=>({ok:false}));
+      $('opsOut').textContent = JSON.stringify(r);
+      refresh();
+    };
+
+    $('runExtractor').onclick = async ()=>{
+      const r = await fetch(`${API}/agente/control-center/run-code-extractor`,{method:'POST'}).then(x=>x.json()).catch(()=>({ok:false}));
+      $('opsOut').textContent = JSON.stringify(r);
+      refresh();
+    };
+
+    $('shareGrok').onclick = async ()=>{
+      const r = await fetch(`${API}/agente/grok/share-code`,{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({question:'Debate mejoras e integraciones del código NEXO', max_tweets:5})
+      }).then(x=>x.json()).catch(()=>({ok:false}));
+      $('opsOut').textContent = JSON.stringify(r);
+      refresh();
+    };
+
+    $('saveStitch').onclick = async ()=>{
+      const webhook_url = $('stitchUrl').value.trim();
+      const api_key = $('stitchKey').value.trim();
+      if(!webhook_url){ $('stitchOut').textContent='Webhook URL requerido'; return; }
+      const r = await fetch(`${API}/agente/google-stitch/connect`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({webhook_url, api_key})}).then(x=>x.json()).catch(()=>({ok:false}));
+      $('stitchOut').textContent = JSON.stringify(r);
+      refresh();
+    };
+
+    $('sendEmailLinks').onclick = async ()=>{
+      const recipient = $('emailRecipient').value.trim();
+      const body = recipient ? {recipient} : {};
+      const r = await fetch(`${API}/agente/mobile-package/send-email`,{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify(body)
+      }).then(x=>x.json()).catch(()=>({ok:false,status:'error'}));
+      $('emailOut').textContent = JSON.stringify(r);
+    };
+
+    refresh();
+    setInterval(refresh, 10000);
+  </script>
+</body>
+</html>

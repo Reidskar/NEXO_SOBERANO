@@ -1,0 +1,1 @@
+Esta carpeta contiene la web API pública y endpoints de NEXO Soberano.

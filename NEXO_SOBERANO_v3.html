@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NEXO SOBERANO v3 — Centro de Comando</title>
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+
+<style>
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Barlow+Condensed:wght@300;400;500;600;700;900&family=Barlow:wght@300;400;500&display=swap');
+
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+:root {
+  --bg-0: #060914; --bg-1: #0b0f1a; --bg-2: #111827; --bg-3: #1a2235; --bg-4: #1e2d45;
+  --cyan:#00e5ff; --cyan-dim:rgba(0,229,255,0.15); --cyan-glow:0 0 20px rgba(0,229,255,0.4);
+  --amber:#ffa726; --amber-dim:rgba(255,167,38,0.15); --green:#00e676; --green-dim:rgba(0,230,118,0.15);
+  --red:#ff1744; --red-dim:rgba(255,23,68,0.15); --purple:#ce93d8;
+  --text-1:#e0e8ff; --text-2:#8899bb; --text-3:#4a5878; --border:rgba(0,229,255,0.12); --border-hover:rgba(0,229,255,0.35);
+  --radius:6px; --font-mono:'JetBrains Mono', monospace; --font-ui:'Barlow Condensed', sans-serif; --font-body:'Barlow', sans-serif;
+  --transition:0.18s cubic-bezier(0.4,0,0.2,1); --sidebar-w:220px; --header-h:52px;
+}
+html, body { height:100%; overflow:hidden; background:var(--bg-0); color:var(--text-1); font-family:var(--font-body); }
+::-webkit-scrollbar { width:4px; height:4px; } ::-webkit-scrollbar-track { background:var(--bg-1);} ::-webkit-scrollbar-thumb { background:var(--bg-4); border-radius:2px; }
+.header{position:fixed;top:0;left:0;right:0;height:var(--header-h);display:flex;align-items:center;gap:16px;padding:0 20px;background:linear-gradient(90deg,var(--bg-0) 0%,#0d1529 50%,var(--bg-0) 100%);border-bottom:1px solid var(--border);z-index:1000;backdrop-filter:blur(12px)}
+.header::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--cyan),transparent);opacity:.6}
+.logo{font-family:var(--font-ui);font-weight:900;font-size:22px;letter-spacing:.08em;color:var(--cyan);text-shadow:var(--cyan-glow);white-space:nowrap}
+.logo span{color:var(--text-2);font-weight:300}
+.header-status{display:flex;align-items:center;gap:6px;font-family:var(--font-mono);font-size:10px;color:var(--text-2);margin-left:auto}
+.pulse{width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green);animation:pulse-anim 2s infinite}
+@keyframes pulse-anim {0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(.8)}}
+.header-time{font-family:var(--font-mono);font-size:11px;color:var(--cyan);margin-left:12px}
+.header-actions{display:flex;gap:8px;margin-left:12px}
+.hbtn{padding:5px 12px;border-radius:var(--radius);border:1px solid var(--border);background:var(--bg-3);color:var(--text-2);font-family:var(--font-ui);font-size:12px;font-weight:600;cursor:pointer;letter-spacing:.05em;transition:var(--transition)}
+.hbtn:hover{border-color:var(--cyan);color:var(--cyan);background:var(--cyan-dim)} .hbtn.active{border-color:var(--cyan);color:var(--cyan);background:var(--cyan-dim)}
+.sidebar{position:fixed;left:0;top:var(--header-h);bottom:0;width:var(--sidebar-w);background:var(--bg-1);border-right:1px solid var(--border);display:flex;flex-direction:column;z-index:900;transition:transform var(--transition);overflow:hidden}
+.sidebar-section{padding:12px 0;border-bottom:1px solid var(--border)}
+.sidebar-label{padding:4px 16px 8px;font-family:var(--font-mono);font-size:9px;font-weight:500;color:var(--text-3);letter-spacing:.15em;text-transform:uppercase}
+.nav-item{display:flex;align-items:center;gap:10px;padding:8px 16px;cursor:pointer;user-select:none;font-family:var(--font-ui);font-size:13px;font-weight:500;color:var(--text-2);letter-spacing:.03em;transition:var(--transition);border-left:2px solid transparent;position:relative}
+.nav-item:hover{color:var(--text-1);background:rgba(255,255,255,.03)} .nav-item.active{color:var(--cyan);border-left-color:var(--cyan);background:var(--cyan-dim)}
+.nav-icon{font-size:15px;width:20px;text-align:center;flex-shrink:0}
+.nav-badge{margin-left:auto;background:var(--red);color:#fff;font-family:var(--font-mono);font-size:9px;font-weight:700;padding:1px 5px;border-radius:10px;min-width:18px;text-align:center}
+.nav-badge.green{background:var(--green);color:#000}.nav-badge.amber{background:var(--amber);color:#000}
+.sidebar-stats{padding:12px 16px}.sstat{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}.sstat-label{font-family:var(--font-mono);font-size:9px;color:var(--text-3)}.sstat-val{font-family:var(--font-mono);font-size:11px;color:var(--cyan);font-weight:700}
+.mini-bar{height:3px;background:var(--bg-4);border-radius:2px;margin-bottom:12px;overflow:hidden}.mini-bar-fill{height:100%;background:linear-gradient(90deg,var(--cyan),var(--purple));border-radius:2px;transition:width .5s ease}
+.main{position:fixed;top:var(--header-h);left:var(--sidebar-w);right:0;bottom:0;overflow:hidden;display:flex;flex-direction:column}
+.tabs{display:flex;align-items:center;gap:2px;padding:8px 16px 0;background:var(--bg-1);border-bottom:1px solid var(--border);flex-shrink:0;overflow-x:auto}
+.tab{display:flex;align-items:center;gap:6px;padding:7px 16px;border-radius:var(--radius) var(--radius) 0 0;font-family:var(--font-ui);font-size:13px;font-weight:600;letter-spacing:.04em;cursor:pointer;color:var(--text-3);border:1px solid transparent;border-bottom:none;user-select:none;white-space:nowrap;transition:var(--transition);background:transparent;position:relative;bottom:-1px}
+.tab.active{color:var(--cyan);background:var(--bg-2);border-color:var(--border);border-bottom-color:var(--bg-2)} .tab:hover{color:var(--text-2)}
+.tab-icon{font-size:14px}
+.content{flex:1;overflow:hidden;display:none;background:var(--bg-2)} .content.active{display:flex;flex-direction:column}
+.panel-scroll{flex:1;overflow-y:auto;padding:16px}
+.grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}.grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}.grid-2{display:grid;grid-template-columns:repeat(2,1fr);gap:16px}
+.card{background:var(--bg-3);border:1px solid var(--border);border-radius:var(--radius);padding:16px;position:relative;overflow:hidden;transition:border-color var(--transition)}
+.card:hover{border-color:var(--border-hover)} .card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--cyan),transparent);opacity:0;transition:opacity var(--transition)} .card:hover::before{opacity:1}
+.card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.card-title{font-family:var(--font-ui);font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--text-2)}
+.stat-card{background:var(--bg-3);border:1px solid var(--border);border-radius:var(--radius);padding:16px}
+.stat-value{font-family:var(--font-ui);font-size:32px;font-weight:900;line-height:1;margin-bottom:4px}
+.stat-label{font-family:var(--font-mono);font-size:9px;color:var(--text-2);letter-spacing:.1em;text-transform:uppercase}
+.stat-delta{font-family:var(--font-mono);font-size:10px;margin-top:6px}.delta-up{color:var(--green)}.delta-down{color:var(--red)}
+.stat-card.cyan .stat-value{color:var(--cyan)}.stat-card.amber .stat-value{color:var(--amber)}.stat-card.green .stat-value{color:var(--green)}.stat-card.red .stat-value{color:var(--red)}
+.info-banner{background:linear-gradient(90deg,var(--cyan-dim),transparent);border-left:3px solid var(--cyan);padding:10px 14px;border-radius:0 var(--radius) var(--radius) 0;font-family:var(--font-mono);font-size:11px;color:var(--text-1);margin-bottom:14px;line-height:1.6}
+.warn-banner{background:linear-gradient(90deg,var(--amber-dim),transparent);border-left:3px solid var(--amber);padding:10px 14px;border-radius:0 var(--radius) var(--radius) 0;font-family:var(--font-mono);font-size:11px;color:var(--text-1);margin-bottom:14px}
+.badge{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:20px;font-family:var(--font-mono);font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase}
+.badge-cyan{background:var(--cyan-dim);color:var(--cyan);border:1px solid rgba(0,229,255,.25)}.badge-green{background:var(--green-dim);color:var(--green);border:1px solid rgba(0,230,118,.25)}.badge-amber{background:var(--amber-dim);color:var(--amber);border:1px solid rgba(255,167,38,.25)}.badge-red{background:var(--red-dim);color:var(--red);border:1px solid rgba(255,23,68,.25)}
+.select-field{padding:8px 12px;background:var(--bg-4);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-1);font-family:var(--font-mono);font-size:11px;outline:none;cursor:pointer;appearance:none;-webkit-appearance:none}
+.osint-input{flex:1;padding:10px 14px;background:var(--bg-4);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-1);font-family:var(--font-mono);font-size:12px;outline:none;transition:var(--transition)}
+.osint-input:focus{border-color:var(--cyan)}
+.btn{padding:10px 18px;border-radius:var(--radius);border:none;font-family:var(--font-ui);font-size:13px;font-weight:700;letter-spacing:.06em;cursor:pointer;transition:var(--transition);white-space:nowrap}
+.btn-cyan{background:var(--cyan);color:#000}.btn-outline{background:transparent;border:1px solid var(--border);color:var(--text-2)}.btn-amber{background:var(--amber);color:#000}.btn-red{background:var(--red);color:#fff}
+.btn-outline:hover{border-color:var(--cyan);color:var(--cyan);background:var(--cyan-dim)}
+#map-container{border-radius:var(--radius);overflow:hidden;border:1px solid var(--border);position:relative}
+#leaflet-map{width:100%;height:420px}
+.map-overlay{position:absolute;top:10px;left:10px;z-index:500;background:rgba(11,15,26,.92);border:1px solid var(--border);border-radius:var(--radius);padding:10px 14px;backdrop-filter:blur(8px)}
+.map-controls{display:flex;gap:6px;margin-top:8px}
+.map-btn{padding:4px 10px;border-radius:4px;border:1px solid var(--border);background:var(--bg-4);color:var(--text-2);font-family:var(--font-mono);font-size:10px;cursor:pointer;transition:var(--transition)}
+.map-btn:hover,.map-btn.active{border-color:var(--cyan);color:var(--cyan);background:var(--cyan-dim)}
+.map-legend{position:absolute;bottom:10px;right:10px;z-index:500;background:rgba(11,15,26,.9);border:1px solid var(--border);border-radius:var(--radius);padding:10px}
+.legend-item{display:flex;align-items:center;gap:6px;font-family:var(--font-mono);font-size:9px;color:var(--text-2);margin-bottom:4px}.legend-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.market-card{background:var(--bg-3);border:1px solid var(--border);border-radius:var(--radius);padding:14px;margin-bottom:10px;transition:var(--transition)}
+.market-name{font-size:13px;font-weight:500;margin-bottom:8px}.market-bar{display:flex;height:6px;border-radius:3px;overflow:hidden;margin:8px 0}.market-yes{background:var(--green)}.market-no{background:var(--red)}
+.market-labels{display:flex;justify-content:space-between;font-family:var(--font-mono);font-size:10px}.market-yes-label{color:var(--green)}.market-no-label{color:var(--red)}.market-meta{display:flex;justify-content:space-between;font-family:var(--font-mono);font-size:9px;color:var(--text-3);margin-top:6px}
+.market-vol{color:var(--amber)}.market-cat{display:inline-block;padding:2px 6px;border-radius:3px;font-family:var(--font-mono);font-size:8px;letter-spacing:.08em;text-transform:uppercase;background:var(--amber-dim);color:var(--amber);border:1px solid rgba(255,167,38,.3)}
+.feed-item{display:flex;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)}.feed-dot{width:6px;height:6px;border-radius:50%;margin-top:5px;flex-shrink:0}.feed-content{flex:1}.feed-source{font-family:var(--font-mono);font-size:9px;color:var(--text-3);text-transform:uppercase;letter-spacing:.08em}.feed-text{font-size:12px;color:var(--text-1);margin:2px 0;line-height:1.5}.feed-time{font-family:var(--font-mono);font-size:9px;color:var(--text-3)}
+.feed-tag{display:inline-block;padding:1px 5px;border-radius:3px;font-family:var(--font-mono);font-size:8px;text-transform:uppercase;margin-left:6px}
+.osint-input-row{display:flex;gap:8px;margin-bottom:16px}.osint-tools{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px}
+.tool-card{background:var(--bg-4);border:1px solid var(--border);border-radius:var(--radius);padding:12px;cursor:pointer;transition:var(--transition);text-align:center}.tool-card:hover{border-color:var(--cyan);background:var(--cyan-dim)}
+.tool-icon{font-size:22px;margin-bottom:6px}.tool-name{font-family:var(--font-ui);font-size:11px;font-weight:700}.tool-desc{font-family:var(--font-mono);font-size:9px;color:var(--text-3);margin-top:3px}
+.terminal{background:#050810;border:1px solid var(--border);border-radius:var(--radius);padding:14px;font-family:var(--font-mono);font-size:11px;line-height:1.7;height:220px;overflow-y:auto;color:var(--text-1)}
+.terminal .t-info{color:var(--cyan)} .terminal .t-ok{color:var(--green)} .terminal .t-warn{color:var(--amber)} .terminal .t-err{color:var(--red)} .terminal .t-dim{color:var(--text-3)}
+.terminal-cursor{display:inline-block;width:8px;height:12px;background:var(--cyan);animation:blink 1s step-end infinite;vertical-align:middle;margin-left:2px} @keyframes blink {0%,100%{opacity:1}50%{opacity:0}}
+.chat-container{display:flex;flex-direction:column;height:100%}.chat-messages{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:10px}
+.msg{display:flex;gap:10px;max-width:80%}.msg.user{align-self:flex-end;flex-direction:row-reverse}.msg-avatar{width:32px;height:32px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;font-family:var(--font-ui)}
+.msg.ai .msg-avatar{background:var(--cyan-dim);color:var(--cyan);border:1px solid rgba(0,229,255,.3)} .msg.user .msg-avatar{background:var(--amber-dim);color:var(--amber);border:1px solid rgba(255,167,38,.3)}
+.msg-bubble{padding:10px 14px;border-radius:var(--radius);font-size:13px;line-height:1.6}.msg.ai .msg-bubble{background:var(--bg-3);border:1px solid var(--border)}.msg.user .msg-bubble{background:var(--cyan-dim);border:1px solid rgba(0,229,255,.2);color:var(--cyan)}
+.msg-time{font-family:var(--font-mono);font-size:9px;color:var(--text-3);margin-top:3px}.chat-input-area{padding:12px 16px;border-top:1px solid var(--border);display:flex;gap:8px;flex-shrink:0}
+.chat-input{flex:1;padding:10px 14px;background:var(--bg-4);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-1);font-size:13px;outline:none;resize:none}
+.chat-send{background:var(--cyan);color:#000;border:none;border-radius:var(--radius);padding:10px 16px;font-family:var(--font-ui);font-weight:700;font-size:14px;cursor:pointer}
+.section-title{font-family:var(--font-ui);font-size:11px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;color:var(--text-3);margin-bottom:12px;display:flex;align-items:center;gap:8px}.section-title::after{content:'';flex:1;height:1px;background:var(--border)}
+.data-table{width:100%;border-collapse:collapse;font-family:var(--font-mono);font-size:11px}.data-table th{padding:8px 12px;text-align:left;color:var(--text-3);font-size:9px;letter-spacing:.12em;text-transform:uppercase;border-bottom:1px solid var(--border);font-weight:500}.data-table td{padding:9px 12px;border-bottom:1px solid rgba(255,255,255,.04)}
+.sparkline{display:flex;align-items:flex-end;gap:2px;height:24px}.spark-bar{flex:1;border-radius:1px 1px 0 0;min-height:2px;opacity:.7}
+.intel-card{background:var(--bg-3);border:1px solid var(--border);border-radius:var(--radius);padding:14px;margin-bottom:10px;transition:var(--transition);border-left:3px solid transparent}
+.intel-card.critical{border-left-color:var(--red)}.intel-card.high{border-left-color:var(--amber)}.intel-card.medium{border-left-color:var(--cyan)}.intel-card.low{border-left-color:var(--green)}
+.intel-header{display:flex;align-items:center;gap:8px;margin-bottom:8px}.intel-title{font-size:13px;font-weight:500;flex:1}.intel-body{font-size:12px;color:var(--text-2);line-height:1.6;margin-bottom:8px}.intel-footer{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.intel-source{font-family:var(--font-mono);font-size:9px;color:var(--text-3)}
+.settings-group{margin-bottom:20px}.settings-row{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border)}.settings-key{font-size:13px}.settings-desc{font-family:var(--font-mono);font-size:9px;color:var(--text-3);margin-top:2px}
+.toggle{width:38px;height:20px;background:var(--bg-4);border-radius:10px;cursor:pointer;position:relative;transition:var(--transition);border:1px solid var(--border);flex-shrink:0}.toggle.on{background:var(--cyan);border-color:var(--cyan)}
+.toggle::after{content:'';position:absolute;top:2px;left:2px;width:14px;height:14px;background:#fff;border-radius:50%;transition:var(--transition)}.toggle.on::after{left:20px}
+.notif{position:fixed;bottom:20px;right:20px;z-index:9999;background:var(--bg-3);border:1px solid var(--border);border-radius:var(--radius);padding:12px 16px;font-family:var(--font-mono);font-size:11px;max-width:300px;transform:translateY(20px);opacity:0;transition:all .3s ease;pointer-events:none;display:flex;align-items:center;gap:8px}
+.notif.show{transform:none;opacity:1}.notif.success{border-color:var(--green)}.notif.warning{border-color:var(--amber)}.notif.error{border-color:var(--red)}
+.sidebar-bottom{margin-top:auto;padding:12px 16px;border-top:1px solid var(--border)}.sidebar-ver{font-family:var(--font-mono);font-size:9px;color:var(--text-3)}
+@media (max-width:1100px){:root{--sidebar-w:0px}.sidebar{transform:translateX(-220px)}}
+</style>
+</head>
+<body>
+<div class="notif" id="notif"><span id="notif-icon">✓</span><span id="notif-msg">Operación completada</span></div>
+<header class="header">
+  <div class="logo">NEXO<span>·</span>SOBERANO <span style="font-size:11px;margin-left:4px;">v3</span></div>
+  <div class="header-status">
+    <div class="pulse"></div><span>SISTEMA ACTIVO</span><span style="color:var(--border);margin:0 6px;">|</span>
+    <span id="api-status">API: <span style="color:var(--green)">ONLINE</span></span><span style="color:var(--border);margin:0 6px;">|</span>
+    <span>BACKEND: <span style="color:var(--amber)">LOCAL</span></span>
+  </div>
+  <div class="header-time" id="clock">—</div>
+  <div class="header-actions">
+    <button class="hbtn" onclick="toggleSidebar()">☰ MENÚ</button>
+    <button class="hbtn" onclick="refreshAll()">↻ REFRESH</button>
+    <button class="hbtn active" id="alert-btn">🔔 <span id="alert-count">3</span></button>
+  </div>
+</header>
+<nav class="sidebar" id="sidebar">
+  <div class="sidebar-section">
+    <div class="sidebar-label">NAVEGACIÓN</div>
+    <div class="nav-item active" onclick="showTab('dashboard', this)"><span class="nav-icon">⬛</span> DASHBOARD</div>
+    <div class="nav-item" onclick="showTab('map', this)"><span class="nav-icon">🗺</span> MAPA GEOINT</div>
+    <div class="nav-item" onclick="showTab('intel', this)"><span class="nav-icon">⚡</span> INTELIGENCIA <span class="nav-badge">5</span></div>
+    <div class="nav-item" onclick="showTab('polymarket', this)"><span class="nav-icon">📊</span> POLYMARKET <span class="nav-badge amber">↑</span></div>
+    <div class="nav-item" onclick="showTab('osint', this)"><span class="nav-icon">🔍</span> OSINT TOOLS</div>
+    <div class="nav-item" onclick="showTab('chat', this)"><span class="nav-icon">🤖</span> IA ASISTENTE</div>
+    <div class="nav-item" onclick="showTab('sync', this)"><span class="nav-icon">🔄</span> SINCRONIZACIÓN</div>
+    <div class="nav-item" onclick="showTab('settings', this)"><span class="nav-icon">⚙</span> CONFIGURACIÓN</div>
+  </div>
+  <div class="sidebar-stats">
+    <div class="sidebar-label" style="padding:0 0 8px;">SISTEMA</div>
+    <div class="sstat"><span class="sstat-label">CPU</span><span class="sstat-val" id="s-cpu">34%</span></div><div class="mini-bar"><div class="mini-bar-fill" id="s-cpu-bar" style="width:34%"></div></div>
+    <div class="sstat"><span class="sstat-label">RAM</span><span class="sstat-val" id="s-ram">61%</span></div><div class="mini-bar"><div class="mini-bar-fill" id="s-ram-bar" style="width:61%"></div></div>
+    <div class="sstat"><span class="sstat-label">TOKENS HOY</span><span class="sstat-val" id="s-tok">12.4K</span></div>
+    <div class="sstat"><span class="sstat-label">COSTO</span><span class="sstat-val" id="s-cost">$0.18</span></div>
+  </div>
+  <div class="sidebar-bottom"><div class="sidebar-ver">NEXO SOBERANO v3.0.0<br><span style="color:var(--text-3)">© 2026 — Uso Operacional</span></div></div>
+</nav>
+<main class="main" id="main">
+  <div class="tabs">
+    <div class="tab active" id="tab-dashboard" onclick="showTab('dashboard', null)"><span class="tab-icon">⬛</span> DASHBOARD</div>
+    <div class="tab" id="tab-map" onclick="showTab('map', null)"><span class="tab-icon">🗺</span> GEOINT</div>
+    <div class="tab" id="tab-intel" onclick="showTab('intel', null)"><span class="tab-icon">⚡</span> INTELIGENCIA</div>
+    <div class="tab" id="tab-polymarket" onclick="showTab('polymarket', null)"><span class="tab-icon">📊</span> PREDICCIONES</div>
+    <div class="tab" id="tab-osint" onclick="showTab('osint', null)"><span class="tab-icon">🔍</span> OSINT</div>
+    <div class="tab" id="tab-chat" onclick="showTab('chat', null)"><span class="tab-icon">🤖</span> IA CHAT</div>
+    <div class="tab" id="tab-sync" onclick="showTab('sync', null)"><span class="tab-icon">🔄</span> SYNC</div>
+    <div class="tab" id="tab-settings" onclick="showTab('settings', null)"><span class="tab-icon">⚙</span> CONFIG</div>
+  </div>
+
+  <div class="content active" id="panel-dashboard"><div class="panel-scroll">
+    <div class="info-banner">💡 <strong>NEXO SOBERANO v3</strong> — Centro de comando unificado. Inteligencia operacional, OSINT, mercados de predicción y sincronización en una sola plataforma.</div>
+    <div class="grid-4" style="margin-bottom:16px;">
+      <div class="stat-card cyan"><div class="stat-value" id="d-consultas">247</div><div class="stat-label">Consultas IA hoy</div><div class="stat-delta delta-up">↑ +18% vs ayer</div><div class="sparkline" style="margin-top:8px;" id="spark1"></div></div>
+      <div class="stat-card green"><div class="stat-value" id="d-archivos">1,892</div><div class="stat-label">Archivos sincronizados</div><div class="stat-delta delta-up">↑ +34 nuevos</div><div class="sparkline" style="margin-top:8px;" id="spark2"></div></div>
+      <div class="stat-card amber"><div class="stat-value" id="d-alertas">5</div><div class="stat-label">Alertas activas</div><div class="stat-delta delta-down">↑ +2 últimas 2h</div><div class="sparkline" style="margin-top:8px;" id="spark3"></div></div>
+      <div class="stat-card red"><div class="stat-value" id="d-amenazas">2</div><div class="stat-label">Amenazas OSINT</div><div class="stat-delta" style="color:var(--amber)">◉ Monitoreo activo</div><div class="sparkline" style="margin-top:8px;" id="spark4"></div></div>
+    </div>
+    <div class="grid-2" style="margin-bottom:16px;">
+      <div class="card"><div class="card-header"><span class="card-title">Actividad del Sistema — 7 días</span><span class="badge badge-cyan">EN VIVO</span></div><div class="chart-wrap"><canvas id="chart-actividad" height="160"></canvas></div></div>
+      <div class="card"><div class="card-header"><span class="card-title">Distribución de uso IA</span><select class="select-field" style="font-size:10px;padding:4px 8px;"><option>Último 7D</option><option>30D</option><option>90D</option></select></div><div class="chart-wrap"><canvas id="chart-dist" height="160"></canvas></div></div>
+    </div>
+    <div class="grid-2">
+      <div class="card"><div class="card-header"><span class="card-title">Feed de eventos</span><div style="display:flex;gap:4px;align-items:center;"><div class="pulse" style="width:6px;height:6px;"></div><span style="font-family:var(--font-mono);font-size:9px;color:var(--text-3);">LIVE</span></div></div><div id="live-feed" style="max-height:220px;overflow-y:auto;"></div></div>
+      <div class="card"><div class="card-header"><span class="card-title">Integraciones activas</span></div>
+        <table class="data-table"><thead><tr><th>SERVICIO</th><th>ESTADO</th><th>ÚLTIMA SYNC</th></tr></thead><tbody id="integrations-table">
+          <tr><td>Google Drive</td><td><span class="badge badge-green">● ONLINE</span></td><td style="color:var(--text-2)">hace 3m</td></tr>
+          <tr><td>Google Photos</td><td><span class="badge badge-green">● ONLINE</span></td><td style="color:var(--text-2)">hace 3m</td></tr>
+          <tr><td>OneDrive</td><td><span class="badge badge-amber">◉ PARTIAL</span></td><td style="color:var(--text-2)">hace 15m</td></tr>
+          <tr><td>YouTube API</td><td><span class="badge badge-green">● ONLINE</span></td><td style="color:var(--text-2)">hace 1h</td></tr>
+          <tr><td>Discord Monitor</td><td><span class="badge badge-cyan">◎ ACTIVO</span></td><td style="color:var(--text-2)">ahora</td></tr>
+          <tr><td>X / Twitter</td><td><span class="badge badge-amber">◉ RATE LIMIT</span></td><td style="color:var(--text-2)">hace 5m</td></tr>
+          <tr><td>Polymarket API</td><td><span class="badge badge-green">● ONLINE</span></td><td style="color:var(--text-2)">hace 2m</td></tr>
+          <tr><td>RAG Backend</td><td><span class="badge badge-cyan">◎ ACTIVO</span></td><td style="color:var(--text-2)">ahora</td></tr>
+        </tbody></table>
+      </div>
+    </div>
+  </div></div>
+
+  <div class="content" id="panel-map"><div class="panel-scroll">
+    <div class="info-banner">🗺 <strong>GEOINT Interactivo</strong> — Visualización geoespacial de eventos, activos e inteligencia en tiempo real.</div>
+    <div id="map-container"><div id="leaflet-map"></div>
+      <div class="map-overlay"><div style="font-family:var(--font-ui);font-size:13px;font-weight:700;color:var(--cyan);margin-bottom:6px;">CAPAS DE MAPA</div>
+        <div class="map-controls"><button class="map-btn active" onclick="toggleLayer('eventos',this)">EVENTOS</button><button class="map-btn active" onclick="toggleLayer('activos',this)">ACTIVOS</button><button class="map-btn active" onclick="toggleLayer('alertas',this)">ALERTAS</button><button class="map-btn" onclick="toggleLayer('rutas',this)">RUTAS</button></div>
+        <div class="map-controls" style="margin-top:6px;"><button class="map-btn" onclick="setMapStyle('dark')">OSCURO</button><button class="map-btn" onclick="setMapStyle('satellite')">SATÉLITE</button><button class="map-btn" onclick="fitBounds()">↔ AJUSTAR</button></div>
+      </div>
+      <div class="map-legend"><div class="legend-item"><div class="legend-dot" style="background:var(--red)"></div>ALERTA CRÍTICA</div><div class="legend-item"><div class="legend-dot" style="background:var(--amber)"></div>EVENTO ACTIVO</div><div class="legend-item"><div class="legend-dot" style="background:var(--cyan)"></div>ACTIVO MONITOREADO</div><div class="legend-item"><div class="legend-dot" style="background:var(--green)"></div>ZONA SEGURA</div></div>
+    </div>
+    <div style="margin-top:12px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;" id="map-events-list"></div>
+  </div></div>
+
+  <div class="content" id="panel-intel"><div class="panel-scroll">
+    <div class="warn-banner">⚡ <strong>INTELIGENCIA CLASIFICADA</strong> — Datos de fuentes abiertas (OSINT). Requiere validación humana antes de actuar.</div>
+    <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;"><button class="btn btn-outline" onclick="filterIntel('all')">TODOS</button><button class="btn btn-outline" onclick="filterIntel('critical')">🔴 CRÍTICO</button><button class="btn btn-outline" onclick="filterIntel('high')">🟠 ALTO</button><button class="btn btn-outline" onclick="filterIntel('medium')">🔵 MEDIO</button><button class="btn btn-outline" onclick="filterIntel('low')">🟢 BAJO</button><button class="btn btn-cyan" onclick="addIntelEntry()" style="margin-left:auto;">+ NUEVA ENTRADA</button></div>
+    <div id="intel-feed"></div>
+  </div></div>
+
+  <div class="content" id="panel-polymarket"><div class="panel-scroll">
+    <div class="info-banner">📊 <strong>MERCADOS DE PREDICCIÓN</strong> — Integración visual de Polymarket. Datos demo + estructura lista para API real.</div>
+    <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;"><button class="btn btn-outline" onclick="filterMarkets('all')">TODOS</button><button class="btn btn-outline" onclick="filterMarkets('geopolitica')">🌍 GEO-POLÍTICA</button><button class="btn btn-outline" onclick="filterMarkets('economia')">💰 ECONOMÍA</button><button class="btn btn-outline" onclick="filterMarkets('tecnologia')">💻 TECNOLOGÍA</button><button class="btn btn-outline" onclick="filterMarkets('seguridad')">🛡 SEGURIDAD</button><button class="btn btn-amber" onclick="refreshMarkets()" style="margin-left:auto;">↻ ACTUALIZAR</button></div>
+    <div class="grid-2" style="margin-bottom:16px;"><div class="card"><div class="card-header"><span class="card-title">Resumen de Mercados</span></div><div class="chart-wrap"><canvas id="chart-markets" height="150"></canvas></div></div><div class="card"><div class="card-header"><span class="card-title">Movimientos recientes</span></div><div id="market-movers" style="font-family:var(--font-mono);font-size:11px;"></div></div></div>
+    <div class="section-title">MERCADOS ACTIVOS</div><div id="markets-list"></div>
+  </div></div>
+
+  <div class="content" id="panel-osint"><div class="panel-scroll">
+    <div class="info-banner">🔍 <strong>OSINT TOOLS</strong> — Herramientas de inteligencia de fuentes abiertas. Uso responsable y ético.</div>
+    <div class="osint-input-row"><input type="text" class="osint-input" id="osint-target" placeholder="IP, dominio, usuario, coordenadas, hash..."/><select class="select-field" id="osint-type"><option value="auto">AUTO DETECT</option><option value="ip">IP/Red</option><option value="domain">Dominio/Web</option><option value="user">Usuario Social</option><option value="geo">Geolocalización</option><option value="email">Email</option><option value="phone">Teléfono</option><option value="hash">Hash/Crypto</option></select><button class="btn btn-cyan" onclick="runOsint()">▶ ANALIZAR</button><button class="btn btn-outline" onclick="clearOsint()">✕ LIMPIAR</button></div>
+    <div class="section-title">HERRAMIENTAS RÁPIDAS</div>
+    <div class="osint-tools">
+      <div class="tool-card" onclick="launchTool('webosint')"><div class="tool-icon">🌐</div><div class="tool-name">WebOSINT</div><div class="tool-desc">Recon web completo</div></div>
+      <div class="tool-card" onclick="launchTool('sn0int')"><div class="tool-icon">🔗</div><div class="tool-name">SN0INT</div><div class="tool-desc">Framework OSINT modular</div></div>
+      <div class="tool-card" onclick="launchTool('geosentinel')"><div class="tool-icon">📍</div><div class="tool-name">GeoSentinel</div><div class="tool-desc">Vigilancia geoespacial</div></div>
+      <div class="tool-card" onclick="launchTool('sightline')"><div class="tool-icon">👁</div><div class="tool-name">Sightline</div><div class="tool-desc">Monitoreo de superficie</div></div>
+      <div class="tool-card" onclick="launchTool('worldmonitor')"><div class="tool-icon">🌍</div><div class="tool-name">WorldMonitor</div><div class="tool-desc">Monitor global de eventos</div></div>
+      <div class="tool-card" onclick="launchTool('intercept')"><div class="tool-icon">📡</div><div class="tool-name">Intercept</div><div class="tool-desc">Análisis de tráfico</div></div>
+      <div class="tool-card" onclick="launchTool('iranmonitor')"><div class="tool-icon">🎯</div><div class="tool-name">IranMonitor</div><div class="tool-desc">Inteligencia regional</div></div>
+      <div class="tool-card" onclick="launchTool('groundstation')"><div class="tool-icon">🛰</div><div class="tool-name">GroundStation</div><div class="tool-desc">Señales satelitales</div></div>
+      <div class="tool-card" onclick="launchTool('tvscreener')"><div class="tool-icon">📺</div><div class="tool-name">TVScreener</div><div class="tool-desc">Monitor de medios TV</div></div>
+    </div>
+    <div class="section-title">TERMINAL DE ANÁLISIS</div>
+    <div class="terminal" id="osint-terminal"><div class="t-dim">══════════════════════════════════════════════════</div><div class="t-info"> NEXO SOBERANO — OSINT ENGINE v3.0</div><div class="t-dim">══════════════════════════════════════════════════</div><div class="t-ok">✓ Módulos cargados</div><div class="t-warn">⚠ SN0INT: requiere configuración local</div><div class="t-dim">Ingresa un objetivo arriba para comenzar...</div><div>&nbsp;</div><div><span class="t-info">nexo@soberano</span><span class="t-dim">:~$</span> <span class="terminal-cursor"></span></div></div>
+    <div class="section-title" style="margin-top:16px;">RESULTADOS</div><div id="osint-results"></div>
+  </div></div>
+
+  <div class="content" id="panel-chat">
+    <div class="chat-container">
+      <div class="chat-messages" id="chat-messages">
+        <div class="msg ai"><div class="msg-avatar">AI</div><div><div class="msg-bubble">Hola, soy el asistente de NEXO SOBERANO. Tengo acceso a módulos de inteligencia, sincronización, OSINT, mapas y mercados.<br><br>Puedo ayudarte a:<br>• Analizar datos de inteligencia<br>• Interpretar movimientos en Polymarket<br>• Ejecutar consultas OSINT<br>• Gestionar sincronización de archivos<br>• Generar reportes operacionales</div><div class="msg-time">Sistema — NEXO v3</div></div></div>
+      </div>
+      <div style="padding:8px 16px;border-top:1px solid var(--border);display:flex;gap:6px;font-family:var(--font-mono);font-size:9px;color:var(--text-3);flex-shrink:0;">
+        <span>MODO: <span style="color:var(--cyan)" id="chat-mode">Backend RAG</span></span><span>|</span><span>TOKENS: <span style="color:var(--amber)" id="chat-tokens">0</span></span><span>|</span><span>CONTEXTO: <span style="color:var(--green)">NEXO v3</span></span><span style="margin-left:auto;cursor:pointer;color:var(--text-2);" onclick="clearChat()">✕ LIMPIAR CHAT</span>
+      </div>
+      <div class="chat-input-area"><textarea class="chat-input" id="chat-input" rows="2" placeholder="Escribe tu consulta... (Enter para enviar, Shift+Enter nueva línea)"></textarea><button class="chat-send" onclick="sendChat()">▶</button></div>
+    </div>
+  </div>
+
+  <div class="content" id="panel-sync"><div class="panel-scroll">
+    <div class="info-banner">🔄 <strong>CENTRO DE SINCRONIZACIÓN</strong> — Gestiona ingesta desde Google Drive, OneDrive, YouTube y otras fuentes.</div>
+    <div class="grid-3" style="margin-bottom:16px;"><div class="stat-card green"><div class="stat-value" id="sync-ok">1,892</div><div class="stat-label">Archivos sync OK</div></div><div class="stat-card amber"><div class="stat-value" id="sync-pending">47</div><div class="stat-label">Pendientes</div></div><div class="stat-card red"><div class="stat-value" id="sync-err">3</div><div class="stat-label">Errores</div></div></div>
+    <div class="grid-2" style="margin-bottom:16px;">
+      <div class="card"><div class="card-header"><span class="card-title">Fuentes de datos</span></div><div id="sync-sources"></div><div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;"><button class="btn btn-cyan" onclick="runSync('all')">▶ SYNC TODO</button><button class="btn btn-outline" onclick="runSync('drive')">Google Drive</button><button class="btn btn-outline" onclick="runSync('onedrive')">OneDrive</button><button class="btn btn-outline" onclick="runSync('youtube')">YouTube</button></div></div>
+      <div class="card"><div class="card-header"><span class="card-title">Log de sincronización</span></div><div class="terminal" id="sync-terminal" style="height:180px;"><div class="t-dim">Esperando operación de sync...</div></div></div>
+    </div>
+  </div></div>
+
+  <div class="content" id="panel-settings"><div class="panel-scroll">
+    <div class="section-title">CONFIGURACIÓN</div>
+    <div class="card" style="margin-bottom:16px;">
+      <div class="settings-row"><div><div class="settings-key">Backend URL</div><div class="settings-desc">API local del backend</div></div><input type="text" class="osint-input" id="backend-url" value="http://localhost:8000" style="width:280px;"/></div>
+      <div class="settings-row"><div><div class="settings-key">Modelo</div></div><select class="select-field" id="modelo-ia"><option>claude-sonnet-4-6</option><option>claude-opus-4-6</option><option>claude-haiku-4-5</option></select></div>
+      <div style="margin-top:12px;display:flex;gap:8px;"><button class="btn btn-cyan" onclick="testConnection()">✓ PROBAR CONEXIÓN</button><button class="btn btn-outline" onclick="saveSettings()">💾 GUARDAR</button></div>
+    </div>
+  </div></div>
+</main>
+
+<script>
+const CONFIG = { backendUrl: 'http://localhost:8000', polymarketApi: 'https://gamma-api.polymarket.com', refreshInterval: 30000, version: '3.0.0' };
+const state = { currentTab:'dashboard', mapLayers:{eventos:true,activos:true,alertas:true,rutas:false}, markets:[], intel:[], feeds:[], chatHistory:[], sidebarOpen:true, leafletMap:null, markers:{eventos:[],activos:[],alertas:[]} };
+
+function updateClock(){const n=new Date(),p=x=>String(x).padStart(2,'0');document.getElementById('clock').textContent=`${p(n.getUTCHours())}:${p(n.getUTCMinutes())}:${p(n.getUTCSeconds())} UTC`;} setInterval(updateClock,1000);updateClock();
+function notify(msg,type='info'){const el=document.getElementById('notif');const icon={info:'ℹ',success:'✓',warning:'⚠',error:'✕'}[type]||'ℹ';document.getElementById('notif-icon').textContent=icon;document.getElementById('notif-msg').textContent=msg;el.className=`notif show ${type}`;setTimeout(()=>el.className='notif',3000)}
+
+function showTab(name, navEl){state.currentTab=name;document.querySelectorAll('.content').forEach(el=>el.classList.remove('active'));document.querySelectorAll('.tab').forEach(el=>el.classList.remove('active'));document.querySelectorAll('.nav-item').forEach(el=>el.classList.remove('active'));const panel=document.getElementById(`panel-${name}`);const tab=document.getElementById(`tab-${name}`);if(panel)panel.classList.add('active');if(tab)tab.classList.add('active');if(navEl)navEl.classList.add('active');const inits={map:initMap,polymarket:initPolymarket,intel:initIntel};if(inits[name])inits[name]();}
+function toggleSidebar(){const sb=document.getElementById('sidebar');const mn=document.getElementById('main');state.sidebarOpen=!state.sidebarOpen;if(state.sidebarOpen){sb.style.transform='translateX(0)';mn.style.left='220px';}else{sb.style.transform='translateX(-220px)';mn.style.left='0';}}
+
+let leafletInitialized=false;
+function initMap(){if(leafletInitialized) return;leafletInitialized=true;const map=L.map('leaflet-map',{center:[20,10],zoom:2,zoomControl:true,attributionControl:false});state.leafletMap=map;L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{maxZoom:19,subdomains:'abcd'}).addTo(map);
+const redIcon=createIcon('#ff1744'),amberIcon=createIcon('#ffa726'),cyanIcon=createIcon('#00e5ff'),greenIcon=createIcon('#00e676');
+const eventos=[
+{lat:33.88,lng:35.50,label:'LÍBANO — Actividad detectada',type:'critical',info:'Movimiento de fuerzas reportado en zona norte. Verificación pendiente.'},
+{lat:31.77,lng:35.23,label:'ISRAEL — Alerta norte',type:'critical',info:'Sistema de alerta temprana activado. Posibles cohetes.'},
+{lat:24.68,lng:46.72,label:'RIAD — Reunión diplomática',type:'medium',info:'Delegaciones de 4 países. Agenda no confirmada.'},
+{lat:25.28,lng:55.37,label:'DUBAI — Movimiento financiero',type:'medium',info:'Transferencias inusuales detectadas. OSINT en proceso.'},
+{lat:40.18,lng:44.51,label:'ARMENIA — Frontera',type:'high',info:'Aumento de tráfico en paso fronterizo con Azerbaijan.'},
+{lat:55.75,lng:37.62,label:'MOSCÚ — Actividad aérea',type:'high',info:'Vuelos no programados en espacio aéreo restringido.'},
+{lat:39.92,lng:32.85,label:'ANKARA — Alerta diplomática',type:'medium',info:'Convocatoria de embajadores. Declaración esperada.'},
+{lat:-33.45,lng:-70.67,label:'SANTIAGO — Monitoreo',type:'low',info:'Sistema activo. Sin incidentes.'},
+{lat:19.43,lng:-99.13,label:'CDMX — Seguimiento',type:'low',info:'Monitoreo de redes sociales activo.'},
+{lat:4.36,lng:18.55,label:'R.C.A. — Zona de conflicto',type:'critical',info:'Hostilidades reportadas en zona norte. Civiles afectados.'}
+];
+eventos.forEach(e=>{const icon={critical:redIcon,high:amberIcon,medium:cyanIcon,low:greenIcon}[e.type];const m=L.marker([e.lat,e.lng],{icon}).addTo(map).bindPopup(`<div style="font-family:JetBrains Mono,monospace;font-size:11px;min-width:200px;background:#111827;color:#e0e8ff;padding:2px;"><div style="color:${e.type==='critical'?'#ff1744':e.type==='high'?'#ffa726':e.type==='medium'?'#00e5ff':'#00e676'};font-weight:700;margin-bottom:4px;">${e.label}</div><div style="color:#8899bb;font-size:10px;">${e.info}</div><div style="color:#4a5878;font-size:9px;margin-top:6px;">Clase: ${e.type.toUpperCase()}</div></div>`,{className:'nexo-popup'});state.markers.eventos.push(m);});
+const route=[[31.77,35.23],[33.88,35.50],[36.20,37.16],[40.18,44.51]];const routeLine=L.polyline(route,{color:'#ffa726',weight:2,dashArray:'4,8',opacity:.6}).addTo(map);state.markers.rutas=[routeLine];renderMapEventsList(eventos);}
+function createIcon(color){return L.divIcon({className:'',html:`<div style="width:12px;height:12px;background:${color};border-radius:50%;border:2px solid rgba(255,255,255,0.3);box-shadow:0 0 8px ${color};"></div>`,iconSize:[12,12],iconAnchor:[6,6]});}
+function renderMapEventsList(eventos){const c=document.getElementById('map-events-list');c.innerHTML=eventos.slice(0,6).map(e=>`<div class="card" style="cursor:pointer;padding:10px;" onclick="flyTo(${e.lat},${e.lng})"><div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;"><div style="width:6px;height:6px;border-radius:50%;background:${e.type==='critical'?'var(--red)':e.type==='high'?'var(--amber)':e.type==='medium'?'var(--cyan)':'var(--green)'};"></div><span style="font-family:var(--font-ui);font-size:12px;font-weight:600;">${e.label}</span></div><div style="font-family:var(--font-mono);font-size:9px;color:var(--text-3);">${e.info}</div></div>`).join('');}
+function flyTo(lat,lng){if(state.leafletMap)state.leafletMap.flyTo([lat,lng],6,{duration:1.5});} function fitBounds(){if(state.leafletMap)state.leafletMap.fitWorld();}
+function toggleLayer(name,btn){state.mapLayers[name]=!state.mapLayers[name];btn.classList.toggle('active',state.mapLayers[name]);if(state.markers[name])state.markers[name].forEach(m=>state.mapLayers[name]?m.addTo(state.leafletMap):m.remove());}
+function setMapStyle(style){if(!state.leafletMap)return;state.leafletMap.eachLayer(l=>{if(l instanceof L.TileLayer)state.leafletMap.removeLayer(l);});const urls={dark:'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',satellite:'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'};L.tileLayer(urls[style]||urls.dark,{maxZoom:19,subdomains:'abcd'}).addTo(state.leafletMap);}
+
+const MARKETS_DATA=[
+{id:1,name:'¿Acuerdo de paz Israel-Hamas antes de Junio 2026?',cat:'geopolitica',yes:.28,vol:2400000,liq:850000,res:'2026-06-30',status:'open'},
+{id:2,name:'¿Fed recorta tasas antes de Mayo 2026?',cat:'economia',yes:.67,vol:8900000,liq:3200000,res:'2026-05-01',status:'open'},
+{id:3,name:'¿Bitcoin supera $120K en 2026?',cat:'economia',yes:.44,vol:15000000,liq:6800000,res:'2026-12-31',status:'open'},
+{id:4,name:'¿GPT-5 lanzado antes de Julio 2026?',cat:'tecnologia',yes:.71,vol:4200000,liq:1900000,res:'2026-07-01',status:'open'},
+{id:5,name:'¿AGI declarada por empresa líder en 2026?',cat:'tecnologia',yes:.09,vol:1800000,liq:720000,res:'2026-12-31',status:'open'},
+{id:6,name:'¿Ciberataque crítico a infraestructura G7?',cat:'seguridad',yes:.31,vol:980000,liq:340000,res:'2026-12-31',status:'open'},
+{id:7,name:'¿Sanciones nuevas a Rusia en Q1 2026?',cat:'geopolitica',yes:.82,vol:3100000,liq:1400000,res:'2026-03-31',status:'open'},
+{id:8,name:'¿Recesión en Eurozona en 2026?',cat:'economia',yes:.38,vol:6700000,liq:2800000,res:'2026-12-31',status:'open'}
+];
+function initPolymarket(){renderMarkets(MARKETS_DATA);renderMarketMovers();renderMarketsChart();}
+function renderMarkets(markets){const c=document.getElementById('markets-list');c.innerHTML=markets.map(m=>`<div class="market-card"><div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:6px;"><div class="market-name">${m.name}</div><span class="market-cat">${m.cat}</span></div><div class="market-bar"><div class="market-yes" style="flex:${m.yes}"></div><div class="market-no" style="flex:${1-m.yes}"></div></div><div class="market-labels"><span class="market-yes-label">SÍ ${Math.round(m.yes*100)}¢</span><span class="market-no-label">NO ${Math.round((1-m.yes)*100)}¢</span></div><div class="market-meta"><span>Vol: <span class="market-vol">$${(m.vol/1000000).toFixed(1)}M</span></span><span>Liquidez: $${(m.liq/1000).toFixed(0)}K</span><span>Vence: ${m.res}</span><span class="badge badge-green" style="font-size:8px;">${m.status.toUpperCase()}</span></div></div>`).join('');}
+function filterMarkets(cat){renderMarkets(cat==='all'?MARKETS_DATA:MARKETS_DATA.filter(m=>m.cat===cat));}
+function refreshMarkets(){notify('Mercados actualizados (datos demo)','success');}
+function renderMarketMovers(){document.getElementById('market-movers').innerHTML=[{name:'Fed tasas',delta:+8.2,dir:'up'},{name:'Bitcoin 120K',delta:-3.1,dir:'down'},{name:'GPT-5 julio',delta:+5.7,dir:'up'},{name:'Sanciones Rusia',delta:+12.4,dir:'up'},{name:'Recesión eurozona',delta:-2.8,dir:'down'}].map(m=>`<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border);"><span style="font-size:11px;">${m.name}</span><span style="color:${m.dir==='up'?'var(--green)':'var(--red)'};font-weight:700;">${m.dir==='up'?'↑':'↓'} ${Math.abs(m.delta)}%</span></div>`).join('');}
+function renderMarketsChart(){const ctx=document.getElementById('chart-markets');if(!ctx||ctx._nexoChart)return;ctx._nexoChart=new Chart(ctx,{type:'doughnut',data:{labels:['Geo-Política','Economía','Tecnología','Seguridad'],datasets:[{data:[2,4,2,1],backgroundColor:['#ff1744','#ffa726','#00e5ff','#ce93d8'],borderWidth:0,hoverOffset:4}]},options:{responsive:true,maintainAspectRatio:true,plugins:{legend:{labels:{color:'#8899bb',font:{family:'JetBrains Mono',size:10},padding:12}}}}});}
+
+const INTEL_DATA=[
+{id:1,level:'critical',title:'Actividad militar inusual — Frontera Norte (Líbano)',body:'Fuentes OSINT detectan movimiento de vehículos blindados en zona norte.',sources:['OSINT Telegram','Sightline','GeoSentinel'],time:'hace 12m',tags:['LÍBANO','MILITAR','URGENTE']},
+{id:2,level:'high',title:'Movimiento financiero sospechoso — Zona MENA',body:'Transferencias de alto valor detectadas. Patrón consistente con lavado de activos.',sources:['FinCEN OSINT','X Monitor'],time:'hace 34m',tags:['FINANZAS','MENA']},
+{id:3,level:'medium',title:'Campaña desinformación activa — Redes ES/PT',body:'Detectada red coordinada de cuentas publicando narrativas similares.',sources:['X Monitor','Discord Scraper'],time:'hace 1h 12m',tags:['DISINFO','LATAM']},
+{id:4,level:'medium',title:'Vulnerabilidad crítica publicada — Sistemas ICS/SCADA',body:'CVE-2026-7781 publicada. Afecta controladores industriales ampliamente usados.',sources:['NVD','Security OSINT'],time:'hace 2h 05m',tags:['CIBERSEGURIDAD','ICS']},
+{id:5,level:'low',title:'Reunión diplomática confirmada — Formato 3+1',body:'Fuentes diplomáticas confirman encuentro de cancilleres de 3 países.',sources:['Prensa Internacional'],time:'hace 3h 40m',tags:['DIPLOMACIA','ENERGÍA']}
+];
+function initIntel(){if(document.getElementById('intel-feed').innerHTML.trim())return;renderIntelFeed(INTEL_DATA);} 
+function renderIntelFeed(data){document.getElementById('intel-feed').innerHTML=data.map(i=>`<div class="intel-card ${i.level}"><div class="intel-header"><span class="badge badge-${i.level==='critical'?'red':i.level==='high'?'amber':i.level==='medium'?'cyan':'green'}">${i.level.toUpperCase()}</span><span class="intel-title">${i.title}</span><span style="font-family:var(--font-mono);font-size:9px;color:var(--text-3);">${i.time}</span></div><div class="intel-body">${i.body}</div><div class="intel-footer">${i.tags.map(t=>`<span class="feed-tag" style="background:rgba(0,229,255,0.1);color:var(--cyan);border:1px solid rgba(0,229,255,0.2);">${t}</span>`).join('')}<span style="margin-left:auto;" class="intel-source">Fuentes: ${i.sources.join(' · ')}</span></div></div>`).join('');}
+function filterIntel(level){renderIntelFeed(level==='all'?INTEL_DATA:INTEL_DATA.filter(i=>i.level===level));}
+function addIntelEntry(){const title=prompt('Título de la nueva entrada de inteligencia:');if(!title)return;INTEL_DATA.unshift({id:Date.now(),level:'medium',title,body:'Entrada manual. Requiere validación adicional.',sources:['Manual'],time:'ahora',tags:['MANUAL']});renderIntelFeed(INTEL_DATA);notify('Entrada de inteligencia agregada','success');}
+
+function runOsint(){const target=document.getElementById('osint-target').value.trim();const type=document.getElementById('osint-type').value;if(!target){notify('Ingresa un objetivo para analizar','warning');return;}const term=document.getElementById('osint-terminal');addTermLine(term,`nexo@soberano:~$ osint --target "${target}" --type ${type}`,'t-dim');addTermLine(term,`[${new Date().toISOString()}] Iniciando análisis...`,'t-info');setTimeout(()=>{addTermLine(term,'✓ Auto-detección de tipo: '+detectType(target),'t-ok');addTermLine(term,'⟳ Consultando módulos activos...','t-info');},300);setTimeout(()=>{const results=generateOsintResults(target,type);renderOsintResults(results);addTermLine(term,`✓ Análisis completado. ${results.length} resultados encontrados.`,'t-ok');addTermLine(term,'nexo@soberano:~$ ','t-dim');notify(`Análisis OSINT completado: ${results.length} hallazgos`,'success');},1800);}
+function detectType(target){if(/^\d{1,3}(\.\d{1,3}){3}$/.test(target))return'ip';if(/^[a-zA-Z0-9][a-zA-Z0-9-]*\.[a-zA-Z]{2,}$/.test(target))return'domain';if(/^@?\w+$/.test(target))return'username';if(/^-?\d+\.\d+,\s*-?\d+\.\d+$/.test(target))return'coordinates';return'unknown';}
+function generateOsintResults(target,type){return[{module:'WebOSINT',status:'ok',data:`Objetivo analizado: ${target}. Registros DNS: 3. Subdominios: 12.`},{module:'GeoSentinel',status:'ok',data:'Geolocalización aproximada obtenida. Actividad detectada en últimas 24h.'},{module:'Sightline',status:'warn',data:'Presencia en 4 plataformas sociales detectada. Requiere validación manual.'},{module:'WorldMonitor',status:'ok',data:'Menciones en medios internacionales: 3 indirectas posibles.'},{module:'IranMonitor',status:'info',data:'Sin coincidencias directas en base regional.'}];}
+function renderOsintResults(results){document.getElementById('osint-results').innerHTML=results.map(r=>`<div class="card" style="margin-bottom:8px;border-left:3px solid ${r.status==='ok'?'var(--green)':r.status==='warn'?'var(--amber)':'var(--cyan)'};"><div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;"><span class="badge badge-${r.status==='ok'?'green':r.status==='warn'?'amber':'cyan'}" style="font-size:9px;">${r.module}</span><span style="font-family:var(--font-mono);font-size:9px;color:var(--text-3);">${r.status.toUpperCase()}</span></div><div style="font-family:var(--font-mono);font-size:11px;color:var(--text-2);">${r.data}</div></div>`).join('');}
+function launchTool(tool){const urls={webosint:'https://github.com/C3n7ral051nt4g3ncy/WebOSINT',sn0int:'https://github.com/kpcyrd/sn0int',geosentinel:'https://github.com/h9zdev/GeoSentinel',sightline:'https://github.com/ni5arga/sightline',worldmonitor:'https://github.com/koala73/worldmonitor',intercept:'https://github.com/smittix/intercept',iranmonitor:'https://www.iranmonitor.org/',groundstation:'https://github.com/sgoudelis/ground-station',tvscreener:'https://github.com/deepentropy/tvscreener'};if(urls[tool]){notify(`Abriendo ${tool}...`,'info');window.open(urls[tool],'_blank');}}
+function clearOsint(){document.getElementById('osint-target').value='';document.getElementById('osint-results').innerHTML='';const term=document.getElementById('osint-terminal');term.innerHTML=`<div class="t-dim">Terminal limpiada. Lista para nuevo análisis.</div><div><span class="t-info">nexo@soberano</span><span class="t-dim">:~$</span> <span class="terminal-cursor"></span></div>`;}
+function addTermLine(el,text,cls=''){const line=document.createElement('div');line.className=cls;line.textContent=text;el.appendChild(line);el.scrollTop=el.scrollHeight;}
+
+let chatTokensUsed=0;
+document.addEventListener('DOMContentLoaded',()=>{const ci=document.getElementById('chat-input');if(ci)ci.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendChat();}});});
+
+async function sendChat(){
+  const input=document.getElementById('chat-input');
+  const msg=input.value.trim();
+  if(!msg) return;
+  input.value='';
+  addChatMsg(msg,'user');
+  state.chatHistory.push({role:'user',content:msg});
+  const thinking=addChatMsg('● Analizando...','ai',true);
+
+  const backendInput=document.getElementById('backend-url');
+  const base=(backendInput?.value?.trim()||CONFIG.backendUrl).replace(/\/$/, '');
+  CONFIG.backendUrl=base;
+
+  try {
+    const response=await fetch(`${base}/agente/consultar-rag`,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({pregunta:msg, usuario_id:'warroom_v3', categoria:state.currentTab})
+    });
+    if(!response.ok){
+      const err=await response.text();
+      throw new Error(err||`HTTP ${response.status}`);
+    }
+    const data=await response.json();
+    const reply=data.respuesta||'Sin respuesta del backend.';
+    thinking.remove();
+    addChatMsg(reply,'ai');
+    state.chatHistory.push({role:'assistant',content:reply});
+    chatTokensUsed += Number(data.chunks_usados || Math.ceil((msg.length + reply.length) / 4));
+    document.getElementById('chat-tokens').textContent=chatTokensUsed;
+    document.getElementById('chat-mode').textContent='Backend RAG';
+  } catch(e) {
+    thinking.remove();
+    addChatMsg('Backend offline o sin credenciales. En modo demo: '+getDemoResponse(msg),'ai');
+    document.getElementById('chat-mode').textContent='Demo offline';
+  }
+}
+function getDemoResponse(msg){const responses=['Como asistente de NEXO SOBERANO, esta consulta requiere validación en fuentes activas.','Para análisis completo, ejecuta el backend local y vuelve a intentar.','Datos operacionales: hay 5 alertas activas; prioridad actual en zona MENA.'];return responses[Math.floor(Math.random()*responses.length)];}
+function addChatMsg(text,role,isTemp=false){const c=document.getElementById('chat-messages');const div=document.createElement('div');div.className=`msg ${role}`;const time=new Date().toLocaleTimeString('es',{hour:'2-digit',minute:'2-digit'});div.innerHTML=`<div class="msg-avatar">${role==='ai'?'AI':'YO'}</div><div><div class="msg-bubble">${text.replace(/\n/g,'<br>')}</div><div class="msg-time">${time} — ${role==='ai'?'NEXO IA':'Operador'}</div></div>`;c.appendChild(div);c.scrollTop=c.scrollHeight;return div;}
+function clearChat(){state.chatHistory=[];document.getElementById('chat-messages').innerHTML='';addChatMsg('Chat limpiado. Historial reiniciado. ¿En qué puedo ayudarte?','ai');}
+
+function initCharts(){const ctx1=document.getElementById('chart-actividad');if(ctx1&&!ctx1._nexoChart){ctx1._nexoChart=new Chart(ctx1,{type:'line',data:{labels:['L','M','X','J','V','S','D'],datasets:[{label:'Consultas IA',data:[82,134,98,167,201,88,247],borderColor:'#00e5ff',backgroundColor:'rgba(0,229,255,0.08)',tension:.4,fill:true,pointRadius:3},{label:'Alertas',data:[2,5,3,8,4,2,5],borderColor:'#ffa726',backgroundColor:'rgba(255,167,38,0.08)',tension:.4,fill:true,pointRadius:3,yAxisID:'y2'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#8899bb',font:{family:'JetBrains Mono',size:9}}}},scales:{x:{ticks:{color:'#4a5878',font:{family:'JetBrains Mono',size:9}},grid:{color:'rgba(255,255,255,0.04)'}},y:{ticks:{color:'#4a5878',font:{family:'JetBrains Mono',size:9}},grid:{color:'rgba(255,255,255,0.04)'}},y2:{position:'right',ticks:{color:'#4a5878',font:{size:9}},grid:{display:false}}}}});}
+const ctx2=document.getElementById('chart-dist');if(ctx2&&!ctx2._nexoChart){ctx2._nexoChart=new Chart(ctx2,{type:'bar',data:{labels:['OSINT','Intel','Chat','Sync','Admin'],datasets:[{data:[35,28,22,10,5],backgroundColor:['#00e5ff','#ce93d8','#00e676','#ffa726','#ff1744'],borderWidth:0,borderRadius:3}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#4a5878',font:{family:'JetBrains Mono',size:9}},grid:{display:false}},y:{ticks:{color:'#4a5878',font:{family:'JetBrains Mono',size:9}},grid:{color:'rgba(255,255,255,0.04)'}}}}});}}
+
+const FEED_EVENTS=[
+{source:'X/TWITTER',text:'#BreakingNews — Actividad diplomática inusual detectada en región MENA',color:'var(--amber)',tag:'TRENDING',tagColor:'var(--amber)'},
+{source:'OSINT',text:'Nuevo CVE publicado (CVSS 9.8) — Afecta routers Cisco IOS-XE',color:'var(--red)',tag:'CRÍTICO',tagColor:'var(--red)'},
+{source:'POLYMARKET',text:'Probabilidad de corte Fed sube a 67% tras datos de empleo',color:'var(--green)',tag:'MERCADOS',tagColor:'var(--cyan)'},
+{source:'DISCORD',text:'Canal #geopolitica: 23 mensajes nuevos sobre escalada en Medio Oriente',color:'var(--purple)',tag:'COMUNIDAD',tagColor:'var(--purple)'},
+{source:'GOOGLE DRIVE',text:'Clasificación automática: 34 documentos nuevos procesados por IA',color:'var(--cyan)',tag:'SYNC',tagColor:'var(--cyan)'}
+];
+let feedIdx=0;function addFeedItem(){const feed=document.getElementById('live-feed');if(!feed)return;const ev=FEED_EVENTS[feedIdx%FEED_EVENTS.length];feedIdx++;const t=new Date().toLocaleTimeString('es',{hour:'2-digit',minute:'2-digit',second:'2-digit'});const item=document.createElement('div');item.className='feed-item';item.innerHTML=`<div class="feed-dot" style="background:${ev.color};box-shadow:0 0 6px ${ev.color};"></div><div class="feed-content"><div class="feed-source">${ev.source} <span class="feed-tag" style="background:${ev.tagColor}22;color:${ev.tagColor};border:1px solid ${ev.tagColor}44;">${ev.tag}</span></div><div class="feed-text">${ev.text}</div><div class="feed-time">${t}</div></div>`;feed.insertBefore(item,feed.firstChild);if(feed.children.length>8)feed.removeChild(feed.lastChild);}
+function renderSparklines(){const data1=[40,65,45,80,72,90,95,247],data2=[1600,1700,1780,1800,1840,1860,1880,1892],data3=[1,3,2,4,3,2,4,5],data4=[0,1,0,2,1,2,2,2];[['spark1',data1,'#00e5ff'],['spark2',data2,'#00e676'],['spark3',data3,'#ffa726'],['spark4',data4,'#ff1744']].forEach(([id,d,c])=>{const el=document.getElementById(id);if(!el)return;const max=Math.max(...d);el.innerHTML=d.map(v=>`<div class="spark-bar" style="height:${Math.max(3,(v/max)*100)}%;background:${c};"></div>`).join('');});}
+function renderSyncSources(){const sources=[{name:'Google Drive',icon:'💠',files:1245,status:'ok',last:'hace 3m'},{name:'Google Photos',icon:'📸',files:389,status:'ok',last:'hace 3m'},{name:'OneDrive',icon:'☁',files:258,status:'warn',last:'hace 15m'},{name:'YouTube',icon:'▶',files:0,status:'ok',last:'hace 1h'},{name:'Discord',icon:'💬',files:0,status:'active',last:'ahora'}];document.getElementById('sync-sources').innerHTML=sources.map(s=>`<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);"><span style="font-size:18px;">${s.icon}</span><div style="flex:1;"><div style="font-family:var(--font-ui);font-size:12px;font-weight:600;">${s.name}</div><div style="font-family:var(--font-mono);font-size:9px;color:var(--text-3);">${s.files>0?s.files+' archivos':'Stream'} · ${s.last}</div></div><span class="badge badge-${s.status==='ok'?'green':s.status==='warn'?'amber':'cyan'}">${s.status==='ok'?'OK':s.status==='warn'?'PARCIAL':'ACTIVO'}</span></div>`).join('');}
+async function runSync(source){const term=document.getElementById('sync-terminal');term.innerHTML='';addTermLine(term,`[${new Date().toISOString()}] Iniciando sync: ${source}`,'t-info');addTermLine(term,'⟳ Conectando con servicios...','t-dim');const base=(document.getElementById('backend-url')?.value?.trim()||CONFIG.backendUrl).replace(/\/$/, '');
+  try {
+    const payload={dry_run:false,photos_limit:20,drive_limit:50,onedrive_limit:20,onedrive_max_mb:20,youtube_per_channel:10,drive_include_trashed:true,drive_full_scan:true,drive_auto_rename:true,retry_attempts:3,retry_backoff_seconds:1.2};
+    const r=await fetch(`${base}/agente/sync/unificado`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    const data=await r.json();
+    if(!r.ok||!data.ok) throw new Error(data.detail||'sync failed');
+    addTermLine(term,'✓ Sync completado desde backend','t-ok');
+    notify('Sync completado exitosamente','success');
+  } catch (e) {
+    setTimeout(()=>{addTermLine(term,'✓ Google Drive: 34 archivos nuevos encontrados','t-ok');},600);
+    setTimeout(()=>{addTermLine(term,'✓ Clasificación IA: procesando...','t-info');},1200);
+    setTimeout(()=>{addTermLine(term,'✓ Sync demo completado. 34 archivos clasificados.','t-ok');notify('Sync demo completado (backend no disponible)','warning');},2400);
+  }
+}
+function testConnection(){const base=(document.getElementById('backend-url')?.value?.trim()||CONFIG.backendUrl).replace(/\/$/, '');CONFIG.backendUrl=base;fetch(`${base}/health`).then(r=>r.json()).then(d=>{notify('Backend online: '+(d.service||'ok'),'success');document.getElementById('api-status').innerHTML='API: <span style="color:var(--green)">ONLINE</span>';}).catch(()=>{notify('Backend offline (modo demo activo)','warning');document.getElementById('api-status').innerHTML='API: <span style="color:var(--amber)">OFFLINE</span>';});}
+function saveSettings(){const base=(document.getElementById('backend-url')?.value?.trim()||CONFIG.backendUrl).replace(/\/$/, '');CONFIG.backendUrl=base;localStorage.setItem('nexo_v3_backend_url',base);localStorage.setItem('nexo_v3_model',document.getElementById('modelo-ia')?.value||'claude-sonnet-4-6');notify('Configuración guardada','success');}
+function updateSystemStats(){const cpu=25+Math.floor(Math.random()*30),ram=55+Math.floor(Math.random()*20);document.getElementById('s-cpu').textContent=cpu+'%';document.getElementById('s-ram').textContent=ram+'%';document.getElementById('s-cpu-bar').style.width=cpu+'%';document.getElementById('s-ram-bar').style.width=ram+'%';}
+function refreshAll(){notify('Actualizando todos los módulos...','info');updateSystemStats();addFeedItem();}
+
+document.addEventListener('DOMContentLoaded',()=>{
+  const savedBase=localStorage.getItem('nexo_v3_backend_url');
+  if(savedBase){CONFIG.backendUrl=savedBase;const input=document.getElementById('backend-url');if(input)input.value=savedBase;}
+  const savedModel=localStorage.getItem('nexo_v3_model');
+  if(savedModel&&document.getElementById('modelo-ia'))document.getElementById('modelo-ia').value=savedModel;
+  initCharts();renderSparklines();renderSyncSources();for(let i=0;i<4;i++)setTimeout(addFeedItem,i*200);setInterval(addFeedItem,8000);setInterval(updateSystemStats,15000);testConnection();
+});
+</script>
+
+<style>
+.leaflet-popup-content-wrapper{background:#111827!important;color:#e0e8ff!important;border:1px solid rgba(0,229,255,.2)!important;border-radius:6px!important;box-shadow:0 4px 24px rgba(0,0,0,.6)!important}
+.leaflet-popup-tip{background:#111827!important}.leaflet-popup-content{margin:12px!important}
+.leaflet-control-zoom a{background:#1a2235!important;color:#00e5ff!important;border-color:rgba(0,229,255,.2)!important}.leaflet-control-zoom a:hover{background:#1e2d45!important}
+.leaflet-bar{border:1px solid rgba(0,229,255,.2)!important;box-shadow:none!important}.leaflet-control-attribution{display:none}
+</style>
+</body>
+</html>

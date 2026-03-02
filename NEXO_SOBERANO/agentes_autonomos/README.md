@@ -1,0 +1,1 @@
+Esta carpeta contiene scripts y agentes autónomos para NEXO Soberano.
