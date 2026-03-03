@@ -1,0 +1,47 @@
+name: Auto-Supervisor (Code Quality)
+
+on:
+  schedule:
+    # Runs every Monday at 03:00 UTC
+    - cron: "0 3 * * 1"
+  workflow_dispatch:
+
+jobs:
+  autosupervisor:
+    name: Code Quality Scan
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install fastapi==0.115.12 pydantic==2.11.3 python-dotenv==1.1.0
+
+      - name: Check Python syntax (all .py files)
+        run: |
+          find . -name "*.py" \
+            -not -path "./.venv/*" \
+            -not -path "./node_modules/*" \
+            -not -path "./__pycache__/*" \
+            -print0 | xargs -0 python -m py_compile
+        continue-on-error: true
+
+      - name: Run nexo_autosupervisor (scan mode)
+        run: python nexo_autosupervisor.py --scan
+        continue-on-error: true
+        env:
+          NEXO_AUTOSUPERVISOR_NO_AI: "true"
+
+      - name: Upload scan report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: autosupervisor-report
+          path: reports/
+          if-no-files-found: ignore

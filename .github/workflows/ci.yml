@@ -1,0 +1,48 @@
+name: CI
+
+on:
+  push:
+    branches: ["main", "master", "develop"]
+  pull_request:
+    branches: ["main", "master", "develop"]
+
+jobs:
+  syntax-check:
+    name: Python Syntax Check
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Check Python syntax (all .py files)
+        run: |
+          find . -name "*.py" \
+            -not -path "./.venv/*" \
+            -not -path "./node_modules/*" \
+            -not -path "./__pycache__/*" \
+            -print0 | xargs -0 python -m py_compile
+
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install minimal test dependencies
+        run: pip install fastapi==0.115.12 pydantic==2.11.3 pytest==8.3.5 python-dotenv==1.1.0
+
+      - name: Run unit tests
+        run: pytest tests/ -v
