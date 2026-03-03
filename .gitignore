@@ -49,6 +49,11 @@ frontend/dist/
 # Local backup artifacts
 .supervisor_backups/
 
+# Agente Supervisor: clave cifrado y reportes cifrados
+NEXO_SOBERANO/agentes_autonomos/.supervisor.key
+NEXO_SOBERANO/agentes_autonomos/.supervisor.*.bak
+NEXO_SOBERANO/agentes_autonomos/reportes_cifrados/
+
 # Local media captures (can exceed GitHub limits)
 documentos/media_intake_test/
 
