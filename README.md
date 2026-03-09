@@ -3,7 +3,7 @@
 This repository contains the core initialization scripts for the NEXO Soberano system.
 
 ## Setup
-
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/Reidskar/NEXO_SOBERANO)
 1. **Configure Python environment** (a virtual environment will be created automatically when you open the workspace):
    ```powershell
    # this happens automatically when you use VS Code python extension, or run any Python command
