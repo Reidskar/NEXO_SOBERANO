@@ -3,12 +3,13 @@ FastAPI — Punto de entrada unificado del backend
 Puerto: 8000
 """
 
-from fastapi import FastAPI, HTTPException, Header, Request
+from fastapi import FastAPI, HTTPException, Header, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel
 from pathlib import Path
+from typing import List, Dict
 import logging
 import os
 import uuid
@@ -274,6 +275,49 @@ app.include_router(agente.router)
 # Rutas de eventos/infraestructura
 app.include_router(eventos.router)
 
+# ════════════════════════════════════════════════════════════════════
+# WEBSOCKET MANAGER (Alertas en tiempo real)
+# ════════════════════════════════════════════════════════════════════
+
+class ConnectionManager:
+    def __init__(self):
+        self.active_connections: Dict[str, List[WebSocket]] = {}
+
+    async def connect(self, websocket: WebSocket, tenant: str):
+        await websocket.accept()
+        if tenant not in self.active_connections:
+            self.active_connections[tenant] = []
+        self.active_connections[tenant].append(websocket)
+        logger.info(f"🔌 Cliente WS conectado a tenant: {tenant}")
+
+    def disconnect(self, websocket: WebSocket, tenant: str):
+        if tenant in self.active_connections:
+            self.active_connections[tenant].remove(websocket)
+            logger.info(f"🔌 Cliente WS desconectado de tenant: {tenant}")
+
+    async def broadcast(self, tenant: str, message: dict):
+        if tenant in self.active_connections:
+            for connection in self.active_connections[tenant]:
+                try:
+                    await connection.send_json(message)
+                except Exception as e:
+                    logger.error(f"❌ Error enviando WS: {e}")
+
+manager = ConnectionManager()
+
+@app.websocket("/ws/alerts/{tenant_slug}")
+async def websocket_endpoint(websocket: WebSocket, tenant_slug: str):
+    await manager.connect(websocket, tenant_slug)
+    try:
+        while True:
+            # Mantener conexión abierta, recibir pings si es necesario
+            data = await websocket.receive_text()
+    except WebSocketDisconnect:
+        manager.disconnect(websocket, tenant_slug)
+    except Exception as e:
+        logger.error(f"⚠️ Error en WS endpoint: {e}")
+        manager.disconnect(websocket, tenant_slug)
+
 # --- WEBHOOK INGEST (Nuevos Agentes) ---
 class WebhookData(BaseModel):
     tenant_slug: str = "demo"
@@ -288,11 +332,19 @@ async def api_webhook_ingest(data: WebhookData, x_api_key: str = Header(None)):
     if x_api_key != os.getenv("NEXO_API_KEY", "nexo_dev_key_2025"):
         raise HTTPException(status_code=401, detail="API Key inválida")
     
-    # Por ahora registramos en log y devolvemos OK
-    logger.info(f"📥 Ingesta recibida: [{data.type}] {data.title} - Tenant: {data.tenant_slug}")
+    logger.info(f"📥 Ingesta recibida: [{data.type}] {data.title}")
     
-    # Aquí podrías insertar en BD Supabase si está disponible
-    return {"status": "success", "received": data.type}
+    # BROADCAST a WebSockets para que el Xiaomi lo reciba
+    payload = {
+        "tipo": data.type,
+        "titulo": data.title,
+        "descripcion": data.body,
+        "severidad": data.severity,
+        "timestamp": datetime.now(timezone.utc).isoformat()
+    }
+    await manager.broadcast(data.tenant_slug, payload)
+    
+    return {"status": "success", "received": data.type, "broadcasted": True}
 
 # ════════════════════════════════════════════════════════════════════
 # MANEJO DE ERRORES GLOBAL
