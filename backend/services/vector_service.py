@@ -8,12 +8,18 @@ from sentence_transformers import SentenceTransformer
 
 logger = logging.getLogger(__name__)
 
-# Cargar modelo localmente (instancia compartida)
-try:
-    model = SentenceTransformer("all-MiniLM-L6-v2")
-except Exception as e:
-    logger.error(f"Error cargando modelo de embeddings: {e}")
-    model = None
+from backend import config
+
+# Cargar modelo localmente (instancia compartida) solo si estamos en modo local
+model = None
+if config.NEXO_MODE == "local":
+    try:
+        logger.info("Cargando SentenceTransformer (Modo LOCAL)...")
+        model = SentenceTransformer("all-MiniLM-L6-v2")
+    except Exception as e:
+        logger.error(f"Error cargando modelo de embeddings: {e}")
+else:
+    logger.info("SentenceTransformer no cargado (Modo CLOUD)")
 
 # Cliente Qdrant
 QDRANT_URL = os.getenv("QDRANT_URL", "http://localhost:6333")

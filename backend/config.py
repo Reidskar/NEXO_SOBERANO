@@ -43,6 +43,9 @@ APP_DESCRIPTION = "Plataforma de inteligencia híbrida RAG - Backend unificado"
 
 HOST = os.getenv("NEXO_HOST", os.getenv("HOST", "0.0.0.0"))
 PORT = int(os.getenv("NEXO_PORT", os.getenv("PORT", 8000)))
+NEXO_MODE = os.getenv("NEXO_MODE", "local").lower()  # 'local' o 'cloud'
+LOCAL_SERVER_URL = os.getenv("LOCAL_SERVER_URL", "")
+RAILWAY_URL = os.getenv("RAILWAY_URL", "")
 
 # CORS — lee orígenes extra desde .env (separados por coma)
 _extra_origins = [

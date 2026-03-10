@@ -8,3 +8,6 @@ healthcheckPath = "/health"
 healthcheckTimeout = 300
 restartPolicyType = "on_failure"
 restartPolicyMaxRetries = 3
+
+[deploy.variables]
+NEXO_MODE = "cloud"

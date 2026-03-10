@@ -87,12 +87,14 @@ app.add_middleware(
 # Raíz — sirve Warroom v3 como app principal
 @app.get("/")
 def root():
-    """Página principal: Warroom v3"""
-    return _serve_existing_html([
-        "NEXO_SOBERANO_v3.html",
-        "warroom_v3.html",
-        "warroom_v2.html",
-    ])
+    """Página principal: Warroom v3 con info de modo"""
+    return {
+        "status": "NEXO_CORE activo",
+        "mode": config.NEXO_MODE,
+        "version": config.APP_VERSION,
+        "docs": "/api/docs",
+        "warroom": "/warroom",
+    }
 
 
 # API info (moved from /)
@@ -188,12 +190,24 @@ def app_download_page():
 # Health check general
 @app.get("/health")
 def health():
-    """Health check global"""
-    return {
+    """Health check global optimizado por modo"""
+    health_data = {
         "status": "ok",
+        "mode": config.NEXO_MODE,
         "service": "nexo-soberano-backend",
         "version": config.APP_VERSION,
     }
+    
+    if config.NEXO_MODE == "local":
+        # En local, revisamos Qdrant si es posible
+        from backend.services.vector_service import client as qdrant_client
+        health_data["infrastructure"] = {
+            "qdrant": "ready" if qdrant_client else "not_connected"
+        }
+    else:
+        health_data["cloud"] = True
+        
+    return health_data
 
 
 @app.post("/auth/login")
