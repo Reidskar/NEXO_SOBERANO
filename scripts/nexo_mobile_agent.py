@@ -49,24 +49,44 @@ class LearningSystem:
             f.write(json.dumps(entry) + "\n")
     
     def sync_to_backend(self):
-        """Envía interacciones acumuladas al backend cada hora"""
-        try:
-            if not self.log_path.exists():
-                return
-            lines = self.log_path.read_text().strip().split("\n")
-            if len(lines) > 10:
-                requests.post(
-                    f"{NEXO_URL}/api/webhooks/ingest",
-                    json={"tenant_slug": "demo", "type": "learning_sync",
-                          "title": f"Mobile sync: {len(lines)} eventos",
-                          "body": "\n".join(lines[-50:]),
-                          "severity": 0.1},
-                    headers={"X-API-Key": API_KEY},
-                    timeout=10
-                )
-                self.log_path.write_text("")
-        except:
-            pass
+        """Envía interacciones acumuladas al backend periódicamente"""
+        while True:
+            try:
+                if self.log_path.exists():
+                    lines = self.log_path.read_text().strip().split("\n")
+                    if lines and lines[0]:
+                        # Siempre enviamos un latido (heartbeat) si hay datos o simplemente para decir que estamos vivos
+                        requests.post(
+                            f"{NEXO_URL}/api/webhooks/ingest",
+                            json={
+                                "tenant_slug": "demo", 
+                                "type": "agent_heartbeat",
+                                "title": f"Xiaomi check-in: {len(lines)} eventos",
+                                "body": "\n".join(lines[-50:]),
+                                "severity": 0.1
+                            },
+                            headers={"X-API-Key": API_KEY},
+                            timeout=10
+                        )
+                        self.log_path.write_text("")
+                else:
+                    # Latido vacío si no hay logs
+                    requests.post(
+                        f"{NEXO_URL}/api/webhooks/ingest",
+                        json={
+                            "tenant_slug": "demo", 
+                            "type": "agent_heartbeat",
+                            "title": "Xiaomi Pulse",
+                            "body": "Agent is alive and monitoring.",
+                            "severity": 0.05
+                        },
+                        headers={"X-API-Key": API_KEY},
+                        timeout=10
+                    )
+            except Exception as e:
+                console.print(f"[red]Error en sync: {e}[/red]")
+            
+            time.sleep(300)  # Sincronizar cada 5 minutos
 
 # --- MONITOR DE SERVICIOS ---
 class ServiceMonitor:
