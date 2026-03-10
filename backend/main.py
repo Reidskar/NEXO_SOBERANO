@@ -274,6 +274,26 @@ app.include_router(agente.router)
 # Rutas de eventos/infraestructura
 app.include_router(eventos.router)
 
+# --- WEBHOOK INGEST (Nuevos Agentes) ---
+class WebhookData(BaseModel):
+    tenant_slug: str = "demo"
+    type: str = "mobile_agent"
+    title: str = ""
+    body: str = ""
+    severity: float = 0.5
+
+@app.post("/api/webhooks/ingest")
+async def api_webhook_ingest(data: WebhookData, x_api_key: str = Header(None)):
+    """Recibe datos de agentes móviles y externos."""
+    if x_api_key != os.getenv("NEXO_API_KEY", "nexo_dev_key_2025"):
+        raise HTTPException(status_code=401, detail="API Key inválida")
+    
+    # Por ahora registramos en log y devolvemos OK
+    logger.info(f"📥 Ingesta recibida: [{data.type}] {data.title} - Tenant: {data.tenant_slug}")
+    
+    # Aquí podrías insertar en BD Supabase si está disponible
+    return {"status": "success", "received": data.type}
+
 # ════════════════════════════════════════════════════════════════════
 # MANEJO DE ERRORES GLOBAL
 # ════════════════════════════════════════════════════════════════════
