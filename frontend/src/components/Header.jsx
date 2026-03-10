@@ -7,59 +7,59 @@ function Header() {
   useEffect(() => {
     const checkHealth = async () => {
       try {
-        const response = await fetch("http://localhost:8000/api/estado");
-        if (response.ok) {
-          const data = await response.json();
-          setStatus(data.online ? "online" : "offline");
-          setInfo(data);
+        const res = await fetch("/agente/health");
+        if (res.ok) {
+          const data = await res.json();
+          setStatus(data.status === "ok" ? "online" : "degraded");
+          setInfo({
+            rag: data.rag_loaded,
+            docs: data.total_documentos,
+          });
         } else {
           setStatus("offline");
         }
-      } catch (error) {
+      } catch {
         setStatus("offline");
       }
     };
-
     checkHealth();
-    const interval = setInterval(checkHealth, 5000);
+    const interval = setInterval(checkHealth, 8000);
     return () => clearInterval(interval);
   }, []);
 
-  const statusColor = {
-    online: "text-green-400 bg-green-900/30",
-    offline: "text-red-400 bg-red-900/30",
-    loading: "text-yellow-400 bg-yellow-900/30"
+  const indicator = {
+    online:   { dot: "bg-emerald-400", bg: "bg-emerald-500/10", label: "Operativo" },
+    degraded: { dot: "bg-yellow-400",  bg: "bg-yellow-500/10",  label: "Degradado" },
+    offline:  { dot: "bg-red-400",     bg: "bg-red-500/10",     label: "Offline" },
+    loading:  { dot: "bg-nexo-muted",  bg: "bg-nexo-surface",   label: "Conectando…" },
   };
 
-  const statusIcon = {
-    online: "🟢",
-    offline: "🔴",
-    loading: "🟡"
-  };
+  const s = indicator[status] || indicator.loading;
 
   return (
-    <div className="h-16 bg-gray-800 border-b border-gray-700 flex items-center justify-between px-6">
-      <div className="flex items-center gap-3">
-        <h1 className="text-2xl font-bold text-blue-400">Nexo Soberano</h1>
+    <header className="h-12 bg-nexo-panel border-b border-nexo-border flex items-center justify-between px-5 shrink-0">
+      {/* Left side - breadcrumb / context */}
+      <div className="flex items-center gap-2 text-sm">
+        <span className="text-nexo-dim">Centro de Mando</span>
+        <span className="text-nexo-dim">›</span>
+        <span className="text-nexo-text font-medium">Operaciones</span>
       </div>
-      
-      <div className={`flex items-center gap-2 px-4 py-2 rounded ${statusColor[status]}`}>
-        <span className="text-lg">{statusIcon[status]}</span>
-        <span className="font-semibold capitalize">{status}</span>
-        {status === "online" && info.version && (
-          <span className="ml-4 text-xs text-gray-300">v{info.version}</span>
+
+      {/* Right side - status indicators */}
+      <div className="flex items-center gap-4">
+        {status === "online" && info.docs != null && (
+          <div className="flex items-center gap-1.5 text-xs text-nexo-muted">
+            <span className="text-nexo-dim">◫</span>
+            <span>{info.docs} docs</span>
+          </div>
         )}
-        {status === "online" && info.docs_indexados != null && (
-          <span className="ml-4 text-xs text-gray-300">📁 {info.docs_indexados} docs</span>
-        )}
-        {status === "online" && info.chunks_total != null && (
-          <span className="ml-4 text-xs text-gray-300">🔗 {info.chunks_total} chunks</span>
-        )}
-        {status === "online" && info.costos_hoy && (
-          <span className="ml-4 text-xs text-gray-300">💰 {info.costos_hoy}</span>
-        )}
+
+        <div className={`flex items-center gap-2 px-3 py-1.5 rounded text-xs font-medium ${s.bg}`}>
+          <span className={`w-1.5 h-1.5 rounded-full ${s.dot} ${status === "online" ? "nexo-pulse" : ""}`} />
+          <span className="text-nexo-text">{s.label}</span>
+        </div>
       </div>
-    </div>
+    </header>
   );
 }
 

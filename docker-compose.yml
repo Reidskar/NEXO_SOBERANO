@@ -9,34 +9,49 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
       - GEMINI_API_KEY=${GEMINI_API_KEY}
-      - TELEGRAM_TOKEN=${TELEGRAM_TOKEN}
-      - DATABASE_URL=sqlite:////app/data/nexo.db
-      - ENVIRONMENT=production
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - CLAUDE_MODEL=${CLAUDE_MODEL}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - XAI_API_KEY=${XAI_API_KEY}
+      - NEXO_API_KEY=${NEXO_API_KEY}
       - SECRET_KEY=${SECRET_KEY}
+      - NEXO_HOST=0.0.0.0
+      - NEXO_PORT=8000
+      - NEXO_LOG_LEVEL=${NEXO_LOG_LEVEL:-INFO}
+      - NEXO_MAX_TOKENS_DIA=${NEXO_MAX_TOKENS_DIA:-900000}
+      - NEXO_CORS_ORIGINS=${NEXO_CORS_ORIGINS}
+      - NEXO_LLM_PROVIDER=${NEXO_LLM_PROVIDER:-auto}
+      - DISCORD_WEBHOOK_URL=${DISCORD_WEBHOOK_URL}
+      - NEXO_ALERT_WEBHOOK=${NEXO_ALERT_WEBHOOK}
+      - DISCORD_ENABLED=${DISCORD_ENABLED:-false}
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+      - DRIVE_ROOT_FOLDER_ID=${DRIVE_ROOT_FOLDER_ID}
+      - YOUTUBE_CHANNEL_ID=${YOUTUBE_CHANNEL_ID}
+      - OBS_ENABLED=${OBS_ENABLED:-false}
+      - OBS_HOST=${OBS_HOST:-localhost}
+      - OBS_PORT=${OBS_PORT:-4455}
+      - OBS_PASSWORD=${OBS_PASSWORD}
+      - ADMIN_EMAIL=${ADMIN_EMAIL}
+      - SMTP_HOST=${SMTP_HOST}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_USER=${SMTP_USER}
+      - SMTP_FROM=${SMTP_FROM}
+      - SMTP_PASSWORD=${SMTP_PASSWORD}
+      - DATABASE_URL=postgresql://nexo_user:nexo_password@postgres:5432/nexo_db
+      - ENVIRONMENT=production
     volumes:
       - ./:/app
-      - nexo-data:/app/data
+      - nexo-data:/app/NEXO_SOBERANO/base_sqlite
       - nexo-logs:/app/logs
     restart: always
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/"]
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 10s
-
-  frontend:
-    image: node:18-alpine
-    container_name: nexo-frontend
-    working_dir: /app
-    ports:
-      - "8080:3000"
-    volumes:
-      - ./obs_control:/app
-    command: python -m http.server 8080
-    restart: always
+      start_period: 15s
 
   nginx:
     image: nginx:alpine
@@ -50,12 +65,30 @@ services:
       - nexo-logs:/var/log/nginx
     depends_on:
       - backend
-      - frontend
     restart: always
+
+  postgres:
+    image: postgres:15-alpine
+    container_name: nexo-postgres
+    environment:
+      POSTGRES_USER: nexo_user
+      POSTGRES_PASSWORD: nexo_password
+      POSTGRES_DB: nexo_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nexo_user -d nexo_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
 volumes:
   nexo-data:
   nexo-logs:
+  postgres-data:
 
 networks:
   default:

@@ -185,46 +185,46 @@ def main() -> int:
 
     adb = detect_adb()
     if not adb:
-        print("❌ ADB no detectado.")
+        log.info("❌ ADB no detectado.")
         return 1
 
     serial = ensure_device(adb)
     if not serial:
-        print("❌ No hay dispositivo ADB autorizado.")
+        log.info("❌ No hay dispositivo ADB autorizado.")
         return 2
 
     if args.command == "status":
         report = collect_status(adb)
         out = save_report("instapro_status", report)
-        print(f"✅ Status guardado: {out}")
-        print(json.dumps({"pid": report.get("pid"), "battery_temp_c": report.get("battery_temp_c")}, ensure_ascii=False, indent=2))
+        log.info(f"✅ Status guardado: {out}")
+        log.info(json.dumps({"pid": report.get("pid"), "battery_temp_c": report.get("battery_temp_c")}, ensure_ascii=False, indent=2))
         return 0
 
     if args.command == "safe-profile":
         result = apply_safe_profile(adb)
         out = save_report("instapro_safe_profile", {"timestamp": datetime.now(timezone.utc).isoformat(), "actions": result})
-        print(f"✅ Perfil seguro aplicado: {out}")
+        log.info(f"✅ Perfil seguro aplicado: {out}")
         return 0
 
     if args.command == "normal-profile":
         result = apply_normal_profile(adb)
         out = save_report("instapro_normal_profile", {"timestamp": datetime.now(timezone.utc).isoformat(), "actions": result})
-        print(f"✅ Perfil normal aplicado: {out}")
+        log.info(f"✅ Perfil normal aplicado: {out}")
         return 0
 
     if args.command == "restart":
         stop = adb_shell(adb, f"am force-stop {PACKAGE}")
         start = adb_shell(adb, f"monkey -p {PACKAGE} -c android.intent.category.LAUNCHER 1")
         out = save_report("instapro_restart", {"timestamp": datetime.now(timezone.utc).isoformat(), "stop": stop, "start": start})
-        print(f"✅ Reinicio ejecutado: {out}")
+        log.info(f"✅ Reinicio ejecutado: {out}")
         return 0
 
     if args.command == "monitor":
         result = monitor(adb, seconds=args.seconds, interval=args.interval)
         out = save_report("instapro_monitor", result)
-        print(f"✅ Monitor guardado: {out}")
+        log.info(f"✅ Monitor guardado: {out}")
         if result["samples"]:
-            print(json.dumps(result["samples"][-1], ensure_ascii=False, indent=2))
+            log.info(json.dumps(result["samples"][-1], ensure_ascii=False, indent=2))
         return 0
 
     return 0

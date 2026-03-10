@@ -1,0 +1,44 @@
+{
+  "base_url": "{{nexo_api_base_url}}",
+  "auth": {
+    "header": "X-NEXO-API-KEY",
+    "value": "{{nexo_api_key}}"
+  },
+  "endpoints": [
+    {
+      "name": "health",
+      "method": "GET",
+      "path": "/health",
+      "success": "status=operational"
+    },
+    {
+      "name": "analytics",
+      "method": "GET",
+      "path": "/analytics",
+      "success": "ok=true"
+    },
+    {
+      "name": "warroom_ai_control",
+      "method": "GET",
+      "path": "/warroom/ai-control",
+      "success": "ok=true"
+    },
+    {
+      "name": "foda_critical",
+      "method": "POST",
+      "path": "/api/ai/foda-critical",
+      "body": {
+        "objective": "Evaluar integración de sistema extraído del video en NEXO",
+        "decisor_final": "claude",
+        "modo_ahorro": true
+      },
+      "success": "ok=true and consensus_ok=true"
+    },
+    {
+      "name": "foda_status",
+      "method": "GET",
+      "path": "/api/ai/foda-status",
+      "success": "ok=true"
+    }
+  ]
+}

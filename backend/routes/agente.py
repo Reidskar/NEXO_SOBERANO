@@ -6,6 +6,7 @@ from fastapi import APIRouter, HTTPException, UploadFile, File, Form, Request
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 from typing import Optional, List, Dict
+from collections import Counter
 import logging
 import base64
 import os
@@ -18,15 +19,66 @@ import sys
 import smtplib
 import socket
 from email.message import EmailMessage
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
 from backend.services.rag_service import get_rag_service
 from backend.services.cost_manager import get_cost_manager
+from backend.services.unified_cost_tracker import get_cost_tracker
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/agente", tags=["agente"])
+
+
+def _is_truthy_env(name: str, default: str = "true") -> bool:
+    value = os.getenv(name, default)
+    return str(value or "").strip().lower() not in {"0", "false", "no", "off"}
+
+
+def _mask_sensitive_text(value: str) -> str:
+    text = str(value)
+    replacements = [
+        (r"[\w.+\-]+@[\w\-]+\.[\w.\-]+", "<redacted_email>"),
+        (r"https://discord\.com/api/webhooks/[^\s\"']+", "https://discord.com/api/webhooks/<redacted>"),
+        (r"\bAIza[0-9A-Za-z_\-]{20,}\b", "AIza<redacted>"),
+        (r"\bGOCSPX-[0-9A-Za-z_\-]+\b", "GOCSPX-<redacted>"),
+        (r"\bsk-[0-9A-Za-z_\-]{16,}\b", "sk-<redacted>"),
+        (r"\bya29\.[0-9A-Za-z\-_.]+\b", "ya29.<redacted>"),
+        (r"(?i)(authorization\s*[:=]\s*bearer\s+)[^\s,;]+", r"\1<redacted>"),
+        (r"([A-Za-z]:\\Users\\)[^\\\s]+", r"\1<redacted_user>"),
+    ]
+    for pattern, replacement in replacements:
+        text = re.sub(pattern, replacement, text)
+    return text
+
+
+def _sanitize_warroom_payload(obj):
+    if isinstance(obj, dict):
+        sanitized: Dict = {}
+        for key, value in obj.items():
+            key_l = str(key).lower()
+            if key_l in {
+                "password",
+                "token",
+                "refresh_token",
+                "client_secret",
+                "api_key",
+                "secret",
+                "webhook",
+                "webhook_url",
+                "local_root",
+                "auth_dir",
+            }:
+                sanitized[key] = "<redacted>"
+            else:
+                sanitized[key] = _sanitize_warroom_payload(value)
+        return sanitized
+    if isinstance(obj, list):
+        return [_sanitize_warroom_payload(item) for item in obj]
+    if isinstance(obj, str):
+        return _mask_sensitive_text(obj)
+    return obj
 
 # ════════════════════════════════════════════════════════════════════
 # MODELOS PYDANTIC — CONTRATO UNIFICADO
@@ -133,6 +185,10 @@ class PhotosAuthRequest(BaseModel):
     )
 
 
+class CredentialAutopilotRequest(BaseModel):
+    auto_apply: bool = Field(default=True, description="Si true, aplica auto-fixes seguros en .env")
+
+
 class DriveListRequest(BaseModel):
     folder_id: str = Field(..., min_length=3, max_length=256)
     max_results: int = Field(default=50, ge=1, le=1000)
@@ -232,6 +288,19 @@ class GrokShareCodeRequest(BaseModel):
         max_length=4000,
     )
     max_tweets: int = Field(default=5, ge=1, le=12)
+
+
+class FodaCriticalRequest(BaseModel):
+    objetivo: str = Field(
+        default="Evaluar críticamente el estado actual del sistema NEXO y priorizar mejoras de arquitectura, seguridad, UX y operación.",
+        min_length=10,
+        max_length=2000,
+    )
+    contexto_extra: Optional[str] = Field(default=None, max_length=4000)
+    incluir_evolucion: bool = Field(default=True)
+    incluir_alertas: bool = Field(default=True)
+    decisor_final: str = Field(default="claude", pattern="^(claude|grok|gemini|openai)$")
+    modo_ahorro: bool = Field(default=True, description="Si true, usa solo el decisor final para reducir costo")
 
 
 class MobilePackageEmailRequest(BaseModel):
@@ -444,8 +513,8 @@ async def presupuesto():
         raise HTTPException(status_code=500, detail="Error obteniendo presupuesto")
 
 
-@router.get("/drive/recent")
-def drive_recent():
+@router.get("/drive/recent-old")
+def drive_recent_old():
     """Lista los archivos más recientes de Google Drive usando el conector seguro."""
     try:
         # Import local para evitar circular imports
@@ -457,7 +526,7 @@ def drive_recent():
         files = list_recent_files(max_results=10)
         return {"files": files}
     except Exception as e:
-        logger.error(f"Error en /drive/recent: {e}")
+        logger.error(f"Error en /drive/recent-old: {e}")
         return {"error": str(e), "files": []}
 
 
@@ -514,6 +583,193 @@ async def historial_costos():
     except Exception as e:
         logger.error(f"Error obteniendo historial: {e}")
         raise HTTPException(status_code=500, detail="Error obteniendo historial")
+
+
+@router.get("/costs/report")
+async def costs_report(period: str = "today"):
+    """
+    🤑 Reporte unificado de costos operacionales
+    
+    Incluye:
+    - APIs de IA (Gemini, Claude, OpenAI, Grok)
+    - Servicios externos (Drive, Microsoft, X, Discord)
+    - Breakdown por operación
+    - Warnings de costos anormales
+    
+    Args:
+        period: "today", "week", "month", "all"
+    
+    Returns:
+        Reporte detallado con costos en USD
+    """
+    try:
+        tracker = get_cost_tracker()
+        report = tracker.get_cost_report(period=period)
+        return report
+    except Exception as e:
+        logger.error(f"Error generando reporte de costos: {e}")
+        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+
+
+@router.get("/costs/daily-summary")
+async def costs_daily_summary(days: int = 7):
+    """
+    📊 Resumen diario de costos de los últimos N días
+    
+    Args:
+        days: número de días a incluir (default: 7)
+    
+    Returns:
+        Lista de costos diarios
+    """
+    try:
+        tracker = get_cost_tracker()
+        summary = tracker.get_daily_summary(days=days)
+        return {"days": days, "summary": summary}
+    except Exception as e:
+        logger.error(f"Error generando resumen diario: {e}")
+        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+
+
+@router.get("/costs/budget")
+async def costs_budget():
+    """
+    💰 Estado actual del presupuesto diario (Gemini free tier)
+    
+    Returns:
+        Estado de tokens Gemini y límite free tier
+    """
+    try:
+        tracker = get_cost_tracker()
+        status = tracker.get_budget_status()
+        return status
+    except Exception as e:
+        logger.error(f"Error obteniendo estado de presupuesto: {e}")
+        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+
+
+@router.get("/tokens/status")
+async def tokens_status():
+    """Estado de configuración de tokens/API keys (sin exponer secretos)."""
+    try:
+        values = {
+            "NEXO_API_KEY": (os.getenv("NEXO_API_KEY", "") or "").strip(),
+            "GEMINI_API_KEY": (os.getenv("GEMINI_API_KEY", "") or "").strip(),
+            "OPENAI_API_KEY": (os.getenv("OPENAI_API_KEY", "") or "").strip(),
+            "ANTHROPIC_API_KEY": (os.getenv("ANTHROPIC_API_KEY", "") or "").strip(),
+            "XAI_API_KEY": (os.getenv("XAI_API_KEY", "") or "").strip(),
+            "DISCORD_WEBHOOK_URL": (os.getenv("DISCORD_WEBHOOK_URL", "") or "").strip(),
+            "NEXO_ALERT_WEBHOOK": (os.getenv("NEXO_ALERT_WEBHOOK", "") or "").strip(),
+        }
+
+        configured = {k: bool(v) for k, v in values.items()}
+        ai_providers = {
+            "gemini": configured["GEMINI_API_KEY"],
+            "openai": configured["OPENAI_API_KEY"],
+            "anthropic": configured["ANTHROPIC_API_KEY"],
+            "grok": configured["XAI_API_KEY"],
+        }
+        ai_ready_count = sum(1 for ok in ai_providers.values() if ok)
+
+        status = {
+            "auth": {
+                "nexo_api_key": configured["NEXO_API_KEY"],
+                "protected_endpoints_ready": configured["NEXO_API_KEY"],
+            },
+            "ai": {
+                "providers": ai_providers,
+                "ready_count": ai_ready_count,
+                "at_least_one_ready": ai_ready_count > 0,
+                "all_ready": all(ai_providers.values()),
+            },
+            "discord": {
+                "discord_webhook_url": configured["DISCORD_WEBHOOK_URL"],
+                "alert_webhook": configured["NEXO_ALERT_WEBHOOK"],
+                "fully_ready": configured["DISCORD_WEBHOOK_URL"] and configured["NEXO_ALERT_WEBHOOK"],
+            },
+        }
+
+        missing_required = []
+        if not status["auth"]["protected_endpoints_ready"]:
+            missing_required.append("NEXO_API_KEY")
+        if not status["ai"]["at_least_one_ready"]:
+            missing_required.append("GEMINI_API_KEY|OPENAI_API_KEY|ANTHROPIC_API_KEY|XAI_API_KEY")
+        if not configured["DISCORD_WEBHOOK_URL"]:
+            missing_required.append("DISCORD_WEBHOOK_URL")
+
+        return {
+            "ok": True,
+            "complete": len(missing_required) == 0,
+            "missing_required": missing_required,
+            "configured": configured,
+            "status": status,
+            "generated_at": datetime.now(timezone.utc).isoformat(),
+        }
+    except Exception as e:
+        logger.error(f"Error obteniendo estado de tokens: {e}")
+        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+
+
+@router.post("/autopilot/credentials")
+async def credential_autopilot(request: CredentialAutopilotRequest):
+    """Autopiloto de credenciales/APIs: aplica fixes seguros y devuelve solo autorizaciones humanas pendientes."""
+    root = _workspace_root()
+    logs_dir = _logs_dir()
+    logs_dir.mkdir(parents=True, exist_ok=True)
+    output = logs_dir / "credential_api_autopilot_last.json"
+
+    cmd = [
+        sys.executable,
+        str(root / "scripts" / "credential_api_autopilot.py"),
+        "--output",
+        str(output),
+    ]
+    if not request.auto_apply:
+        cmd.append("--dry-run")
+
+    result = _run_local_command(cmd, cwd=root, timeout_seconds=120)
+    payload = _safe_json_read(output)
+
+    if not result.get("ok") and not payload:
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "message": "No se pudo ejecutar autopilot de credenciales",
+                "stderr": _mask_sensitive_text(str(result.get("stderr", ""))),
+                "stdout": _mask_sensitive_text(str(result.get("stdout", ""))),
+            },
+        )
+
+    return {
+        "ok": True,
+        "auto_apply": request.auto_apply,
+        "execution": {
+            "ok": bool(result.get("ok")),
+            "returncode": result.get("returncode"),
+            "started_at": result.get("started_at"),
+            "finished_at": result.get("finished_at"),
+        },
+        "report": _sanitize_warroom_payload(payload),
+        "report_path": str(output),
+    }
+
+
+@router.get("/autopilot/credentials/status")
+async def credential_autopilot_status():
+    """Último estado del autopiloto de credenciales/APIs."""
+    output = _logs_dir() / "credential_api_autopilot_last.json"
+    data = _safe_json_read(output)
+    if not data:
+        return {
+            "ok": False,
+            "message": "Aún no existe reporte. Ejecuta POST /agente/autopilot/credentials",
+            "report_path": str(output),
+        }
+    return {
+        "ok": True,
+        "report": _sanitize_warroom_payload(data),
+        "report_path": str(output),
+    }
 
 
 @router.post("/sync/unificado", response_model=SyncResponse)
@@ -1566,6 +1822,533 @@ def _safe_json_read(path: Path) -> dict:
         return {}
 
 
+_DRIVE_AI_STOPWORDS = {
+    "este", "esta", "estos", "estas", "para", "como", "pero", "porque", "sobre", "entre", "desde",
+    "hasta", "donde", "cuando", "quien", "cual", "cuanto", "tambien", "solo", "mismo", "misma", "muy",
+    "poco", "mucho", "cada", "todo", "toda", "todos", "todas", "algun", "alguna", "algunos", "algunas",
+    "nexo", "soberano", "drive", "google", "document", "docs", "file", "files", "data", "datos",
+}
+
+
+def _parse_drive_dt(value: str) -> Optional[datetime]:
+    if not value:
+        return None
+    try:
+        return datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except Exception:
+        return None
+
+
+def _is_textual_drive_item(item: Dict) -> bool:
+    name = str(item.get("name") or "").lower()
+    mime = str(item.get("mimeType") or "").lower()
+    if mime.startswith("text/"):
+        return True
+    return any(name.endswith(ext) for ext in (".txt", ".md", ".json", ".csv", ".log", ".xml", ".html", ".htm"))
+
+
+def _extract_keywords_counter(text: str) -> Counter:
+    counter: Counter = Counter()
+    for token in re.findall(r"[A-Za-zÁÉÍÓÚáéíóúÑñÜü]{4,}", (text or "").lower()):
+        if token in _DRIVE_AI_STOPWORDS:
+            continue
+        counter[token] += 1
+    return counter
+
+
+def _build_autonomous_briefing(analytics: Dict) -> Dict:
+    charts = analytics.get("charts", {}) or {}
+    workspace = analytics.get("workspace", {}) or {}
+    m365 = analytics.get("microsoft365", {}) or {}
+    ai = analytics.get("ai", {}) or {}
+
+    activity = ((charts.get("drive_activity_7d") or {}).get("values") or [])
+    labels = ((charts.get("drive_activity_7d") or {}).get("labels") or [])
+    topics_labels = ((charts.get("drive_ai_topics") or {}).get("labels") or [])
+    topics_values = ((charts.get("drive_ai_topics") or {}).get("values") or [])
+
+    topic_pairs = []
+    for idx, label in enumerate(topics_labels[:10]):
+        try:
+            topic_pairs.append({"term": str(label), "count": int(topics_values[idx] or 0)})
+        except Exception:
+            topic_pairs.append({"term": str(label), "count": 0})
+
+    trend = "estable"
+    if len(activity) >= 4:
+        recent = sum(int(x or 0) for x in activity[-3:])
+        previous = sum(int(x or 0) for x in activity[-6:-3]) if len(activity) >= 6 else sum(int(x or 0) for x in activity[:-3])
+        if recent > previous:
+            trend = "ascendente"
+        elif recent < previous:
+            trend = "descendente"
+
+    insights = [
+        f"Actividad Drive 7D en tendencia {trend} ({sum(int(x or 0) for x in activity)} eventos totales).",
+        f"Volumen cloud actual: Drive={int(workspace.get('drive_recent', 0) or 0)}, Photos={int(workspace.get('photos_recent', 0) or 0)}, OneDrive={int(m365.get('onedrive_recent', 0) or 0)}.",
+        f"IA operativa: docs={int(ai.get('total_documentos', 0) or 0)} | tokens_hoy={int(ai.get('tokens_hoy', 0) or 0)}.",
+    ]
+
+    if topic_pairs:
+        top = ", ".join([f"{p['term']}({p['count']})" for p in topic_pairs[:5]])
+        insights.append(f"Tópicos emergentes detectados por lectura de Drive: {top}.")
+    else:
+        insights.append("Sin tópicos textuales recientes en Drive; se recomienda subir fuentes .txt/.md/.json/.csv para ampliar inteligencia autónoma.")
+
+    fallback_briefing = " ".join(insights)
+    ai_briefing = None
+    ai_error = None
+
+    try:
+        prompt = (
+            "Genera un briefing ejecutivo autónomo (máx 8 líneas) para operaciones de inteligencia. "
+            "Usa solo los indicadores siguientes y produce: 1) hallazgo clave, 2) riesgo, 3) oportunidad, 4) siguiente acción concreta. "
+            f"Indicadores: {json.dumps({'activity_labels': labels, 'activity_values': activity, 'topics': topic_pairs[:8], 'workspace': workspace, 'm365': m365, 'ai': {'total_documentos': ai.get('total_documentos'), 'tokens_hoy': ai.get('tokens_hoy')}}, ensure_ascii=False)}"
+        )
+        ai_result = get_rag_service().consultar(prompt, categoria="INTEL")
+        ai_briefing = (ai_result or {}).get("respuesta")
+    except Exception as exc:
+        ai_error = str(exc)
+
+    briefing_text = ai_briefing or fallback_briefing
+    return {
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "mode": "rag" if ai_briefing else "rule_based",
+        "briefing": briefing_text,
+        "insights": insights,
+        "trend": trend,
+        "top_topics": topic_pairs[:10],
+        "ai_error": ai_error,
+    }
+
+
+def _build_drive_ai_indicators(drive_items: List[Dict]) -> Dict:
+    now_utc = datetime.now(timezone.utc)
+    labels_dt = [(now_utc - timedelta(days=offset)).date() for offset in range(6, -1, -1)]
+    labels = [day.strftime("%d/%m") for day in labels_dt]
+    activity = {day: 0 for day in labels_dt}
+
+    for item in drive_items:
+        parsed = _parse_drive_dt(str(item.get("modifiedTime") or ""))
+        if not parsed:
+            continue
+        d = parsed.astimezone(timezone.utc).date()
+        if d in activity:
+            activity[d] += 1
+
+    output = {
+        "text_files_read": 0,
+        "text_chars": 0,
+        "top_keywords": [],
+        "activity_7d": {
+            "labels": labels,
+            "values": [activity[d] for d in labels_dt],
+        },
+        "errors": [],
+    }
+
+    textual_candidates = [item for item in drive_items if _is_textual_drive_item(item)]
+    if not textual_candidates:
+        return output
+
+    keyword_counter: Counter = Counter()
+    max_files = 8
+
+    try:
+        import tempfile
+        from services.connectors.google_connector import download_drive_file
+
+        for item in textual_candidates[:max_files]:
+            file_id = str(item.get("id") or "").strip()
+            if not file_id:
+                continue
+
+            suffix = Path(str(item.get("name") or "tmp.txt")).suffix or ".txt"
+            tmp_path: Optional[Path] = None
+            try:
+                with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
+                    tmp_path = Path(tmp.name)
+
+                download_drive_file(file_id, str(tmp_path))
+                raw = tmp_path.read_bytes()
+                decoded = raw.decode("utf-8", errors="ignore")
+                if not decoded.strip():
+                    continue
+
+                output["text_files_read"] += 1
+                output["text_chars"] += len(decoded)
+                keyword_counter.update(_extract_keywords_counter(decoded))
+            except Exception as exc:
+                output["errors"].append(f"{item.get('name') or file_id}: {exc}")
+            finally:
+                if tmp_path and tmp_path.exists():
+                    try:
+                        tmp_path.unlink()
+                    except Exception:
+                        pass
+    except Exception as exc:
+        output["errors"].append(f"No se pudo leer contenido textual de Drive: {exc}")
+
+    output["top_keywords"] = [
+        {"term": term, "count": int(count)}
+        for term, count in keyword_counter.most_common(10)
+    ]
+    return output
+
+
+def _run_local_command(cmd: List[str], cwd: Path, timeout_seconds: int = 1200) -> Dict:
+    started = datetime.now(timezone.utc).isoformat()
+    try:
+        result = subprocess.run(
+            cmd,
+            cwd=str(cwd),
+            capture_output=True,
+            text=True,
+            timeout=max(30, int(timeout_seconds or 1200)),
+            check=False,
+        )
+        return {
+            "ok": result.returncode == 0,
+            "returncode": int(result.returncode),
+            "stdout": _mask_sensitive_text((result.stdout or "")[:5000]),
+            "stderr": _mask_sensitive_text((result.stderr or "")[:5000]),
+            "started_at": started,
+            "finished_at": datetime.now(timezone.utc).isoformat(),
+            "command": cmd,
+        }
+    except subprocess.TimeoutExpired as exc:
+        return {
+            "ok": False,
+            "returncode": None,
+            "stdout": _mask_sensitive_text(str((exc.stdout or "")[:3000])),
+            "stderr": _mask_sensitive_text(str((exc.stderr or "")[:3000])),
+            "error": f"timeout>{timeout_seconds}s",
+            "started_at": started,
+            "finished_at": datetime.now(timezone.utc).isoformat(),
+            "command": cmd,
+        }
+    except Exception as exc:
+        return {
+            "ok": False,
+            "returncode": None,
+            "stdout": "",
+            "stderr": "",
+            "error": str(exc),
+            "started_at": started,
+            "finished_at": datetime.now(timezone.utc).isoformat(),
+            "command": cmd,
+        }
+
+
+def _latest_supervisor_scan_summary() -> Dict:
+    reports_dir = _workspace_root() / "reports" / "supervisor"
+    if not reports_dir.exists():
+        return {}
+    candidates = sorted(
+        reports_dir.glob("scan_*.json"),
+        key=lambda p: p.stat().st_mtime,
+        reverse=True,
+    )
+    if not candidates:
+        return {}
+    latest = candidates[0]
+    payload = _safe_json_read(latest)
+    report = (payload or {}).get("report", {}) or {}
+    return {
+        "path": str(latest),
+        "timestamp": report.get("timestamp"),
+        "files_scanned": int(report.get("files_scanned", 0) or 0),
+        "quality_score": float(report.get("quality_score", 0.0) or 0.0),
+        "total_issues": int(report.get("total_issues", 0) or 0),
+        "critical": int(report.get("critical", 0) or 0),
+        "high": int(report.get("high", 0) or 0),
+        "medium": int(report.get("medium", 0) or 0),
+        "low": int(report.get("low", 0) or 0),
+        "auto_fixed": int(report.get("auto_fixed", 0) or 0),
+    }
+
+
+def _build_evolution_hints(analytics: Dict, scan_summary: Dict, cycle_payload: Dict) -> List[str]:
+    hints: List[str] = []
+    workspace = analytics.get("workspace", {}) or {}
+    ai = analytics.get("ai", {}) or {}
+
+    critical = int(scan_summary.get("critical", 0) or 0)
+    high = int(scan_summary.get("high", 0) or 0)
+    docs = int(ai.get("total_documentos", 0) or 0)
+
+    if critical > 0:
+        hints.append(f"Prioridad máxima: resolver {critical} issues críticos antes de desplegar UI o nuevas automatizaciones.")
+    elif high > 40:
+        hints.append(f"Calidad técnica: bajar issues altos ({high}) por tandas para acelerar evolución estable del sistema.")
+    else:
+        hints.append("Calidad técnica estable: puedes iterar mejoras visuales y de producto con bajo riesgo inmediato.")
+
+    if workspace.get("photos_error"):
+        hints.append("Integración Google Photos con error: corrige OAuth scopes/consent para mejorar inteligencia multimodal.")
+    if workspace.get("drive_error"):
+        hints.append("Drive con error: restaurar sync para mantener la IA aprendiendo de documentos recientes.")
+
+    if docs < 20:
+        hints.append("Programación/IA: ampliar corpus RAG (>20 docs) para respuestas más estratégicas y menos genéricas.")
+    else:
+        hints.append("Programación/IA: habilitar ciclos más frecuentes con objetivos semanales de deuda técnica y UX.")
+
+    fix_ok = bool(((cycle_payload.get("actions") or {}).get("scan_fix") or {}).get("ok"))
+    if fix_ok:
+        hints.append("Auto-fix aplicado: revisa diff y promueve mejoras estables al flujo principal.")
+
+    if not hints:
+        hints.append("Sistema operativo sin hallazgos relevantes: mantener evolución incremental y monitoreo continuo.")
+    return hints[:8]
+
+
+def _provider_flags() -> Dict[str, bool]:
+    return {
+        "anthropic": bool(os.getenv("ANTHROPIC_API_KEY")),
+        "openai": bool(os.getenv("OPENAI_API_KEY")),
+        "gemini": bool(os.getenv("GEMINI_API_KEY")),
+        "grok": bool(os.getenv("XAI_API_KEY")),
+    }
+
+
+def _swot_review_prompt(provider_name: str, objetivo: str, context_payload: Dict) -> str:
+    return (
+        "Eres un revisor técnico crítico senior. Tu trabajo es cuestionar supuestos y detectar riesgos reales.\n"
+        f"Proveedor revisor: {provider_name}.\n"
+        "Responde en español, sin marketing, con enfoque profesional y técnico.\n"
+        "Formato obligatorio:\n"
+        "1) Fortalezas\n"
+        "2) Debilidades\n"
+        "3) Oportunidades\n"
+        "4) Amenazas\n"
+        "5) Riesgos críticos (top 5, con impacto y probabilidad)\n"
+        "6) Recomendaciones priorizadas (top 5, con quick wins y mejoras estructurales)\n"
+        "7) Veredicto (1 párrafo duro y accionable)\n\n"
+        f"OBJETIVO:\n{objetivo}\n\n"
+        f"CONTEXTO TÉCNICO (JSON):\n{json.dumps(context_payload, ensure_ascii=False)}"
+    )
+
+
+def _swot_consensus_prompt_by_grok(objetivo: str, provider_reviews: List[Dict], context_payload: Dict) -> str:
+    return (
+        "Eres Grok actuando como árbitro final de consenso entre múltiples IAs.\n"
+        "Debes decidir el consenso final (no resumir de forma neutral).\n"
+        "Toma postura, prioriza y justifica técnicamente.\n"
+        "Responde en español con formato obligatorio:\n"
+        "A) CONSENSO FINAL (decisión ejecutiva)\n"
+        "B) TOP 7 ACCIONES PRIORIZADAS (impacto, esfuerzo, riesgo)\n"
+        "C) QUÉ ARREGLAR YA (24-48h)\n"
+        "D) QUÉ OPTIMIZAR (7 días)\n"
+        "E) QUÉ PROTEGER/HARDENING (seguridad y resiliencia)\n"
+        "F) RIESGO DE NO HACERLO\n"
+        "G) KPI de validación de éxito\n\n"
+        f"OBJETIVO:\n{objetivo}\n\n"
+        f"REVISIONES MULTI-IA:\n{json.dumps(provider_reviews, ensure_ascii=False)}\n\n"
+        f"CONTEXTO TÉCNICO:\n{json.dumps(context_payload, ensure_ascii=False)}"
+    )
+
+
+def _swot_consensus_prompt(decider_label: str, objetivo: str, provider_reviews: List[Dict], context_payload: Dict) -> str:
+    return (
+        f"Eres {decider_label} actuando como árbitro final de consenso entre múltiples IAs.\n"
+        "Debes decidir el consenso final (no resumir de forma neutral).\n"
+        "Toma postura, prioriza y justifica técnicamente.\n"
+        "Responde en español con formato obligatorio:\n"
+        "A) CONSENSO FINAL (decisión ejecutiva)\n"
+        "B) TOP 7 ACCIONES PRIORIZADAS (impacto, esfuerzo, riesgo)\n"
+        "C) QUÉ ARREGLAR YA (24-48h)\n"
+        "D) QUÉ OPTIMIZAR (7 días)\n"
+        "E) QUÉ PROTEGER/HARDENING (seguridad y resiliencia)\n"
+        "F) RIESGO DE NO HACERLO\n"
+        "G) KPI de validación de éxito\n\n"
+        f"OBJETIVO:\n{objetivo}\n\n"
+        f"REVISIONES MULTI-IA:\n{json.dumps(provider_reviews, ensure_ascii=False)}\n\n"
+        f"CONTEXTO TÉCNICO:\n{json.dumps(context_payload, ensure_ascii=False)}"
+    )
+
+
+def _call_provider_review(provider: str, prompt: str) -> Dict:
+    rag = get_rag_service()
+    started = datetime.now(timezone.utc)
+    try:
+        if provider == "anthropic":
+            content, model = rag._gen_anthropic(prompt)
+        elif provider == "openai":
+            content, model = rag._gen_openai_or_copilot(prompt)
+        elif provider == "gemini":
+            content, model = rag._gen_gemini(prompt)
+        elif provider == "grok":
+            content, model = rag._gen_grok(prompt)
+        else:
+            raise RuntimeError(f"Proveedor no soportado: {provider}")
+
+        return {
+            "provider": provider,
+            "ok": True,
+            "model": model,
+            "content": (content or "").strip(),
+            "duration_ms": int((datetime.now(timezone.utc) - started).total_seconds() * 1000),
+        }
+    except Exception as exc:
+        return {
+            "provider": provider,
+            "ok": False,
+            "error": str(exc),
+            "duration_ms": int((datetime.now(timezone.utc) - started).total_seconds() * 1000),
+        }
+
+
+def _build_foda_corrective_actions(
+    objective: str,
+    context_payload: Dict,
+    provider_reviews: List[Dict],
+    consensus_payload: Dict,
+    settings: Dict,
+) -> Dict:
+    workspace = ((context_payload.get("analytics") or {}).get("workspace") or {})
+    ai_block = ((context_payload.get("analytics") or {}).get("ai") or {})
+    alerts = context_payload.get("alerts") or []
+    evolution_data = context_payload.get("evolution") or {}
+    scan_summary = evolution_data.get("scan_summary") or {}
+
+    high_issues = int(scan_summary.get("high", 0) or 0)
+    medium_issues = int(scan_summary.get("medium", 0) or 0)
+    critical_issues = int(scan_summary.get("critical", 0) or 0)
+
+    actions: List[Dict] = []
+
+    if workspace.get("drive_error"):
+        actions.append(
+            {
+                "id": "drive-auth-recovery",
+                "priority": "P1",
+                "owner": "ProductOps",
+                "title": "Recuperar autorización de Google Drive",
+                "action": "Ejecutar autorización interactiva de Drive y validar lecturas recientes en analytics.",
+                "api_or_command": "POST /agente/drive/authorize",
+                "success_criteria": "analytics.workspace.drive_error vacío y drive_recent > 0",
+                "eta_hours": 2,
+            }
+        )
+
+    if workspace.get("photos_error"):
+        actions.append(
+            {
+                "id": "photos-scope-fix",
+                "priority": "P1",
+                "owner": "ProductOps",
+                "title": "Corregir scopes de Google Photos",
+                "action": "Reautorizar Photos con include_drive_write y validar permisos OAuth/API habilitada.",
+                "api_or_command": "POST /agente/photos/authorize {\"include_drive_write\": true}",
+                "success_criteria": "analytics.workspace.photos_error vacío y photos_recent > 0",
+                "eta_hours": 2,
+            }
+        )
+
+    has_obs_alert = any("obs" in str((a or {}).get("message", "")).lower() for a in alerts)
+    has_discord_alert = any("discord" in str((a or {}).get("message", "")).lower() for a in alerts)
+    if has_obs_alert:
+        actions.append(
+            {
+                "id": "obs-connectivity-fix",
+                "priority": "P1",
+                "owner": "SRE",
+                "title": "Restablecer conectividad OBS",
+                "action": "Levantar OBS WebSocket y verificar conexión desde War Room.",
+                "api_or_command": "GET /warroom/ai-control",
+                "success_criteria": "stream.obs_connected = true",
+                "eta_hours": 1,
+            }
+        )
+
+    if has_discord_alert:
+        actions.append(
+            {
+                "id": "discord-restore",
+                "priority": "P1",
+                "owner": "SRE",
+                "title": "Recuperar enlace con Discord",
+                "action": "Revalidar webhook/bot token y confirmar estado conectado en control de warroom.",
+                "api_or_command": "GET /warroom/ai-control",
+                "success_criteria": "stream.discord_connected = true",
+                "eta_hours": 1,
+            }
+        )
+
+    if critical_issues > 0 or high_issues > 40:
+        actions.append(
+            {
+                "id": "code-quality-burst",
+                "priority": "P1" if critical_issues > 0 else "P2",
+                "owner": "Backend",
+                "title": "Reducir deuda técnica alta antes de nuevas features",
+                "action": "Ejecutar escaneo y reparación en tandas, con validación por tests al final de cada tanda.",
+                "api_or_command": ".\\.venv\\Scripts\\python.exe nexo_autosupervisor.py --scan --fix",
+                "success_criteria": f"critical=0 y high < {max(25, high_issues - 15)}",
+                "eta_hours": 8,
+            }
+        )
+    elif medium_issues > 60:
+        actions.append(
+            {
+                "id": "medium-debt-trim",
+                "priority": "P3",
+                "owner": "Backend",
+                "title": "Reducir issues medios en lote controlado",
+                "action": "Ejecutar escaneo periódico y consolidar fixes seguros.",
+                "api_or_command": ".\\.venv\\Scripts\\python.exe nexo_autosupervisor.py --scan",
+                "success_criteria": "medium disminuye al menos 20%",
+                "eta_hours": 12,
+            }
+        )
+
+    ai_budget = (ai_block.get("presupuesto") or {}) if isinstance(ai_block, dict) else {}
+    can_operate = ai_budget.get("puede_operar")
+    if can_operate is False:
+        actions.append(
+            {
+                "id": "budget-protection",
+                "priority": "P1",
+                "owner": "AI-Ops",
+                "title": "Restaurar presupuesto operativo IA",
+                "action": "Forzar modo ahorro en FODA y limitar revisores a 1-2 proveedores activos.",
+                "api_or_command": "POST /api/ai/foda-critical {\"decisor_final\":\"claude\",\"modo_ahorro\":true}",
+                "success_criteria": "presupuesto.puede_operar = true",
+                "eta_hours": 1,
+            }
+        )
+
+    if not actions:
+        actions.append(
+            {
+                "id": "stability-guardrail",
+                "priority": "P2",
+                "owner": "SRE",
+                "title": "Mantener estabilidad operativa",
+                "action": "Ejecutar verificación de salud/analytics/foda-status y sostener modo ahorro por defecto.",
+                "api_or_command": "GET /health, GET /analytics, GET /api/ai/foda-status",
+                "success_criteria": "todos los checks en ok=true por 24h",
+                "eta_hours": 24,
+            }
+        )
+
+    reviewers_ok = [r.get("provider") for r in provider_reviews if r.get("ok")]
+    return {
+        "required": True,
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "objective": objective,
+        "settings": {
+            "decisor_final": settings.get("decisor_final"),
+            "modo_ahorro": bool(settings.get("modo_ahorro", True)),
+        },
+        "consensus_ok": bool(consensus_payload.get("ok")),
+        "reviewers_ok": reviewers_ok,
+        "count": len(actions),
+        "items": actions,
+    }
+
+
 def _extractor_paths() -> Dict[str, Path]:
     logs = _logs_dir()
     return {
@@ -1974,12 +2757,12 @@ async def control_center_analytics():
         "ai": {"ok": False},
         "charts": {},
     }
+    drive_items: List[Dict] = []
+    photo_items: List[Dict] = []
 
     try:
         from services.connectors.google_connector import list_recent_files_detailed, list_recent_photos
 
-        drive_items = []
-        photo_items = []
         drive_error = None
         photos_error = None
 
@@ -2062,8 +2845,12 @@ async def control_center_analytics():
     except Exception as exc:
         analytics["ai"] = {"ok": False, "error": str(exc)}
 
+    drive_ai_indicators = _build_drive_ai_indicators(drive_items)
+    analytics["ai"]["drive_indicators"] = drive_ai_indicators
+
     sync_drive = _safe_json_read(_logs_dir() / "sync_drive_last.json").get("totals", {})
     sync_unified = _safe_json_read(_logs_dir() / "sync_unified_last.json").get("summary", {})
+    top_keywords = drive_ai_indicators.get("top_keywords", [])
     analytics["charts"] = {
         "drive_sync": {
             "labels": ["analyzed", "classified", "skipped", "errors"],
@@ -2091,8 +2878,541 @@ async def control_center_analytics():
                 int(((sync_unified.get("youtube") or {}).get("processed", 0) or 0)),
             ],
         },
+        "drive_ai_topics": {
+            "labels": [entry.get("term", "-") for entry in top_keywords],
+            "values": [int(entry.get("count", 0) or 0) for entry in top_keywords],
+        },
+        "drive_activity_7d": drive_ai_indicators.get("activity_7d", {"labels": [], "values": []}),
     }
     return analytics
+
+
+@router.post("/intelligence/autonomous-cycle")
+async def intelligence_autonomous_cycle():
+    analytics = await control_center_analytics()
+    briefing = _build_autonomous_briefing(analytics)
+
+    payload = {
+        "ok": True,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "analytics": analytics,
+        "briefing": briefing,
+    }
+
+    output_path = _logs_dir() / "autonomous_intelligence_last.json"
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+
+    return payload
+
+
+@router.get("/intelligence/autonomous-status")
+async def intelligence_autonomous_status():
+    output_path = _logs_dir() / "autonomous_intelligence_last.json"
+    if not output_path.exists():
+        return {
+            "ok": True,
+            "has_data": False,
+            "message": "Aún no hay ciclo autónomo generado. Ejecuta /agente/intelligence/autonomous-cycle",
+            "data": {},
+        }
+    return {
+        "ok": True,
+        "has_data": True,
+        "data": _safe_json_read(output_path),
+        "path": str(output_path),
+    }
+
+
+@router.post("/intelligence/evolution-cycle")
+async def intelligence_evolution_cycle(apply_code_fix: bool = True):
+    started_at = datetime.now(timezone.utc)
+    root = _workspace_root()
+    logs_dir = _logs_dir()
+    logs_dir.mkdir(parents=True, exist_ok=True)
+
+    analytics = await control_center_analytics()
+    autonomous = await intelligence_autonomous_cycle()
+
+    autosupervisor_script = root / "nexo_autosupervisor.py"
+    scan_action = {
+        "ok": False,
+        "error": f"No existe {autosupervisor_script}",
+        "command": [sys.executable, str(autosupervisor_script), "--scan"],
+    }
+    fix_action: Dict = {
+        "ok": False,
+        "skipped": True,
+        "reason": "apply_code_fix=false",
+        "command": [sys.executable, str(autosupervisor_script), "--scan", "--fix"],
+    }
+
+    if autosupervisor_script.exists():
+        scan_action = _run_local_command(
+            [sys.executable, str(autosupervisor_script), "--scan"],
+            cwd=root,
+            timeout_seconds=1200,
+        )
+        if apply_code_fix:
+            fix_action = _run_local_command(
+                [sys.executable, str(autosupervisor_script), "--scan", "--fix"],
+                cwd=root,
+                timeout_seconds=1500,
+            )
+
+    scan_summary = _latest_supervisor_scan_summary()
+    cycle_payload = {
+        "ok": bool(scan_action.get("ok")) and (bool(fix_action.get("ok")) if apply_code_fix else True),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "duration_seconds": int((datetime.now(timezone.utc) - started_at).total_seconds()),
+        "mode": {
+            "apply_code_fix": bool(apply_code_fix),
+        },
+        "actions": {
+            "autonomous_intelligence": {
+                "ok": bool((autonomous or {}).get("ok")),
+                "path": str(logs_dir / "autonomous_intelligence_last.json"),
+            },
+            "scan": scan_action,
+            "scan_fix": fix_action,
+        },
+        "analytics_snapshot": {
+            "workspace": analytics.get("workspace", {}),
+            "microsoft365": analytics.get("microsoft365", {}),
+            "ai": analytics.get("ai", {}),
+        },
+        "scan_summary": scan_summary,
+    }
+
+    hints = _build_evolution_hints(analytics, scan_summary, cycle_payload)
+    cycle_payload["hints"] = hints
+
+    last_path = logs_dir / "ai_evolution_last.json"
+    history_path = logs_dir / "ai_evolution_history.jsonl"
+    last_path.write_text(json.dumps(cycle_payload, ensure_ascii=False, indent=2), encoding="utf-8")
+    with history_path.open("a", encoding="utf-8") as hf:
+        hf.write(json.dumps(cycle_payload, ensure_ascii=False) + "\n")
+
+    return cycle_payload
+
+
+@router.get("/intelligence/evolution-status")
+async def intelligence_evolution_status():
+    last_path = _logs_dir() / "ai_evolution_last.json"
+    if not last_path.exists():
+        return {
+            "ok": True,
+            "has_data": False,
+            "message": "Aún no hay ciclo de evolución generado. Ejecuta /agente/intelligence/evolution-cycle",
+            "data": {},
+        }
+    return {
+        "ok": True,
+        "has_data": True,
+        "data": _safe_json_read(last_path),
+        "path": str(last_path),
+    }
+
+
+@router.post("/intelligence/foda-critico")
+async def intelligence_foda_critico(request: FodaCriticalRequest):
+    started = datetime.now(timezone.utc)
+    logs_dir = _logs_dir()
+    logs_dir.mkdir(parents=True, exist_ok=True)
+
+    analytics = await control_center_analytics()
+    evolution = await intelligence_evolution_status() if request.incluir_evolucion else {"ok": True, "has_data": False, "data": {}}
+    alerts = await agente_alerts(limit=12) if request.incluir_alertas else {"ok": True, "items": []}
+
+    context_payload = {
+        "analytics": {
+            "workspace": analytics.get("workspace", {}),
+            "microsoft365": analytics.get("microsoft365", {}),
+            "ai": analytics.get("ai", {}),
+            "charts": analytics.get("charts", {}),
+        },
+        "evolution": (evolution or {}).get("data", {}),
+        "alerts": (alerts or {}).get("items", []),
+        "extra": request.contexto_extra,
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+    }
+
+    flags = _provider_flags()
+    provider_from_decider = {
+        "claude": "anthropic",
+        "grok": "grok",
+        "gemini": "gemini",
+        "openai": "openai",
+    }
+    final_decider = (request.decisor_final or "claude").strip().lower()
+    final_provider = provider_from_decider.get(final_decider, "anthropic")
+
+    review_order = ["anthropic", "openai", "gemini", "grok"]
+    if request.modo_ahorro:
+        review_order = [final_provider]
+
+    provider_reviews: List[Dict] = []
+    for provider in review_order:
+        if not flags.get(provider):
+            provider_reviews.append({
+                "provider": provider,
+                "ok": False,
+                "error": "API key no configurada",
+                "skipped": True,
+            })
+            continue
+        prompt = _swot_review_prompt(provider, request.objetivo, context_payload)
+        provider_reviews.append(_call_provider_review(provider, prompt))
+
+    consensus_result_payload: Dict = {
+        "decider": final_decider,
+        "ok": False,
+        "content": "",
+        "error": f"{final_decider} no disponible",
+    }
+
+    if flags.get(final_provider):
+        consensus_prompt = _swot_consensus_prompt(final_decider.capitalize(), request.objetivo, provider_reviews, context_payload)
+        consensus_result = _call_provider_review(final_provider, consensus_prompt)
+        consensus_result_payload = {
+            "decider": final_decider,
+            "ok": bool(consensus_result.get("ok")),
+            "model": consensus_result.get("model"),
+            "content": consensus_result.get("content", ""),
+            "error": consensus_result.get("error"),
+            "duration_ms": consensus_result.get("duration_ms"),
+        }
+    else:
+        first_ok = next((r for r in provider_reviews if r.get("ok")), None)
+        if first_ok:
+            consensus_result_payload = {
+                "decider": "fallback_non_decider",
+                "ok": True,
+                "model": first_ok.get("model"),
+                "content": (
+                    f"[Consenso provisional: {final_decider} no disponible; se usa fallback temporal.]\n\n"
+                    + str(first_ok.get("content") or "")
+                ),
+                "error": f"{final_decider} no disponible/configurado",
+            }
+
+    payload = {
+        "ok": True,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "duration_seconds": int((datetime.now(timezone.utc) - started).total_seconds()),
+        "objective": request.objetivo,
+        "settings": {
+            "decisor_final": final_decider,
+            "modo_ahorro": bool(request.modo_ahorro),
+        },
+        "providers": flags,
+        "reviews": provider_reviews,
+        "consensus": consensus_result_payload,
+        "accion_correctiva": _build_foda_corrective_actions(
+            objective=request.objetivo,
+            context_payload=context_payload,
+            provider_reviews=provider_reviews,
+            consensus_payload=consensus_result_payload,
+            settings={
+                "decisor_final": final_decider,
+                "modo_ahorro": bool(request.modo_ahorro),
+            },
+        ),
+        "context_snapshot": {
+            "workspace": context_payload["analytics"].get("workspace", {}),
+            "microsoft365": context_payload["analytics"].get("microsoft365", {}),
+            "ai": context_payload["analytics"].get("ai", {}),
+            "alerts_count": len(context_payload.get("alerts") or []),
+            "has_evolution": bool((evolution or {}).get("has_data")),
+        },
+    }
+
+    last_path = logs_dir / "ai_foda_critico_last.json"
+    history_path = logs_dir / "ai_foda_critico_history.jsonl"
+    last_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+    with history_path.open("a", encoding="utf-8") as hf:
+        hf.write(json.dumps(payload, ensure_ascii=False) + "\n")
+
+    return payload
+
+
+@router.get("/intelligence/foda-status")
+async def intelligence_foda_status():
+    last_path = _logs_dir() / "ai_foda_critico_last.json"
+    if not last_path.exists():
+        return {
+            "ok": True,
+            "has_data": False,
+            "message": "Aún no hay informe FODA crítico. Ejecuta /agente/intelligence/foda-critico",
+            "data": {},
+        }
+    data = _safe_json_read(last_path)
+    if isinstance(data, dict) and not data.get("accion_correctiva"):
+        context_payload = {
+            "analytics": {
+                "workspace": (data.get("context_snapshot") or {}).get("workspace", {}),
+                "microsoft365": (data.get("context_snapshot") or {}).get("microsoft365", {}),
+                "ai": (data.get("context_snapshot") or {}).get("ai", {}),
+            },
+            "alerts": [],
+            "evolution": {},
+        }
+        data["accion_correctiva"] = _build_foda_corrective_actions(
+            objective=str(data.get("objective") or "FODA crítico NEXO"),
+            context_payload=context_payload,
+            provider_reviews=(data.get("reviews") or []),
+            consensus_payload=(data.get("consensus") or {}),
+            settings=(data.get("settings") or {}),
+        )
+
+    return {
+        "ok": True,
+        "has_data": True,
+        "data": data,
+        "path": str(last_path),
+    }
+
+
+@router.get("/alerts")
+async def agente_alerts(limit: int = 10):
+    limit = max(1, min(int(limit or 10), 50))
+    now_iso = datetime.now(timezone.utc).isoformat()
+    alerts: List[Dict] = []
+
+    sync_totals = (_safe_json_read(_logs_dir() / "sync_drive_last.json") or {}).get("totals", {}) or {}
+    sync_errors = int(sync_totals.get("errors", 0) or 0)
+    if sync_errors > 0:
+        alerts.append({
+            "type": "sync",
+            "level": "high" if sync_errors >= 3 else "medium",
+            "message": f"Errores en sincronización Drive: {sync_errors}",
+            "time": now_iso,
+        })
+
+    autonomous = _safe_json_read(_logs_dir() / "autonomous_intelligence_last.json") or {}
+    briefing = (((autonomous.get("briefing") or {}).get("briefing") or "") if isinstance(autonomous, dict) else "").strip()
+    if briefing:
+        alerts.append({
+            "type": "intelligence",
+            "level": "medium",
+            "message": briefing[:180] + ("..." if len(briefing) > 180 else ""),
+            "time": str((autonomous.get("timestamp") or now_iso)),
+        })
+
+    analytics = await control_center_analytics()
+    workspace = analytics.get("workspace", {}) or {}
+    if workspace.get("drive_error"):
+        alerts.append({
+            "type": "drive",
+            "level": "high",
+            "message": f"Drive error: {workspace.get('drive_error')}",
+            "time": now_iso,
+        })
+    if workspace.get("photos_error"):
+        alerts.append({
+            "type": "photos",
+            "level": "medium",
+            "message": f"Photos error: {workspace.get('photos_error')}",
+            "time": now_iso,
+        })
+
+    if not alerts:
+        alerts.append({
+            "type": "system",
+            "level": "low",
+            "message": "Sin alertas críticas activas. Sistema estable.",
+            "time": now_iso,
+        })
+
+    return {
+        "ok": True,
+        "count": len(alerts),
+        "items": alerts[:limit],
+    }
+
+
+@router.get("/warroom/ai-control")
+async def warroom_ai_control(include_autonomous_cycle: bool = False):
+    privacy_mode = _is_truthy_env("NEXO_WARROOM_PRIVACY_MODE", "true")
+    now_iso = datetime.now(timezone.utc).isoformat()
+    analytics = await control_center_analytics()
+    alerts_payload = await agente_alerts(limit=8)
+
+    stream_snapshot = {
+        "ok": False,
+        "obs_connected": False,
+        "discord_connected": False,
+        "stream_active": False,
+        "blockers": ["Stream state unavailable"],
+    }
+
+    try:
+        from NEXO_CORE import config as core_config
+        from NEXO_CORE.core.state_manager import state_manager
+
+        s = state_manager.snapshot()
+        blockers: List[str] = []
+        if not core_config.OBS_ENABLED:
+            blockers.append("OBS_ENABLED=false")
+        elif not s.get("obs_connected"):
+            blockers.append("OBS desconectado")
+
+        if not core_config.DISCORD_ENABLED:
+            blockers.append("DISCORD_ENABLED=false")
+        elif not core_config.DISCORD_WEBHOOK_URL:
+            blockers.append("DISCORD_WEBHOOK_URL vacío")
+        elif not s.get("discord_connected"):
+            blockers.append("Discord desconectado")
+
+        stream_snapshot = {
+            "ok": len(blockers) == 0,
+            "obs_connected": bool(s.get("obs_connected")),
+            "discord_connected": bool(s.get("discord_connected")),
+            "stream_active": bool(s.get("stream_active")),
+            "current_scene": s.get("current_scene"),
+            "blockers": blockers,
+            "last_error": s.get("last_error"),
+        }
+    except Exception as exc:
+        stream_snapshot["blockers"] = [f"No se pudo leer estado stream: {exc}"]
+
+    autonomous_status = await intelligence_autonomous_status()
+    evolution_status = await intelligence_evolution_status()
+    if include_autonomous_cycle and not autonomous_status.get("has_data"):
+        try:
+            _ = await intelligence_autonomous_cycle()
+            autonomous_status = await intelligence_autonomous_status()
+        except Exception:
+            pass
+
+    workspace = analytics.get("workspace", {}) or {}
+    m365 = analytics.get("microsoft365", {}) or {}
+    ai = analytics.get("ai", {}) or {}
+    charts = analytics.get("charts", {}) or {}
+
+    drive_sync_values = (charts.get("drive_sync") or {}).get("values") or [0, 0, 0, 0]
+    analyzed = int(drive_sync_values[0] or 0) if len(drive_sync_values) > 0 else 0
+    classified = int(drive_sync_values[1] or 0) if len(drive_sync_values) > 1 else 0
+    sync_errors = int(drive_sync_values[3] or 0) if len(drive_sync_values) > 3 else 0
+
+    guides: List[str] = []
+    guides.append("Prioriza ejecutar SYNC si hay documentos pendientes y errores en cero.")
+    if sync_errors > 0:
+        guides.append(f"Detectados {sync_errors} errores de sync: revisa credenciales Drive/Photos y reintenta con backoff.")
+    if not stream_snapshot.get("ok"):
+        guides.append("Stream no listo: corrige blockers de OBS/Discord antes de operar transmisión.")
+    if not workspace.get("ok"):
+        guides.append("Workspace sin señal: valida tokens de Google y permisos de Drive/Photos.")
+    if not m365.get("ok"):
+        guides.append("OneDrive sin datos recientes: verificar Graph token o fallback local_onedrive.")
+    if int(ai.get("total_documentos", 0) or 0) == 0:
+        guides.append("Sin corpus RAG: ingesta documentos críticos para mejorar respuestas de IA.")
+
+    if len(guides) < 4:
+        guides.append("Sistema estable: mantén polling inteligente y ejecuta revisión de integridad cada 15 minutos.")
+
+    code_improvements = [
+        {
+            "priority": "high",
+            "title": "Escaneo automático de código",
+            "command": ".\\.venv\\Scripts\\python.exe nexo_autosupervisor.py --scan",
+            "reason": "Detecta regressions y deuda técnica antes de producción.",
+        },
+        {
+            "priority": "high",
+            "title": "Auto-reparación guiada",
+            "command": ".\\.venv\\Scripts\\python.exe nexo_autosupervisor.py --scan --fix",
+            "reason": "Corrige issues repetitivos de estilo/estructura en lote.",
+        },
+        {
+            "priority": "medium",
+            "title": "Sincronización unificada completa",
+            "command": ".\\.venv\\Scripts\\python.exe scripts\\run_unified_sync_full.py",
+            "reason": "Refresca datos reales para evitar métricas vacías en War Room.",
+        },
+    ]
+
+    summary = {
+        "drive_recent": int(workspace.get("drive_recent", 0) or 0),
+        "photos_recent": int(workspace.get("photos_recent", 0) or 0),
+        "onedrive_recent": int(m365.get("onedrive_recent", 0) or 0),
+        "rag_docs": int(ai.get("total_documentos", 0) or 0),
+        "sync_analyzed": analyzed,
+        "sync_classified": classified,
+        "sync_errors": sync_errors,
+        "alerts": int((alerts_payload or {}).get("count", 0) or 0),
+    }
+
+    stream_out = stream_snapshot
+    analytics_out = analytics
+    alerts_out = alerts_payload
+    if privacy_mode:
+        stream_out = _sanitize_warroom_payload(stream_snapshot)
+        analytics_out = _sanitize_warroom_payload(analytics)
+        alerts_out = _sanitize_warroom_payload(alerts_payload)
+
+    return {
+        "ok": True,
+        "timestamp": now_iso,
+        "privacy": {"enabled": privacy_mode},
+        "data": {
+            "summary": summary,
+            "stream": stream_out,
+            "alerts": alerts_out,
+            "analytics": analytics_out,
+            "autonomous": autonomous_status,
+            "evolution": evolution_status,
+        },
+        "guides": guides,
+        "code_improvements": code_improvements,
+    }
+
+
+@router.post("/warroom/apply-code-improvements")
+async def warroom_apply_code_improvements():
+    root = _workspace_root()
+    script_path = root / "nexo_autosupervisor.py"
+    if not script_path.exists():
+        raise HTTPException(status_code=404, detail=f"No existe script: {script_path}")
+
+    logs_dir = _logs_dir()
+    logs_dir.mkdir(parents=True, exist_ok=True)
+    run_log = logs_dir / "warroom_ai_code_improve.log"
+    status_path = logs_dir / "warroom_ai_code_improve_status.json"
+
+    cmd = [sys.executable, str(script_path), "--scan", "--fix"]
+
+    try:
+        with run_log.open("a", encoding="utf-8") as lf:
+            lf.write(f"\n[{datetime.now(timezone.utc).isoformat()}] START {' '.join(cmd)}\n")
+            proc = subprocess.Popen(
+                cmd,
+                cwd=str(root),
+                stdout=lf,
+                stderr=lf,
+                shell=False,
+            )
+        status_payload = {
+            "ok": True,
+            "running": True,
+            "pid": proc.pid,
+            "started_at": datetime.now(timezone.utc).isoformat(),
+            "command": cmd,
+            "log": str(run_log),
+        }
+        status_path.write_text(json.dumps(status_payload, ensure_ascii=False, indent=2), encoding="utf-8")
+        return status_payload
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"No se pudo iniciar mejora automática: {exc}")
+
+
+@router.get("/warroom/code-improvements-status")
+async def warroom_code_improvements_status():
+    status_path = _logs_dir() / "warroom_ai_code_improve_status.json"
+    payload = _safe_json_read(status_path)
+    if not payload:
+        return {"ok": True, "running": False, "message": "Sin ejecuciones registradas"}
+    return {"ok": True, **payload}
 
 
 @router.get("/control-center/extractor-status")

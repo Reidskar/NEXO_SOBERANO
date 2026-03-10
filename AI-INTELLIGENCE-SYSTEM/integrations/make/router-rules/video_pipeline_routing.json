@@ -1,0 +1,50 @@
+{
+  "router": "video_pipeline_routing",
+  "default_mode": "fast",
+  "policy": {
+    "cost_optimized": true,
+    "final_decider": "claude",
+    "fallback": "gemini"
+  },
+  "rules": [
+    {
+      "name": "mode_fast",
+      "when": "{{mode}} = fast",
+      "actions": [
+        "run_transcript_extraction",
+        "run_minimal_system_analysis",
+        "save_core_artifacts"
+      ]
+    },
+    {
+      "name": "mode_standard",
+      "when": "{{mode}} = standard",
+      "actions": [
+        "run_full_analysis",
+        "build_architecture_and_workflow",
+        "generate_sql_and_prompts",
+        "save_all_artifacts"
+      ]
+    },
+    {
+      "name": "mode_deep",
+      "when": "{{mode}} = deep",
+      "actions": [
+        "require_manual_approval",
+        "run_full_analysis_with_risk_matrix",
+        "generate_alternatives",
+        "run_deduplication",
+        "save_all_artifacts_plus_delta"
+      ]
+    },
+    {
+      "name": "human_review_gate",
+      "when": "{{critical_confidence}} < 0.7",
+      "actions": [
+        "set_needs_human_review_true",
+        "notify_discord_ops",
+        "pause_publication"
+      ]
+    }
+  ]
+}

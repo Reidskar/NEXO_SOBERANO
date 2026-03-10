@@ -5,11 +5,21 @@ Ejecuta esta orden para arrancar el sistema completo.
 """
 import os
 import sys
+import logging
 
 # Asegurar que podemos importar desde la raíz
 ROOT = os.path.abspath(os.path.dirname(__file__))
 if ROOT not in sys.path:
     sys.path.insert(0, ROOT)
+
+# Configure logging
+log = logging.getLogger(__name__)
+log.setLevel(logging.INFO)
+handler = logging.StreamHandler()
+handler.setLevel(logging.INFO)
+formatter = logging.Formatter('%(message)s')
+handler.setFormatter(formatter)
+log.addHandler(handler)
 
 def check_requirements():
     """Verify all key files exist or are in acceptable state."""

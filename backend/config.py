@@ -41,25 +41,37 @@ APP_TITLE = "Nexo Soberano API"
 APP_VERSION = "2.0.0"
 APP_DESCRIPTION = "Plataforma de inteligencia híbrida RAG - Backend unificado"
 
-HOST = os.getenv("HOST", "0.0.0.0")
-PORT = int(os.getenv("PORT", 8000))
+HOST = os.getenv("NEXO_HOST", os.getenv("HOST", "0.0.0.0"))
+PORT = int(os.getenv("NEXO_PORT", os.getenv("PORT", 8000)))
 
-# CORS
-CORS_ORIGINS = [
+# CORS — lee orígenes extra desde .env (separados por coma)
+_extra_origins = [
+    o.strip() for o in os.getenv("NEXO_CORS_ORIGINS", "").split(",") if o.strip()
+]
+CORS_ORIGINS = list(dict.fromkeys([
     "http://localhost:3000",
     "http://localhost:5173",
     "http://127.0.0.1:3000",
     "http://127.0.0.1:5173",
     "http://localhost:8000",
-]
+] + _extra_origins))
 
 # ════════════════════════════════════════════════════════════════════
 # GEMINI / LLM
 # ════════════════════════════════════════════════════════════════════
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
-MODELO_FLASH = "gemini-1.5-flash"
-MODELO_PRO = "gemini-1.5-pro"
+MODELO_FLASH = os.getenv("GEMINI_MODEL_FLASH", "gemini-2.5-flash-lite")
+MODELO_PRO = os.getenv("GEMINI_MODEL_PRO", "gemini-2.5-pro")
+ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
+CLAUDE_MODEL = os.getenv("CLAUDE_MODEL", "claude-3-5-sonnet-20241022")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
+OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4.1-mini")
+OPENAI_BASE_URL = os.getenv("OPENAI_BASE_URL", "").strip()
+XAI_API_KEY = os.getenv("XAI_API_KEY", "")
+XAI_API_URL = os.getenv("XAI_API_URL", "https://api.x.ai/v1/chat/completions")
+XAI_MODEL = os.getenv("XAI_MODEL", "grok-beta")
+LLM_PROVIDER = os.getenv("NEXO_LLM_PROVIDER", "auto").strip().lower()
 
 # ════════════════════════════════════════════════════════════════════
 # EMBEDDINGS
@@ -97,7 +109,7 @@ EXTENSION_SOPORTADAS = {'.pdf', '.txt', '.md', '.docx', '.csv', '.jpg', '.jpeg',
 # LOGGING
 # ════════════════════════════════════════════════════════════════════
 
-LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
+LOG_LEVEL = os.getenv("NEXO_LOG_LEVEL", os.getenv("LOG_LEVEL", "INFO"))
 LOG_DIR = PROJECT_DIR / "logs"
 LOG_DIR.mkdir(exist_ok=True)
 

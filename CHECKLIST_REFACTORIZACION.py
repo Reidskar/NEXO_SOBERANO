@@ -3,6 +3,10 @@
 📋 CHECKLIST DE VERIFICACIÓN — Backend Unificado
 """
 
+import logging
+
+log = logging.getLogger(__name__)
+
 checklist = """
 ╔══════════════════════════════════════════════════════════════════════════════╗
 ║                 ✅ CHECKLIST DE REFACTORIZACIÓN                             ║

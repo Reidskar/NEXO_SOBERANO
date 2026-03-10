@@ -1,0 +1,37 @@
+{
+  "profile": "nexo_low_cost_default",
+  "description": "Perfil económico y eficaz para análisis de videos e integración de conocimiento en NEXO.",
+  "ai_policy": {
+    "final_decider": "claude",
+    "modo_ahorro": true,
+    "primary_provider": "anthropic",
+    "fallback_provider": "gemini",
+    "disabled_providers": [
+      "openai",
+      "grok"
+    ]
+  },
+  "execution_policy": {
+    "default_mode": "fast",
+    "allow_standard": true,
+    "allow_deep": false,
+    "deep_requires_manual_approval": true,
+    "max_parallel_runs": 2
+  },
+  "quality_policy": {
+    "confidence_threshold": 0.7,
+    "force_human_review_below_threshold": true,
+    "required_sections": [
+      "A",
+      "B",
+      "C",
+      "D",
+      "E",
+      "F",
+      "G",
+      "H",
+      "I",
+      "J"
+    ]
+  }
+}

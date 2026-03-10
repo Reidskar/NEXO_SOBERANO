@@ -7,8 +7,13 @@ Genera un reporte detallado del estado arquitectónico
 import os
 import json
 import sys
+import logging
 from pathlib import Path
 from datetime import datetime
+
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='%(message)s')
+log = logging.getLogger(__name__)
 
 ROOT = Path(__file__).parent
 

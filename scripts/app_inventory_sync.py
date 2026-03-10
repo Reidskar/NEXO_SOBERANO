@@ -179,8 +179,8 @@ def main() -> int:
 
     md_path.write_text("\n".join(md_lines), encoding="utf-8")
 
-    print(f"✅ Inventario generado: {json_path}")
-    print(f"✅ Contexto IA actualizado: {md_path}")
+    log.info(f"✅ Inventario generado: {json_path}")
+    log.info(f"✅ Contexto IA actualizado: {md_path}")
     print(json.dumps({
         "phone_connected": bool(serial),
         "phone_apps": len(android_packages),

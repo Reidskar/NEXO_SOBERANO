@@ -7,6 +7,7 @@ import sqlite3
 import time
 import json
 import logging
+import requests
 from datetime import datetime
 from typing import Optional, List, Dict
 from pathlib import Path
@@ -16,6 +17,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from backend import config
 from backend.services.cost_manager import get_cost_manager
+from backend.services.unified_cost_tracker import get_cost_tracker
 
 logger = logging.getLogger(__name__)
 
@@ -89,8 +91,9 @@ def generar_embedding(texto: str) -> Optional[List[float]]:
 
     if model != "gemini":
         try:
-            emb = model.encode(texto[:2000], normalize_embeddings=True)
-            return emb.tolist()
+            import numpy as np
+            emb = model.encode(texto[:2000])
+            return np.asarray(emb).tolist()
         except Exception as e:
             logger.warning(f"Error en embedding local: {e}, intentando Gemini...")
 
@@ -101,12 +104,11 @@ def generar_embedding(texto: str) -> Optional[List[float]]:
     try:
         import google.generativeai as genai
         genai.configure(api_key=config.GEMINI_API_KEY)
-        r = genai.embed_content(
-            model=config.EMBED_GEMINI,
-            content=texto[:2048],
-            task_type="retrieval_document"
+        result = genai.embed_content(
+            model="models/embedding-001",
+            content=texto[:2048]
         )
-        return r.get('embedding')
+        return result['embedding']
     except Exception as e:
         logger.error(f"Error en embedding Gemini: {e}")
         return None
@@ -129,10 +131,8 @@ def get_coleccion():
             cliente = chromadb.PersistentClient(path=str(config.CHROMA_DIR))
 
             try:
-                ef = SentenceTransformerEmbeddingFunction(model_name=config.EMBED_LOCAL)
                 _coleccion = cliente.get_or_create_collection(
                     name="inteligencia_geopolitica",
-                    embedding_function=ef,
                     metadata={"hnsw:space": "cosine"}
                 )
             except Exception:
@@ -204,7 +204,9 @@ class RAGService:
 
         # Buscar en ChromaDB
         try:
-            where = {"categoria": categoria} if categoria else None
+            where = None
+            if categoria:
+                where = {"categoria": {"$eq": categoria}}
             n = min(config.TOP_K, col.count())
             res = col.query(
                 query_embeddings=[emb_q],
@@ -213,9 +215,9 @@ class RAGService:
                 include=["documents", "metadatas", "distances"]
             )
 
-            textos = res["documents"][0] if res["documents"] else []
-            metas = res["metadatas"][0] if res["metadatas"] else []
-            distancias = res["distances"][0] if res["distances"] else []
+            textos = (res.get("documents") or [[]])[0] if res.get("documents") else []
+            metas = (res.get("metadatas") or [[]])[0] if res.get("metadatas") else []
+            distancias = (res.get("distances") or [[]])[0] if res.get("distances") else []
         except Exception as e:
             logger.error(f"Error en ChromaDB query: {e}")
             return {
@@ -253,7 +255,7 @@ class RAGService:
             f"{(1-d)*100:.0f}% relevancia]\n{t}"
             for t, m, d in pares
         ])
-        fuentes = list({m.get("archivo", "?") for _, m, _ in pares})
+        fuentes = list({str(m.get("archivo", "?")) for _, m, _ in pares})
 
         # Generar respuesta
         respuesta = self._generar_respuesta(pregunta, contexto, pares)
@@ -299,21 +301,12 @@ class RAGService:
         }
 
     def _generar_respuesta(self, pregunta: str, contexto: str, pares: List) -> str:
-        """Genera respuesta usando Gemini si está disponible"""
-        
-        # Sin API key
-        if not config.GEMINI_API_KEY:
-            fragmentos = "\n".join(
-                f"• {t[:150]}..." for t, _, _ in pares
-            )
-            return f"[Sin Gemini API clave]\n\nFragmentos encontrados:\n{fragmentos}"
+        """Genera respuesta con router IA: Claude y Gemini."""
+        fragmentos = "\n".join(
+            f"• {t[:150]}..." for t, _, _ in pares
+        )
 
-        try:
-            import google.generativeai as genai
-            genai.configure(api_key=config.GEMINI_API_KEY)
-            model = genai.GenerativeModel(config.MODELO_FLASH)
-
-            prompt = f"""Eres el asistente de inteligencia del Nexo Soberano.
+        prompt = f"""Eres el asistente de inteligencia del Nexo Soberano.
 
 REGLAS:
 1. Responde SOLO con info del CONTEXTO
@@ -329,27 +322,172 @@ PREGUNTA: {pregunta}
 
 Análisis:"""
 
-            resp = model.generate_content(prompt)
-            respuesta = resp.text
+        provider = config.LLM_PROVIDER if config.LLM_PROVIDER in {
+            "auto", "anthropic", "gemini"
+        } else "auto"
 
-            # Registrar costo real
-            tokens_in = len(prompt) // 4
-            tokens_out = len(respuesta) // 4
-            self.cost_manager.registrar(
-                config.MODELO_FLASH,
-                tokens_in,
-                tokens_out,
-                "rag_consulta"
-            )
+        order = {
+            "auto": ["anthropic", "gemini"],
+            "anthropic": ["anthropic"],
+            "gemini": ["gemini"],
+        }.get(provider, ["anthropic", "gemini"])
 
-            return respuesta
+        errors: List[str] = []
+        for item in order:
+            try:
+                if item == "anthropic":
+                    answer, model = self._gen_anthropic(prompt)
+                elif item == "grok":
+                    answer, model = self._gen_grok(prompt)
+                elif item == "openai":
+                    answer, model = self._gen_openai_or_copilot(prompt)
+                else:
+                    answer, model = self._gen_gemini(prompt)
 
+                tokens_in = len(prompt) // 4
+                tokens_out = len(answer) // 4
+                self.cost_manager.registrar(model, tokens_in, tokens_out, "rag_consulta")
+                return answer
+            except Exception as exc:
+                errors.append(f"{item}: {exc}")
+                logger.warning("Proveedor %s falló: %s", item, exc)
+
+        if not any([config.ANTHROPIC_API_KEY, config.GEMINI_API_KEY]):
+            return f"[Sin API key de IA: configura ANTHROPIC_API_KEY o GEMINI_API_KEY]\n\nFragmentos encontrados:\n{fragmentos}"
+
+        return f"❌ Error IA: {' | '.join(errors)}\n\nFragmentos encontrados:\n{fragmentos}"
+
+    def _gen_anthropic(self, prompt: str) -> tuple[str, str]:
+        if not config.ANTHROPIC_API_KEY:
+            raise RuntimeError("ANTHROPIC_API_KEY no configurada")
+        import anthropic
+
+        client = anthropic.Anthropic(api_key=config.ANTHROPIC_API_KEY)
+        resp = client.messages.create(
+            model=config.CLAUDE_MODEL,
+            max_tokens=1200,
+            temperature=0.2,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        text = "".join(
+            block.text for block in getattr(resp, "content", []) if getattr(block, "type", "") == "text"
+        ).strip()
+        if not text:
+            raise RuntimeError("Claude no devolvió texto")
+        
+        # Track costs
+        try:
+            usage = getattr(resp, "usage", None)
+            if usage:
+                tokens_in = getattr(usage, "input_tokens", 0)
+                tokens_out = getattr(usage, "output_tokens", 0)
+                tracker = get_cost_tracker()
+                tracker.track_ai_call("anthropic", config.CLAUDE_MODEL, tokens_in, tokens_out, "rag_consulta")
         except Exception as e:
-            logger.error(f"Error generando respuesta: {e}")
-            fragmentos = "\n".join(
-                f"• {t[:150]}..." for t, _, _ in pares
-            )
-            return f"❌ Error IA: {str(e)}\n\nFragmentos encontrados:\n{fragmentos}"
+            logger.warning(f"Error tracking Anthropic cost: {e}")
+        
+        return text, config.CLAUDE_MODEL
+
+    def _gen_grok(self, prompt: str) -> tuple[str, str]:
+        if not config.XAI_API_KEY:
+            raise RuntimeError("XAI_API_KEY no configurada")
+
+        payload = {
+            "model": config.XAI_MODEL,
+            "messages": [{"role": "user", "content": prompt}],
+            "temperature": 0.2,
+        }
+        headers = {
+            "Authorization": f"Bearer {config.XAI_API_KEY}",
+            "Content-Type": "application/json",
+        }
+        resp = requests.post(config.XAI_API_URL, json=payload, headers=headers, timeout=45)
+        resp.raise_for_status()
+        data = resp.json()
+        text = (
+            data.get("choices", [{}])[0]
+            .get("message", {})
+            .get("content", "")
+        ).strip()
+        if not text:
+            raise RuntimeError("Grok no devolvió texto")
+        
+        # Track costs
+        try:
+            usage = data.get("usage", {})
+            tokens_in = usage.get("prompt_tokens", len(prompt) // 4)
+            tokens_out = usage.get("completion_tokens", len(text) // 4)
+            tracker = get_cost_tracker()
+            tracker.track_ai_call("grok", config.XAI_MODEL, tokens_in, tokens_out, "rag_consulta")
+        except Exception as e:
+            logger.warning(f"Error tracking Grok cost: {e}")
+        
+        return text, config.XAI_MODEL
+
+    def _gen_openai_or_copilot(self, prompt: str) -> tuple[str, str]:
+        if not config.OPENAI_API_KEY:
+            raise RuntimeError("OPENAI_API_KEY no configurada")
+        from openai import OpenAI
+
+        if config.OPENAI_BASE_URL:
+            client = OpenAI(api_key=config.OPENAI_API_KEY, base_url=config.OPENAI_BASE_URL)
+        else:
+            client = OpenAI(api_key=config.OPENAI_API_KEY)
+        response = client.chat.completions.create(
+            model=config.OPENAI_MODEL,
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.2,
+        )
+        text = (response.choices[0].message.content or "").strip()
+        if not text:
+            raise RuntimeError("OpenAI/Copilot no devolvió texto")
+        
+        # Track costs
+        try:
+            usage = getattr(response, "usage", None)
+            if usage:
+                tokens_in = getattr(usage, "prompt_tokens", 0)
+                tokens_out = getattr(usage, "completion_tokens", 0)
+                tracker = get_cost_tracker()
+                tracker.track_ai_call("openai", config.OPENAI_MODEL, tokens_in, tokens_out, "rag_consulta")
+        except Exception as e:
+            logger.warning(f"Error tracking OpenAI cost: {e}")
+        
+        return text, config.OPENAI_MODEL
+
+    def _gen_gemini(self, prompt: str) -> tuple[str, str]:
+        if not config.GEMINI_API_KEY:
+            raise RuntimeError("GEMINI_API_KEY no configurada")
+        import google.generativeai as genai
+        from google.generativeai import GenerativeModel
+
+        genai.configure(api_key=config.GEMINI_API_KEY)
+        model = GenerativeModel(config.MODELO_FLASH)
+        resp = model.generate_content(prompt)
+        text = (resp.text or "").strip()
+        if not text:
+            raise RuntimeError("Gemini no devolvió texto")
+        
+        # Track costs
+        try:
+            usage = getattr(resp, "usage_metadata", None)
+            if usage:
+                tokens_in = getattr(usage, "prompt_token_count", 0)
+                tokens_out = getattr(usage, "candidates_token_count", 0)
+            else:
+                # Estimación fallback
+                tokens_in = len(prompt) // 4
+                tokens_out = len(text) // 4
+            
+            tracker = get_cost_tracker()
+            tracker.track_ai_call("gemini", config.MODELO_FLASH, tokens_in, tokens_out, "rag_consulta")
+            
+            # También registrar en el cost_manager viejo para compatibilidad
+            self.cost_manager.registrar(config.MODELO_FLASH, tokens_in, tokens_out, "rag_consulta")
+        except Exception as e:
+            logger.warning(f"Error tracking Gemini cost: {e}")
+        
+        return text, config.MODELO_FLASH
 
     def estado(self) -> Dict:
         """Estado actual del sistema"""

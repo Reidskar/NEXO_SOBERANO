@@ -1,0 +1,108 @@
+{
+  "project_name": "{{project_name}}",
+  "language": "{{language}}",
+  "mode": "{{mode}}",
+  "confidence_threshold": 0.7,
+  "assumptions_policy": "explicit",
+  "video": {
+    "file_name": "{{video.file_name}}",
+    "file_id": "{{video.file_id}}",
+    "mime_type": "{{video.mime_type}}",
+    "drive_url": "{{video.drive_url}}",
+    "size_bytes": "{{video.size_bytes}}",
+    "uploaded_at": "{{video.uploaded_at}}"
+  },
+  "platform_context": {
+    "integrations": [
+      "discord",
+      "n8n",
+      "google_drive",
+      "web_dashboard",
+      "make",
+      "apps_script"
+    ],
+    "preferred_stack": {
+      "frontend": "Next.js_or_Astro",
+      "backend": "Python_FastAPI_or_Node",
+      "automation": "n8n_or_Make",
+      "database": "PostgreSQL",
+      "storage": "Google_Drive"
+    },
+    "ai_cost_mode": "low",
+    "final_decider": "claude",
+    "providers_policy": {
+      "primary": "anthropic",
+      "fallback": "gemini",
+      "disabled": [
+        "openai",
+        "grok"
+      ]
+    },
+    "cost_guardrails": {
+      "force_low_cost": true,
+      "max_reviewers_per_run": 2,
+      "disable_deep_mode_without_approval": true
+    }
+  },
+  "hard_rules": [
+    "Do not hallucinate APIs or tools not evidenced in video",
+    "Tag uncertain claims with [ASSUMPTION]",
+    "Attach confidence score 0-1 for every extracted element",
+    "Optimize for low cost and operational reliability",
+    "Use Claude as final decider in low-cost mode by default",
+    "Only use Gemini as fallback reviewer if needed",
+    "Output must be implementation-ready"
+  ],
+  "required_output_sections": [
+    "A_Executive_Summary",
+    "B_Evidence_Table",
+    "C_Architecture_Spec",
+    "D_Workflow_Spec",
+    "E_SQL_Schema",
+    "F_Prompt_Library_Pack",
+    "G_72h_Execution_Plan",
+    "H_Risks_and_Mitigations",
+    "I_Generated_Files_Manifest"
+  ],
+  "target_paths": {
+    "knowledge": "/knowledge/{{slug}}_system.md",
+    "architecture": "/architecture/{{slug}}_architecture.md",
+    "workflow": "/workflows/{{slug}}_n8n.json",
+    "prompts": "/prompts/{{slug}}_prompts.md",
+    "sql": "/sql/{{slug}}_schema.sql",
+    "implementation": "/implementation/{{slug}}_roadmap.md"
+  },
+  "nexo_runtime_validation": {
+    "base_url": "{{nexo_api_base_url}}",
+    "headers": {
+      "X-NEXO-API-KEY": "{{nexo_api_key}}"
+    },
+    "checks": [
+      {
+        "name": "health",
+        "method": "GET",
+        "path": "/health"
+      },
+      {
+        "name": "analytics",
+        "method": "GET",
+        "path": "/analytics"
+      },
+      {
+        "name": "warroom_ai_control",
+        "method": "GET",
+        "path": "/warroom/ai-control"
+      },
+      {
+        "name": "foda_low_cost_claude",
+        "method": "POST",
+        "path": "/api/ai/foda-critical",
+        "body": {
+          "objective": "Evaluar viabilidad técnica/económica del sistema extraído del video",
+          "decisor_final": "claude",
+          "modo_ahorro": true
+        }
+      }
+    ]
+  }
+}

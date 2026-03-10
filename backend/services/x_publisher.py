@@ -71,7 +71,7 @@ def post_to_x(text: str, media_path: Optional[str] = None, in_reply_to: Optional
         media_ids=media_ids,
         in_reply_to_tweet_id=in_reply_to,
     )
-    tweet_id = (response.data or {}).get("id")
+    tweet_id = (getattr(response, "data", None) or {}).get("id")
     username = _env("X_USERNAME", "i")
 
     return {
@@ -100,7 +100,8 @@ def search_x_recent(query: str, limit: int = 10, since_id: Optional[str] = None)
     )
 
     rows: List[Dict] = []
-    for tw in (result.data or []):
+    for tw in (getattr(result, "data", None) or []):
+        created_at = getattr(tw, "created_at", None)
         rows.append(
             {
                 "id": str(tw.id),
@@ -108,7 +109,7 @@ def search_x_recent(query: str, limit: int = 10, since_id: Optional[str] = None)
                 "author_id": str(getattr(tw, "author_id", "") or ""),
                 "conversation_id": str(getattr(tw, "conversation_id", "") or ""),
                 "lang": getattr(tw, "lang", None),
-                "created_at": getattr(tw, "created_at", None).isoformat() if getattr(tw, "created_at", None) else None,
+                "created_at": created_at.isoformat() if created_at else None,
                 "public_metrics": getattr(tw, "public_metrics", None),
             }
         )
@@ -132,7 +133,7 @@ def fetch_mentions(limit: int = 10, since_id: Optional[str] = None, username: Op
         raise RuntimeError("Define X_BOT_USERNAME o X_USERNAME en variables de entorno")
 
     user_resp = client.get_user(username=user)
-    user_data = user_resp.data
+    user_data = getattr(user_resp, "data", None)
     if not user_data:
         raise RuntimeError(f"No fue posible resolver el usuario @{user}")
 
@@ -146,7 +147,8 @@ def fetch_mentions(limit: int = 10, since_id: Optional[str] = None, username: Op
 
     mentions = client.get_users_mentions(**params)
     rows: List[Dict] = []
-    for tw in (mentions.data or []):
+    for tw in (getattr(mentions, "data", None) or []):
+        created_at = getattr(tw, "created_at", None)
         rows.append(
             {
                 "id": str(tw.id),
@@ -154,7 +156,7 @@ def fetch_mentions(limit: int = 10, since_id: Optional[str] = None, username: Op
                 "author_id": str(getattr(tw, "author_id", "") or ""),
                 "conversation_id": str(getattr(tw, "conversation_id", "") or ""),
                 "lang": getattr(tw, "lang", None),
-                "created_at": getattr(tw, "created_at", None).isoformat() if getattr(tw, "created_at", None) else None,
+                "created_at": created_at.isoformat() if created_at else None,
                 "public_metrics": getattr(tw, "public_metrics", None),
             }
         )

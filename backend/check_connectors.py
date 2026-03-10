@@ -13,7 +13,10 @@ The output directory is created automatically; it is gitignored.
 """
 import os
 import json
+import logging
 from pathlib import Path
+
+log = logging.getLogger(__name__)
 
 log.info("[check_connectors] starting")
 BASE = Path(__file__).parent

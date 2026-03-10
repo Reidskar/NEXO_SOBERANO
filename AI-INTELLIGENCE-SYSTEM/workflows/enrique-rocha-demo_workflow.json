@@ -1,0 +1,109 @@
+{
+  "name": "Video Pipeline - enrique-rocha-demo",
+  "nodes": [
+    {
+      "name": "Trigger",
+      "type": "manual"
+    },
+    {
+      "name": "Ingest Video",
+      "type": "file.read",
+      "config": {
+        "path": "videos/"
+      }
+    },
+    {
+      "name": "Extract Transcript",
+      "type": "ai.transcribe",
+      "config": {
+        "provider": "openai"
+      }
+    },
+    {
+      "name": "System Extraction",
+      "type": "ai.prompt",
+      "config": {
+        "prompt_file": "prompts/05_super_prompt_reverse_engineering.md"
+      }
+    },
+    {
+      "name": "Generate SQL",
+      "type": "ai.prompt",
+      "config": {
+        "target": "database/base_schema.sql"
+      }
+    },
+    {
+      "name": "Build Knowledge Lesson",
+      "type": "ai.prompt",
+      "config": {
+        "prompt_file": "prompts/06_prompt_knowledge_curator.md"
+      }
+    },
+    {
+      "name": "Publish Artifacts",
+      "type": "filesystem.write",
+      "config": {
+        "targets": [
+          "architectures/",
+          "workflows/",
+          "knowledge/"
+        ]
+      }
+    },
+    {
+      "name": "Notify Discord",
+      "type": "discord.webhook",
+      "config": {
+        "channel": "#automation-status"
+      }
+    },
+    {
+      "name": "Log Metrics",
+      "type": "postgres.insert",
+      "config": {
+        "table": "api_usage"
+      }
+    }
+  ],
+  "connections": [
+    [
+      "Trigger",
+      "Ingest Video"
+    ],
+    [
+      "Ingest Video",
+      "Extract Transcript"
+    ],
+    [
+      "Extract Transcript",
+      "System Extraction"
+    ],
+    [
+      "System Extraction",
+      "Generate SQL"
+    ],
+    [
+      "Generate SQL",
+      "Build Knowledge Lesson"
+    ],
+    [
+      "Build Knowledge Lesson",
+      "Publish Artifacts"
+    ],
+    [
+      "Publish Artifacts",
+      "Notify Discord"
+    ],
+    [
+      "Publish Artifacts",
+      "Log Metrics"
+    ]
+  ],
+  "metadata": {
+    "generated_at": "2026-03-05T19:04:55.259495+00:00",
+    "profile": "enrique_rocha",
+    "source_video": "C:/Users/Admn/Desktop/NEXO_SOBERANO/AI-INTELLIGENCE-SYSTEM/videos/enrique_rocha_demo.mp4",
+    "prompt": "C:/Users/Admn/Desktop/NEXO_SOBERANO/AI-INTELLIGENCE-SYSTEM/prompts/01_video_enrique_rocha.md"
+  }
+}

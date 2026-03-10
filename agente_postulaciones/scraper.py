@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 from dataclasses import dataclass, asdict
 from typing import List
 from urllib.parse import urljoin
@@ -28,11 +29,21 @@ def _text(node) -> str:
 
 
 def fetch_jobs(search_url: str, base_url: str, timeout: int = 20) -> List[Job]:
-    resp = requests.get(search_url, timeout=timeout, headers={"User-Agent": "Mozilla/5.0"})
+    headers = {
+        "User-Agent": (
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+            "AppleWebKit/537.36 (KHTML, like Gecko) "
+            "Chrome/124.0.0.0 Safari/537.36"
+        ),
+        "Accept-Language": "es-CL,es;q=0.9,en;q=0.8",
+    }
+    resp = requests.get(search_url, timeout=timeout, headers=headers)
     resp.raise_for_status()
 
     soup = BeautifulSoup(resp.text, "html.parser")
-    cards = soup.select("article, .box_offer, .js_row_offer, .bRS");
+    cards = soup.select("article, .box_offer, .js_row_offer, .bRS")
+    if not cards:
+        cards = soup.select("[data-link], [class*='offer'], [class*='job']")
     results: List[Job] = []
 
     for idx, card in enumerate(cards, start=1):
@@ -43,11 +54,13 @@ def fetch_jobs(search_url: str, base_url: str, timeout: int = 20) -> List[Job]:
         dist_node = card.select_one(".distance, .fc_aux-3")
 
         detail_href = title_node.get("href", "") if title_node else ""
-        detail_url = urljoin(base_url, detail_href)
+        detail_url = urljoin(base_url, str(detail_href) if detail_href else "")
         apply_url = detail_url
 
+        stable_seed = (detail_url or f"{_text(title_node)}|{_text(company_node)}|{idx}").strip().lower()
+        stable_id = hashlib.sha1(stable_seed.encode("utf-8", errors="ignore")).hexdigest()[:16]
         job = Job(
-            id=f"job-{idx}-{abs(hash(detail_url or _text(title_node))) % 10_000_000}",
+            id=f"job-{stable_id}",
             title=_text(title_node),
             company=_text(company_node),
             location=_text(location_node),

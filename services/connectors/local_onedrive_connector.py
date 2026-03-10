@@ -105,6 +105,20 @@ def _hydrate_onedrive_file_windows(path: Path) -> None:
     )
 
 
+def _read_bytes_windows_robust(path: Path) -> bytes:
+    try:
+        return path.read_bytes()
+    except OSError:
+        if os.name != "nt":
+            raise
+
+    raw_path = str(path)
+    if not raw_path.startswith("\\\\?\\"):
+        raw_path = f"\\\\?\\{path.resolve(strict=False)}"
+    with open(raw_path, "rb") as fh:
+        return fh.read()
+
+
 def _is_onedrive_running_windows() -> bool:
     if os.name != "nt":
         return False
@@ -151,7 +165,7 @@ def read_local_onedrive_bytes(path: Path, *, hydrate_retries: int = 2, wait_seco
 
     for attempt in range(1, attempts + 1):
         try:
-            return file_path.read_bytes()
+            return _read_bytes_windows_robust(file_path)
         except OSError as exc:
             last_exc = exc
             is_invalid_argument = getattr(exc, "errno", None) == 22

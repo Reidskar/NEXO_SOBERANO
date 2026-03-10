@@ -14,6 +14,8 @@ USO:
 import sys
 import socket
 import logging
+from urllib.request import urlopen
+from urllib.error import URLError
 from pathlib import Path
 
 logging.basicConfig(level=logging.INFO, format="%(message)s")
@@ -42,9 +44,29 @@ if __name__ == "__main__":
     try:
         sock.bind((config.HOST, config.PORT))
     except OSError:
-        log.info(f"⚠️ Puerto {config.PORT} ya está en uso. Backend probablemente ya está en ejecución.")
-        log.info("✅ No se inicia una segunda instancia para evitar conflicto.")
-        sys.exit(0)
+        health_urls = [
+            f"http://127.0.0.1:{config.PORT}/api/health/",
+            f"http://127.0.0.1:{config.PORT}/api/health",
+            f"http://127.0.0.1:{config.PORT}/health",
+        ]
+        for health_url in health_urls:
+            try:
+                with urlopen(health_url, timeout=3) as response:
+                    status = response.status
+                    body = response.read().decode("utf-8", errors="ignore")
+                    if status == 200:
+                        log.info(f"⚠️ Puerto {config.PORT} ya está en uso y {health_url} respondió 200.")
+                        log.info("✅ Backend ya operativo; no se inicia una segunda instancia.")
+                        sys.exit(0)
+                    log.info(f"❌ Puerto {config.PORT} en uso, pero {health_url} devolvió status {status}.")
+                    log.info(f"Detalle health: {body[:200]}")
+                    sys.exit(1)
+            except (URLError, TimeoutError, ConnectionError, OSError):
+                continue
+
+        log.info(f"❌ Puerto {config.PORT} en uso, pero no hubo respuesta válida en endpoints de health.")
+        log.info("🛠️ Libera el puerto o detén el proceso colgado antes de reiniciar backend.")
+        sys.exit(1)
     finally:
         sock.close()
 

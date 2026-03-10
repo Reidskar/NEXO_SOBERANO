@@ -2,13 +2,19 @@ import os
 import sqlite3
 import hashlib
 import json
+import logging
 import google.generativeai as genai
 from dotenv import load_dotenv
 from datetime import datetime
 
+# Configurar logging
+logging.basicConfig(level=logging.INFO, format='%(message)s')
+log = logging.getLogger(__name__)
+
 # Cargar API Key
 load_dotenv()
-genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+api_key = os.getenv("GEMINI_API_KEY")
+genai.configure(api_key=api_key)
 modelo = genai.GenerativeModel("gemini-1.5-flash")
 
 # Rutas del Sistema

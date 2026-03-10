@@ -3,10 +3,10 @@ FastAPI — Punto de entrada unificado del backend
 Puerto: 8000
 """
 
-from fastapi import FastAPI, HTTPException, Header
+from fastapi import FastAPI, HTTPException, Header, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel
 from pathlib import Path
 import logging
@@ -84,9 +84,20 @@ app.add_middleware(
 # RUTAS
 # ════════════════════════════════════════════════════════════════════
 
-# Raíz
+# Raíz — sirve Warroom v3 como app principal
 @app.get("/")
 def root():
+    """Página principal: Warroom v3"""
+    return _serve_existing_html([
+        "NEXO_SOBERANO_v3.html",
+        "warroom_v3.html",
+        "warroom_v2.html",
+    ])
+
+
+# API info (moved from /)
+@app.get("/api/info")
+def api_info():
     """Información básica del API"""
     return {
         "nombre": config.APP_TITLE,
@@ -254,14 +265,17 @@ app.include_router(eventos.router)
 # ════════════════════════════════════════════════════════════════════
 
 @app.exception_handler(Exception)
-async def global_exception_handler(request, exc):
+async def global_exception_handler(request: Request, exc: Exception):
     """Captura excepciones globales"""
     logger.error(f"Excepción no capturada: {exc}", exc_info=True)
-    return {
-        "error": "Internal Server Error",
-        "detail": str(exc),
-        "status": 500
-    }
+    return JSONResponse(
+        status_code=500,
+        content={
+            "error": "Internal Server Error",
+            "detail": str(exc),
+            "status": 500
+        }
+    )
 
 # ════════════════════════════════════════════════════════════════════
 # SERVIR FRONTEND (si existe)
@@ -269,10 +283,28 @@ async def global_exception_handler(request, exc):
 
 frontend_dist = Path(__file__).parent.parent / "frontend" / "dist"
 if frontend_dist.exists():
-    app.mount("/static", StaticFiles(directory=frontend_dist), name="static")
-    logger.info(f"Frontend servido desde {frontend_dist}")
+    # Assets del React admin (JS, CSS, imágenes)
+    app.mount("/panel/assets", StaticFiles(directory=frontend_dist / "assets"), name="panel-assets")
+    logger.info(f"Panel admin React servido desde {frontend_dist}")
+
+    @app.get("/panel")
+    @app.get("/panel/{path:path}")
+    def serve_admin_panel(path: str = ""):
+        """SPA catch-all — Panel admin React"""
+        index = frontend_dist / "index.html"
+        if index.exists():
+            return FileResponse(str(index))
+        raise HTTPException(status_code=404, detail="Panel admin no construido. Ejecuta: cd frontend && npm run build")
 else:
     logger.warning(f"Frontend no encontrado en {frontend_dist} (normal en desarrollo)")
+
+    @app.get("/panel")
+    @app.get("/panel/{path:path}")
+    def panel_not_built(path: str = ""):
+        return JSONResponse(
+            status_code=503,
+            content={"error": "Panel admin no disponible", "detail": "Ejecuta: cd frontend && npm run build"}
+        )
 
 # ════════════════════════════════════════════════════════════════════
 # STARTUP/SHUTDOWN

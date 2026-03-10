@@ -59,6 +59,29 @@ def _env(key: str, default: str = "") -> str:
     return (os.getenv(key, default) or "").strip()
 
 
+HTTP_TIMEOUT_SECONDS = float(_env("NEXO_RRSS_TIMEOUT_SECONDS", "10") or "10")
+HTTP_RETRY_ATTEMPTS = int(_env("NEXO_RRSS_RETRY_ATTEMPTS", "3") or "3")
+HTTP_RETRY_BACKOFF_SECONDS = float(_env("NEXO_RRSS_RETRY_BACKOFF_SECONDS", "1.5") or "1.5")
+
+
+def _with_retries(action_name: str, func):
+    last_exc = None
+    for attempt in range(1, max(1, HTTP_RETRY_ATTEMPTS) + 1):
+        try:
+            return func()
+        except Exception as exc:
+            last_exc = exc
+            if attempt >= max(1, HTTP_RETRY_ATTEMPTS):
+                break
+            sleep_s = HTTP_RETRY_BACKOFF_SECONDS * attempt
+            log.warning("%s falló (intento %d/%d): %s. Reintentando en %.1fs...",
+                        action_name, attempt, HTTP_RETRY_ATTEMPTS, exc, sleep_s)
+            time.sleep(sleep_s)
+    if last_exc is not None:
+        raise last_exc
+    raise RuntimeError(f"{action_name} falló sin excepción capturada")
+
+
 # ─── Modelos de datos ─────────────────────────────────────────────────────────
 
 @dataclass
@@ -113,8 +136,9 @@ class ConectorX:
     def estado(self) -> EstadoConexion:
         try:
             client = self._client()
-            me = client.get_me()
-            user = me.data.username if me and me.data else "desconocido"
+            me = _with_retries("X.get_me", lambda: client.get_me())
+            me_data = getattr(me, "data", None)
+            user = getattr(me_data, "username", "desconocido") if me_data else "desconocido"
             return EstadoConexion(red=self.NAME, conectada=True, usuario=f"@{user}")
         except Exception as exc:
             return EstadoConexion(red=self.NAME, conectada=False, detalle=str(exc))
@@ -122,8 +146,12 @@ class ConectorX:
     def publicar(self, texto: str) -> PublicacionResult:
         try:
             client = self._client()
-            resp = client.create_tweet(text=texto[:280])
-            post_id = str(resp.data["id"]) if resp and resp.data else ""
+            resp = _with_retries("X.create_tweet", lambda: client.create_tweet(text=texto[:280]))
+            resp_data = getattr(resp, "data", None)
+            if isinstance(resp_data, dict):
+                post_id = str(resp_data.get("id", ""))
+            else:
+                post_id = str(getattr(resp_data, "id", "") or "")
             return PublicacionResult(red=self.NAME, exito=True, mensaje=texto, post_id=post_id)
         except Exception as exc:
             return PublicacionResult(red=self.NAME, exito=False, error=str(exc))
@@ -156,8 +184,10 @@ class ConectorTelegram:
             url, data=data,
             headers={"Content-Type": "application/json"},
         )
-        with urllib.request.urlopen(req, timeout=10) as r:
-            return json.loads(r.read().decode())
+        def _call():
+            with urllib.request.urlopen(req, timeout=HTTP_TIMEOUT_SECONDS) as r:
+                return json.loads(r.read().decode())
+        return _with_retries(f"Telegram.{method}", _call)
 
     def estado(self) -> EstadoConexion:
         try:
@@ -196,17 +226,22 @@ class ConectorDiscord:
             self._webhook_url(), data=data,
             headers={"Content-Type": "application/json"},
         )
-        with urllib.request.urlopen(req, timeout=10) as r:
-            raw = r.read()
-            return json.loads(raw) if raw else {}
+        def _call():
+            with urllib.request.urlopen(req, timeout=HTTP_TIMEOUT_SECONDS) as r:
+                raw = r.read()
+                return json.loads(raw) if raw else {}
+        return _with_retries("Discord.webhook_send", _call)
 
     def estado(self) -> EstadoConexion:
         try:
             import json
             import urllib.request
 
-            with urllib.request.urlopen(self._webhook_url(), timeout=5) as r:
-                data = json.loads(r.read().decode())
+            def _call():
+                with urllib.request.urlopen(self._webhook_url(), timeout=HTTP_TIMEOUT_SECONDS) as r:
+                    return json.loads(r.read().decode())
+
+            data = _with_retries("Discord.webhook_status", _call)
             name = data.get("name", "webhook")
             return EstadoConexion(red=self.NAME, conectada=True, usuario=name)
         except Exception as exc:
@@ -242,8 +277,10 @@ class ConectorFacebook:
         url = f"https://graph.facebook.com/v19.0/{endpoint}"
         data = urllib.parse.urlencode(params).encode()
         req = urllib.request.Request(url, data=data)
-        with urllib.request.urlopen(req, timeout=10) as r:
-            return json.loads(r.read().decode())
+        def _call():
+            with urllib.request.urlopen(req, timeout=HTTP_TIMEOUT_SECONDS) as r:
+                return json.loads(r.read().decode())
+        return _with_retries(f"Facebook.{endpoint}", _call)
 
     def estado(self) -> EstadoConexion:
         try:
@@ -289,8 +326,10 @@ class ConectorInstagram:
         url = f"https://graph.facebook.com/v19.0/{endpoint}"
         data = urllib.parse.urlencode(params).encode()
         req = urllib.request.Request(url, data=data)
-        with urllib.request.urlopen(req, timeout=10) as r:
-            return json.loads(r.read().decode())
+        def _call():
+            with urllib.request.urlopen(req, timeout=HTTP_TIMEOUT_SECONDS) as r:
+                return json.loads(r.read().decode())
+        return _with_retries(f"Instagram.{endpoint}", _call)
 
     def estado(self) -> EstadoConexion:
         try:

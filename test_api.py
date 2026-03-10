@@ -1,8 +1,13 @@
 #!/usr/bin/env python3
 import requests
 import json
+import logging
 
 BASE_URL = "http://127.0.0.1:8000"
+
+# Configure logging
+log = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO, format='%(message)s')
 
 # Test 1: Health check
 log.info("=" * 60)

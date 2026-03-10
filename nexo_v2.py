@@ -221,7 +221,11 @@ def generar_embedding(texto: str) -> Optional[List[float]]:
 
     if model != "gemini":
         try:
-            emb = model.encode(texto[:2000], normalize_embeddings=True)
+            import numpy as np
+            emb = model.encode(texto[:2000])
+            # Normalizar embedding
+            norm = np.linalg.norm(emb)
+            emb = emb / float(norm)
             return emb.tolist()
         except Exception as e:
             log.info(f"  ⚠️  Embedding local falló: {e}. Intentando Gemini...")
@@ -255,21 +259,11 @@ def get_coleccion():
         import chromadb
         CHROMA_DIR.mkdir(parents=True, exist_ok=True)
         cliente = chromadb.PersistentClient(path=str(CHROMA_DIR))
-        # Usar embedding function compatible con all-MiniLM-L6-v2
-        try:
-            from chromadb.utils.embedding_functions import SentenceTransformerEmbeddingFunction
-            ef = SentenceTransformerEmbeddingFunction(model_name=CFG["EMBED_LOCAL"])
-            _col = cliente.get_or_create_collection(
-                name="inteligencia_geopolitica",
-                embedding_function=ef,
-                metadata={"hnsw:space": "cosine"}
-            )
-        except Exception:
-            # Sin sentence-transformers, colección sin función de embedding automática
-            _col = cliente.get_or_create_collection(
-                name="inteligencia_geopolitica",
-                metadata={"hnsw:space": "cosine"}
-            )
+        # Crear colección sin embedding_function (se añaden manualmente)
+        _col = cliente.get_or_create_collection(
+            name="inteligencia_geopolitica",
+            metadata={"hnsw:space": "cosine"}
+        )
     return _col
 
 # ════════════════════════════════════════════════════════════════════
@@ -306,7 +300,7 @@ def extraer_texto_local(ruta: Path) -> str:
         if ext == '.docx':
             try:
                 from docx import Document
-                return '\n'.join(p.text for p in Document(ruta).paragraphs if p.text.strip())
+                return '\n'.join(p.text for p in Document(ruta)).paragraphs if p.text.strip())
             except ImportError:
                 return "[Instala python-docx: pip install python-docx]"
 
@@ -323,7 +317,7 @@ def _ocr_vision(ruta: Path, mime: str) -> str:
         return "[Sin API key para OCR]"
     try:
         import google.generativeai as genai
-        genai.configure(api_key=CFG["GEMINI_KEY"])
+        genai.api_key = CFG["GEMINI_KEY"]
         model = genai.GenerativeModel(CFG["MODELO_PRO"])
         datos = ruta.read_bytes()
         resp  = model.generate_content([
@@ -373,7 +367,7 @@ def clasificar(texto_muestra: str, nombre_archivo: str) -> Dict:
 
     try:
         import google.generativeai as genai
-        genai.configure(api_key=CFG["GEMINI_KEY"])
+        genai.api_key = CFG["GEMINI_KEY"]
         model = genai.GenerativeModel(modelo_id)
 
         prompt = f"""Analiza este fragmento de documento geopolítico/económico.
@@ -524,7 +518,7 @@ def _log_bitacora(msg: str):
 # MÓDULO 9: CONSULTA RAG
 # ════════════════════════════════════════════════════════════════════
 
-def consultar_rag(pregunta: str, categoria: str = None) -> Dict:
+def consultar_rag(pregunta: str, categoria: Optional[str] = None) -> Dict:
     t0  = time.time()
     col = get_coleccion()
 
@@ -540,12 +534,14 @@ def consultar_rag(pregunta: str, categoria: str = None) -> Dict:
         return {"respuesta": "❌ No se pudo generar embedding.", "fuentes": [], "chunks": 0, "ms": 0}
 
     # Buscar en ChromaDB
-    where = {"categoria": categoria} if categoria else None
+    where_filter = None
+    if categoria:
+        where_filter = {"categoria": categoria}
     n     = min(CFG["TOP_K"], col.count())
     res   = col.query(
         query_embeddings=[emb_q],
         n_results=n,
-        where=where,
+        where=where_filter,
         include=["documents", "metadatas", "distances"]
     )
 
@@ -741,7 +737,7 @@ def sincronizar_nube(solo_drive=False, solo_onedrive=False):
 # MÓDULO 11: WATCHDOG — monitoreo en tiempo real de carpeta local
 # ════════════════════════════════════════════════════════════════════
 
-def iniciar_watchdog() -> Optional[object]:
+def iniciar_watchdog():
     try:
         from watchdog.observers import Observer
         from watchdog.events import FileSystemEventHandler
@@ -1096,7 +1092,7 @@ def cmd_test():
     log.info("🧪 Test 2: Embedding local...", end=" ", flush=True)
     try:
         emb = generar_embedding("test de embedding geopolítico")
-        log.info(f"✅ {len(emb)} dimensiones")
+        log.info(f"✅ {len(emb)} dimensiones") # pyright: ignore[reportArgumentType]
     except Exception as e:
         log.info(f"❌ {e}")
 

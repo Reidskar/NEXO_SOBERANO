@@ -1,0 +1,158 @@
+{
+    "profile": {
+        "name": "NEXO_Professional",
+        "description": "Perfil profesional optimizado para streaming controlado por NEXO",
+        "version": "1.0.0"
+    },
+    "video": {
+        "output_resolution": "1920x1080",
+        "fps": 60,
+        "base_canvas": "1920x1080",
+        "output_canvas": "1920x1080"
+    },
+    "audio": {
+        "sample_rate": 48000,
+        "channels": "Stereo",
+        "desktop_audio_device": "default",
+        "mic_audio_device": "default"
+    },
+    "encoding": {
+        "encoder": "obs_x264",
+        "rate_control": "CBR",
+        "bitrate": 6000,
+        "keyframe_interval": 2,
+        "cpu_preset": "veryfast",
+        "profile": "high",
+        "tune": "zerolatency"
+    },
+    "streaming": {
+        "platform": "Custom",
+        "server": "rtmp://your-server/live",
+        "key": "your-stream-key",
+        "reconnect_enabled": true,
+        "reconnect_delay": 10,
+        "max_retries": 20
+    },
+    "recording": {
+        "enabled": true,
+        "format": "mp4",
+        "path": "./recordings",
+        "quality": "high",
+        "encoder": "obs_x264"
+    },
+    "scenes": [
+        {
+            "name": "Escena Principal",
+            "sources": [
+                {
+                    "type": "display_capture",
+                    "name": "Captura de Pantalla",
+                    "settings": {
+                        "capture_cursor": true,
+                        "method": "automatic"
+                    }
+                },
+                {
+                    "type": "text_gdiplus_v2",
+                    "name": "Overlay - Estado Stream",
+                    "settings": {
+                        "text": "🔴 EN VIVO",
+                        "font": {
+                            "face": "Arial",
+                            "size": 48,
+                            "style": "Bold"
+                        },
+                        "color": 4294901760,
+                        "opacity": 100,
+                        "outline": true,
+                        "outline_size": 2
+                    },
+                    "position": {
+                        "x": 50,
+                        "y": 50
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Escena BRB",
+            "sources": [
+                {
+                    "type": "color_source",
+                    "name": "Fondo Negro",
+                    "settings": {
+                        "color": 4278190080,
+                        "width": 1920,
+                        "height": 1080
+                    }
+                },
+                {
+                    "type": "text_gdiplus_v2",
+                    "name": "Mensaje BRB",
+                    "settings": {
+                        "text": "Volveremos pronto...",
+                        "font": {
+                            "face": "Arial",
+                            "size": 72,
+                            "style": "Bold"
+                        },
+                        "color": 4294967295,
+                        "opacity": 100,
+                        "align": "center",
+                        "valign": "center"
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Escena Final",
+            "sources": [
+                {
+                    "type": "color_source",
+                    "name": "Fondo Azul",
+                    "settings": {
+                        "color": 4279703319,
+                        "width": 1920,
+                        "height": 1080
+                    }
+                },
+                {
+                    "type": "text_gdiplus_v2",
+                    "name": "Gracias por Ver",
+                    "settings": {
+                        "text": "¡Gracias por ver!\\nNos vemos pronto",
+                        "font": {
+                            "face": "Arial",
+                            "size": 64,
+                            "style": "Bold"
+                        },
+                        "color": 4294967295,
+                        "opacity": 100,
+                        "align": "center",
+                        "valign": "center"
+                    }
+                }
+            ]
+        }
+    ],
+    "hotkeys": {
+        "start_streaming": "F9",
+        "stop_streaming": "F10",
+        "start_recording": "F11",
+        "stop_recording": "F12",
+        "toggle_mute_mic": "F7",
+        "toggle_mute_desktop": "F8"
+    },
+    "advanced": {
+        "process_priority": "Normal",
+        "color_format": "NV12",
+        "color_space": "709",
+        "color_range": "Limited"
+    },
+    "obs_websocket": {
+        "enabled": true,
+        "port": 4455,
+        "password": "9AWj1VCvnTyO8vJP",
+        "authentication": true
+    }
+}

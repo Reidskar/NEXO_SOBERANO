@@ -15,6 +15,7 @@ Uso:
 from __future__ import annotations
 
 import argparse
+import logging
 import os
 import shutil
 import subprocess
@@ -25,6 +26,7 @@ import webbrowser
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
+log = logging.getLogger(__name__)
 
 
 def _print(msg: str) -> None:

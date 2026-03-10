@@ -5,6 +5,47 @@
   "version": "2.0.0",
   "tasks": [
     {
+      "label": "🎯 NEXO: Inicio Automático (Orquestador)",
+      "type": "shell",
+      "command": ".\\.venv\\Scripts\\python.exe INICIO_RAPIDO.py",
+      "isBackground": true,
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "clear": true,
+        "focus": true
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "⚙️ NEXO: Configurar OBS Profesionalmente",
+      "type": "shell",
+      "command": ".\\.venv\\Scripts\\python.exe obs_control\\configure_obs.py",
+      "group": "build",
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared",
+        "clear": true
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "📱 NEXO: Programar móvil/tablet (stream)",
+      "type": "shell",
+      "command": ".\\.venv\\Scripts\\python.exe obs_control\\setup_mobile_stream.py",
+      "group": "build",
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared",
+        "clear": true
+      },
+      "problemMatcher": []
+    },
+    {
       "label": "🔍 NEXO: Escaneo de código",
       "type": "shell",
       "command": ".\\.venv\\Scripts\\python.exe nexo_autosupervisor.py --scan",
@@ -22,7 +63,11 @@
       "type": "shell",
       "command": ".\\.venv\\Scripts\\python.exe nexo_autosupervisor.py --scan --fix",
       "group": "build",
-      "presentation": { "reveal": "always", "panel": "shared", "clear": true },
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared",
+        "clear": true
+      },
       "problemMatcher": []
     },
     {
@@ -30,11 +75,17 @@
       "type": "shell",
       "command": ".\\.venv\\Scripts\\python.exe nexo_autosupervisor.py --watch --fix --interval 20",
       "isBackground": true,
-      "presentation": { "reveal": "always", "panel": "dedicated", "clear": true },
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "clear": true
+      },
       "problemMatcher": {
         "pattern": {
           "regexp": "^(.*\\.py):(\\d+).*$",
-          "file": 1, "line": 2, "message": 3
+          "file": 1,
+          "line": 2,
+          "message": 3
         },
         "background": {
           "activeOnStart": true,
@@ -48,7 +99,10 @@
       "type": "shell",
       "command": ".\\.venv\\Scripts\\python.exe nexo_autosupervisor.py --report",
       "group": "test",
-      "presentation": { "reveal": "always", "panel": "shared" },
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      },
       "problemMatcher": []
     },
     {
@@ -56,7 +110,10 @@
       "type": "shell",
       "command": ".\\.venv\\Scripts\\python.exe nexo_autosupervisor.py --improve",
       "group": "test",
-      "presentation": { "reveal": "always", "panel": "shared" },
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      },
       "problemMatcher": []
     },
     {
@@ -64,8 +121,12 @@
       "type": "shell",
       "command": ".\\.venv\\Scripts\\python.exe run_backend.py",
       "isBackground": true,
-      "group": { "kind": "build", "isDefault": true },
-      "presentation": { "reveal": "always", "panel": "dedicated", "clear": true },
+      "group": "build",
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "clear": true
+      },
       "problemMatcher": []
     },
     {
@@ -73,23 +134,34 @@
       "type": "shell",
       "command": ".\\.venv\\Scripts\\python.exe -m pytest test_backend.py -v --tb=short",
       "group": "test",
-      "presentation": { "reveal": "always", "panel": "shared" },
-      "problemMatcher": ["$python"]
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      },
+      "problemMatcher": [
+        "$python"
+      ]
     },
     {
       "label": "🔄 NEXO: Sync completo",
       "type": "shell",
-      "command": ".\\.venv\\Scripts\\python.exe run_unified_sync_full.py",
+      "command": ".\\.venv\\Scripts\\python.exe scripts\\run_unified_sync_full.py",
       "group": "build",
-      "presentation": { "reveal": "always", "panel": "shared" },
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      },
       "problemMatcher": []
     },
     {
       "label": "📁 NEXO: Sync Drive únicamente",
       "type": "shell",
-      "command": ".\\.venv\\Scripts\\python.exe run_drive_classification.py",
+      "command": ".\\.venv\\Scripts\\python.exe scripts\\run_drive_classification.py",
       "group": "build",
-      "presentation": { "reveal": "always", "panel": "shared" },
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      },
       "problemMatcher": []
     },
     {
@@ -97,18 +169,29 @@
       "type": "shell",
       "command": ".\\.venv\\Scripts\\python.exe -m pip install -r requirements.txt --upgrade",
       "group": "build",
-      "presentation": { "reveal": "always", "panel": "shared" },
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      },
       "problemMatcher": []
     },
     {
       "label": "🌐 NEXO: Abrir War Room en navegador",
       "type": "shell",
       "command": "start NEXO_SOBERANO_v3.html",
-      "windows": { "command": "start NEXO_SOBERANO_v3.html" },
-      "linux": { "command": "xdg-open NEXO_SOBERANO_v3.html" },
-      "osx": { "command": "open NEXO_SOBERANO_v3.html" },
+      "windows": {
+        "command": "start NEXO_SOBERANO_v3.html"
+      },
+      "linux": {
+        "command": "xdg-open NEXO_SOBERANO_v3.html"
+      },
+      "osx": {
+        "command": "open NEXO_SOBERANO_v3.html"
+      },
       "group": "build",
-      "presentation": { "reveal": "silent" },
+      "presentation": {
+        "reveal": "silent"
+      },
       "problemMatcher": []
     },
     {
@@ -117,7 +200,11 @@
       "command": ".\\.venv\\Scripts\\python.exe scripts\\ai_context_tracker.py --watch --interval 180",
       "isBackground": true,
       "group": "build",
-      "presentation": { "reveal": "always", "panel": "dedicated", "clear": true },
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "clear": true
+      },
       "problemMatcher": {
         "pattern": {
           "regexp": "^(.*)$",

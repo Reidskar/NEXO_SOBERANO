@@ -1,7 +1,12 @@
 import os
 import sqlite3
+import logging
 import chromadb
 from chromadb.utils import embedding_functions
+
+# Configurar logging
+logging.basicConfig(level=logging.INFO)
+log = logging.getLogger(__name__)
 
 # --- CONFIGURACIÓN ESTRATÉGICA ---
 BASE_PATH = "NEXO_SOBERANO"
@@ -13,15 +18,10 @@ log.info("Iniciando conexión con el lóbulo frontal (ChromaDB)...")
 # Inicializamos ChromaDB en tu disco local
 cliente_chroma = chromadb.PersistentClient(path=CHROMA_PATH)
 
-# Usamos un modelo de embeddings ligero y potente que corre en tu PC gratis
-emb_fn = embedding_functions.SentenceTransformerEmbeddingFunction(
-    model_name="all-MiniLM-L6-v2" 
-)
-
 # Creamos o cargamos la colección de conocimiento
 coleccion = cliente_chroma.get_or_create_collection(
     name="inteligencia_geopolitica", 
-    embedding_function=emb_fn
+    metadata={"hnsw:space": "cosine"}
 )
 
 def preparar_esquema_vectorial():

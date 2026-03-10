@@ -14,9 +14,13 @@ class MicrosoftConnector:
         self.logger = logging.getLogger('MicrosoftConnector')
         self.token_data = {}
         self.headers = {}
+        self._auth_disabled = False
+        self._auth_disabled_reason = ""
         self._refresh_token()
 
     def _refresh_token(self):
+        if self._auth_disabled:
+            return
         try:
             self.token_data = get_microsoft_token() or {}
             access_token = self.token_data.get('access_token')
@@ -24,7 +28,22 @@ class MicrosoftConnector:
                 raise RuntimeError("Token sin access_token")
             self.headers = {'Authorization': f"Bearer {access_token}"}
         except Exception as e:
-            self.logger.error("No fue posible obtener token de Microsoft: %s", e)
+            msg = str(e or "")
+            if (
+                "TU_TENANT_ID_AZURE" in msg
+                or "TU_CLIENT_ID_AZURE" in msg
+                or "TU_CLIENT_SECRET_AZURE" in msg
+                or "No se encuentra credenciales_microsoft.json" in msg
+                or "Unable to get authority configuration" in msg
+            ):
+                self._auth_disabled = True
+                self._auth_disabled_reason = msg[:200]
+                self.logger.warning(
+                    "Microsoft Connector deshabilitado por credenciales incompletas/placeholder: %s",
+                    self._auth_disabled_reason,
+                )
+            else:
+                self.logger.error("No fue posible obtener token de Microsoft: %s", e)
             self.token_data = {}
             self.headers = {}
 
@@ -89,5 +108,5 @@ class MicrosoftConnector:
 
 if __name__ == '__main__':
     conn = MicrosoftConnector()
-    log.info(conn.list_drive_root())
-    log.info(conn.list_recent_files())
+    logging.getLogger('MicrosoftConnector').info(conn.list_drive_root())
+    logging.getLogger('MicrosoftConnector').info(conn.list_recent_files())

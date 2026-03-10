@@ -1,0 +1,31 @@
+flowchart LR
+    A[Google Drive 2TB\nCarpetas Geopolítica/Economía] --> B[NEXO Drive Classifier\nrun_drive_classification.py]
+    B --> C[NEXO Unified Sync\nrun_unified_sync_full.py]
+    C --> D[NotebookLM Bridge API\nFastAPI :8011]
+
+    D --> E[Notebook Adapter\nnotebooklm-py / Playwright]
+    E --> F[(Notebook Store\nLibretas + Fuentes)]
+
+    D --> G[RAG Quality Gate\nstrict_evidence + confidence]
+    G --> H[Claude Code Skill Runtime\n/geopolitica generar_informe]
+
+    H --> I[GSD Planner\nPlan de acción ejecutable]
+    H --> J[Vibe-Kanban\nVista multi-agente]
+
+    H --> K[Lead Engines\nApify + Vibe Prospecting]
+    K --> L[(Google Sheets\nLeads calificados)]
+
+    H --> M[Content Builder\nGuion YouTube + brief OBS]
+    M --> N[Drive Output\nScripts/Informes]
+
+    O[NEXO CORE API :8000\n/health /api/ai /agente/*] --> H
+    O --> P[War Room + Control Center]
+    P --> Q[(logs/*.json\nReportes + trazas)]
+
+    G --> Q
+    D --> Q
+    K --> Q
+
+    style D fill:#1f4b99,stroke:#8ab4ff,color:#fff
+    style G fill:#256029,stroke:#7ce38b,color:#fff
+    style O fill:#7a4d00,stroke:#ffca66,color:#fff

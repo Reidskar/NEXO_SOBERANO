@@ -127,6 +127,8 @@
         <button class="secondary" id="refreshBtn">Refrescar</button>
         <button id="runBtn">Iniciar clasificación Drive</button>
         <button id="runUnifiedBtn">Sync completo (Workspace+M365)</button>
+        <button id="runEvolutionBtn">Evolución IA (auto)</button>
+        <button id="runFodaBtn">Informe FODA crítico</button>
         <button id="runExtractorBtn">Extraer código para otras IA</button>
         <button class="secondary" id="downloadExtractorBtn">Descargar contexto</button>
         <button class="secondary" id="copyPromptBtn">Copiar prompt IA</button>
@@ -175,6 +177,16 @@
         <div class="meta" id="extractorMeta">-</div>
       </div>
       <div class="card">
+        <h3>Evolución IA</h3>
+        <div class="value" id="evolutionStatus">-</div>
+        <div class="meta" id="evolutionMeta">-</div>
+      </div>
+      <div class="card">
+        <h3>FODA crítico IA</h3>
+        <div class="value" id="fodaStatus">-</div>
+        <div class="meta" id="fodaMeta">-</div>
+      </div>
+      <div class="card">
         <h3>Último resumen</h3>
         <div class="value" id="summaryValue">-</div>
         <div class="meta" id="summaryMeta">-</div>
@@ -191,6 +203,18 @@
       <div id="chartDrive" class="small">Cargando gráfico Drive...</div>
       <div id="chartCloud" class="small" style="margin-top:10px;">Cargando gráfico Cloud...</div>
       <div id="chartUnified" class="small" style="margin-top:10px;">Cargando gráfico Sync...</div>
+      <div id="chartDriveTopics" class="small" style="margin-top:10px;">Cargando gráfico IA Topics...</div>
+      <div id="chartDriveActivity" class="small" style="margin-top:10px;">Cargando gráfico actividad 7D...</div>
+    </div>
+
+    <div class="panel">
+      <h4>Evolución continua (IA + código + UX)</h4>
+      <div id="evolutionHints" class="small">Sin recomendaciones aún.</div>
+    </div>
+
+    <div class="panel">
+      <h4>Informe FODA crítico (consenso final Claude - modo ahorro)</h4>
+      <pre id="fodaReport">Sin informe FODA aún.</pre>
     </div>
 
     <div class="panel">
@@ -211,12 +235,31 @@
 
   <script>
     const qs = (id) => document.getElementById(id);
+    const LOCAL_DEV_DEFAULT_API_KEY = 'NEXO_LOCAL_2026_OK';
+
+    function getApiKey() {
+      const fromStorage = (localStorage.getItem('nexo_v3_api_key') || '').trim();
+      if (fromStorage) return fromStorage;
+      const isLocal = ['127.0.0.1', 'localhost'].includes(window.location.hostname);
+      return isLocal ? LOCAL_DEV_DEFAULT_API_KEY : '';
+    }
+
+    function getApiHeaders() {
+      const key = getApiKey();
+      if (!key) return {};
+      return { 'X-NEXO-API-KEY': key, 'X-NEXO-KEY': key };
+    }
 
     function badge(status) {
       if (["ok", "done", "ready", true].includes(status)) return '<span class="badge ok">OK</span>';
       if (["running", "already_running"].includes(status)) return '<span class="badge warn">RUNNING</span>';
       if (["error", false].includes(status)) return '<span class="badge err">ERROR</span>';
       return '<span class="badge warn">' + String(status).toUpperCase() + '</span>';
+    }
+
+    function isAuthPendingIssue(message) {
+      const text = String(message || "").toLowerCase();
+      return ["token google", "scope", "insufficient", "permission_denied", "oauth", "autoriza", "authorize"].some((k) => text.includes(k));
     }
 
     function renderBars(containerId, title, labels, values) {
@@ -230,13 +273,13 @@
     }
 
     async function apiGet(url) {
-      const r = await fetch(url, { cache: "no-store" });
+      const r = await fetch(url, { cache: "no-store", headers: getApiHeaders() });
       if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
       return r.json();
     }
 
     async function apiPost(url, payload = {}) {
-      const r = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload || {}) });
+      const r = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json", ...getApiHeaders() }, body: JSON.stringify(payload || {}) });
       if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
       return r.json();
     }
@@ -253,12 +296,14 @@
 
     async function refreshAll() {
       try {
-        const [status, reports, errors, analytics, unified] = await Promise.all([
+        const [status, reports, errors, analytics, unified, evolution, foda] = await Promise.all([
           apiGet("/agente/control-center/status"),
           apiGet("/agente/control-center/reports"),
           apiGet("/agente/control-center/errors?limit=30"),
           apiGet("/agente/control-center/analytics"),
           apiGet("/agente/control-center/sync-unified-status"),
+          apiGet("/api/ai/evolution-status"),
+          apiGet("/api/ai/foda-status"),
         ]);
 
         qs("updatedAt").textContent = `Última actualización: ${new Date().toLocaleString()}`;
@@ -282,23 +327,60 @@
         qs("aiMeta").textContent = `docs=${rag?.total_documentos ?? 0} | presupuesto=${status?.ai?.budget?.presupuesto_restante_usd ?? "n/d"}`;
 
         const workspace = analytics?.workspace || {};
-        qs("workspaceStatus").innerHTML = badge(!!workspace.ok);
-        qs("workspaceMeta").textContent = `Drive=${workspace.drive_recent ?? 0} | Photos=${workspace.photos_recent ?? 0}`;
+        const workspaceIssue = workspace?.drive_error || workspace?.photos_error || "";
+        const workspaceBadge = workspace?.ok ? "ok" : (isAuthPendingIssue(workspaceIssue) ? "warn" : "error");
+        qs("workspaceStatus").innerHTML = badge(workspaceBadge);
+        qs("workspaceMeta").textContent = workspaceBadge === "warn"
+          ? "Autorización Google pendiente (Drive/Photos)"
+          : `Drive=${workspace.drive_recent ?? 0} | Photos=${workspace.photos_recent ?? 0}`;
 
         const m365 = analytics?.microsoft365 || {};
         qs("m365Status").innerHTML = badge(!!m365.ok);
         qs("m365Meta").textContent = `OneDrive=${m365.onedrive_recent ?? 0} | MB=${m365.onedrive_total_size_mb ?? 0}`;
 
         const unifiedStatus = unified?.status?.status || "unknown";
-        qs("unifiedStatus").innerHTML = badge(unifiedStatus);
+        const unifiedError = unified?.status?.error || "";
+        const unifiedBadge = unifiedStatus === "error" && isAuthPendingIssue(unifiedError) ? "warn" : unifiedStatus;
+        qs("unifiedStatus").innerHTML = badge(unifiedBadge);
         const us = unified?.report?.summary || {};
-        qs("unifiedMeta").textContent = `Drive=${us?.google_drive?.classified ?? 0} | Photos=${us?.google_photos?.imported ?? 0} | OneDrive=${us?.onedrive?.imported ?? 0}`;
+        qs("unifiedMeta").textContent = unifiedBadge === "warn"
+          ? "Pendiente token/scope Google para sync completo"
+          : `Drive=${us?.google_drive?.classified ?? 0} | Photos=${us?.google_photos?.imported ?? 0} | OneDrive=${us?.onedrive?.imported ?? 0}`;
 
         const extractor = status?.extractor || {};
         const extractorState = extractor?.status?.status || (extractor?.lock ? "running" : "idle");
         qs("extractorStatus").innerHTML = badge(extractorState === "idle" ? "ok" : extractorState);
         const er = extractor?.report || {};
         qs("extractorMeta").textContent = `files=${er?.files_scanned ?? 0} | output=${extractor?.output_file ?? 'n/d'}`;
+
+        const evoData = evolution?.data || {};
+        const evoOk = !!evolution?.has_data && !!evoData?.ok;
+        const evoMode = evoData?.mode?.apply_code_fix ? "fix:on" : "fix:off";
+        const evoScan = evoData?.scan_summary || {};
+        qs("evolutionStatus").innerHTML = badge(evoOk ? "ok" : (evolution?.has_data ? "warn" : "idle"));
+        qs("evolutionMeta").textContent = evolution?.has_data
+          ? `${evoMode} | score=${evoScan?.quality_score ?? "n/d"} | crit=${evoScan?.critical ?? "n/d"}`
+          : "sin ciclos aún";
+
+        const hints = Array.isArray(evoData?.hints) ? evoData.hints : [];
+        qs("evolutionHints").innerHTML = hints.length
+          ? hints.map((h) => `<div class="line"><div>• ${h}</div></div>`).join("")
+          : '<span class="small">Ejecuta “Evolución IA (auto)” para generar mejoras sobre código, sistema y UX.</span>';
+
+        const fodaData = foda?.data || {};
+        const fodaConsensus = fodaData?.consensus || {};
+        const fodaHas = !!foda?.has_data;
+        const fodaBadge = !fodaHas ? "idle" : (fodaConsensus?.ok ? "ok" : "warn");
+        const decider = fodaConsensus?.decider || "n/d";
+        const reviews = Array.isArray(fodaData?.reviews) ? fodaData.reviews : [];
+        const reviewOk = reviews.filter((r) => !!r?.ok).length;
+        qs("fodaStatus").innerHTML = badge(fodaBadge);
+        qs("fodaMeta").textContent = fodaHas
+          ? `decisor=${decider} | revisores=${reviewOk}/${reviews.length || 0}`
+          : "sin informe crítico";
+        qs("fodaReport").textContent = fodaHas
+          ? String(fodaConsensus?.content || "Sin consenso disponible")
+          : "Ejecuta “Informe FODA crítico” para evaluación profesional multi-IA y consenso final de Claude en modo ahorro.";
 
         const rounds = status?.sync?.last_report?.rounds || [];
         qs("summaryValue").textContent = `${rounds.length} rondas`;
@@ -343,6 +425,8 @@
         renderBars("chartDrive", "Drive: análisis actual", charts?.drive_sync?.labels || [], charts?.drive_sync?.values || []);
         renderBars("chartCloud", "Workspace vs Microsoft 365", charts?.workspace_vs_m365?.labels || [], charts?.workspace_vs_m365?.values || []);
         renderBars("chartUnified", "Sync unificado histórico", charts?.unified_sync?.labels || [], charts?.unified_sync?.values || []);
+        renderBars("chartDriveTopics", "IA sobre Drive: tópicos detectados", charts?.drive_ai_topics?.labels || [], charts?.drive_ai_topics?.values || []);
+        renderBars("chartDriveActivity", "Drive: actividad últimos 7 días", charts?.drive_activity_7d?.labels || [], charts?.drive_activity_7d?.values || []);
       } catch (e) {
         qs("updatedAt").textContent = `Error al cargar: ${e.message}`;
       }
@@ -384,6 +468,52 @@
         notifyResult("Sync unificado iniciado", result);
       } catch (e) {
         alert("No se pudo iniciar sync unificado: " + e.message);
+      } finally {
+        btn.disabled = false;
+        await refreshAll();
+      }
+    });
+
+    qs("runEvolutionBtn").addEventListener("click", async () => {
+      const btn = qs("runEvolutionBtn");
+      btn.disabled = true;
+      try {
+        const result = await apiPost("/api/ai/evolution-cycle?apply_code_fix=true", {});
+        notifyResult("Ciclo de evolución ejecutado", {
+          ok: result?.ok,
+          timestamp: result?.timestamp,
+          duration_seconds: result?.duration_seconds,
+          scan_summary: result?.scan_summary,
+          hints: result?.hints,
+        });
+      } catch (e) {
+        alert("No se pudo ejecutar evolución IA: " + e.message);
+      } finally {
+        btn.disabled = false;
+        await refreshAll();
+      }
+    });
+
+    qs("runFodaBtn").addEventListener("click", async () => {
+      const btn = qs("runFodaBtn");
+      btn.disabled = true;
+      try {
+        const result = await apiPost("/api/ai/foda-critical", {
+          objetivo: "Revisión profesional y técnica crítica del sistema NEXO para priorizar arreglos, mejoras, optimización y protección.",
+          incluir_evolucion: true,
+          incluir_alertas: true,
+          decisor_final: "claude",
+          modo_ahorro: true,
+        });
+        notifyResult("Informe FODA crítico generado", {
+          ok: result?.ok,
+          timestamp: result?.timestamp,
+          decider: result?.consensus?.decider,
+          consensus_ok: result?.consensus?.ok,
+          providers: result?.providers,
+        });
+      } catch (e) {
+        alert("No se pudo generar informe FODA crítico: " + e.message);
       } finally {
         btn.disabled = false;
         await refreshAll();

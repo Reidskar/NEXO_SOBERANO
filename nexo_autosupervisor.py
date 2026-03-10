@@ -370,6 +370,7 @@ class NexoSupervisor:
     def __init__(self, target_dir: Path = BASE_DIR, max_workers: int = 4):
         self.target_dir = target_dir
         self.max_workers = max_workers
+        self.max_files = int(os.getenv("NEXO_SUPERVISOR_MAX_FILES", "0") or "0")
         self.py_analyzer = PythonAnalyzer()
         self.html_analyzer = HTMLAnalyzer()
         self.fixer = AutoFixer()
@@ -387,9 +388,17 @@ class NexoSupervisor:
         log.info(f"🔍 Supervisor iniciado — directorio: {self.target_dir}")
 
     def _should_ignore(self, path: Path) -> bool:
-        parts = set(path.parts)
-        return bool(parts.intersection(self.ignore_patterns)) or \
-               any(p in str(path) for p in self.ignore_patterns)
+        path_parts = {part.lower() for part in path.parts}
+        file_name = path.name.lower()
+        for pattern in self.ignore_patterns:
+            pattern_lower = pattern.lower()
+            if pattern_lower.startswith("*."):
+                if file_name.endswith(pattern_lower[1:]):
+                    return True
+                continue
+            if pattern_lower in path_parts:
+                return True
+        return False
 
     def collect_files(self) -> List[Path]:
         """Recolecta todos los archivos a analizar"""
@@ -412,16 +421,25 @@ class NexoSupervisor:
         """Escaneo completo del proyecto"""
         log.info(f"🔍 Iniciando escaneo en {self.target_dir}...")
         files = self.collect_files()
-        log.info(f"   Archivos a analizar: {len(files)}")
+        files_to_scan = files[: self.max_files] if self.max_files > 0 else files
+        truncated = len(files) > len(files_to_scan)
+        log.info(f"   Archivos a analizar: {len(files_to_scan)} / {len(files)}")
+        if truncated:
+            log.warning(
+                "⚠ Escaneo truncado a %s archivos (NEXO_SUPERVISOR_MAX_FILES)",
+                self.max_files,
+            )
 
         all_metrics: List[FileMetrics] = []
+        analysis_errors = 0
         with ThreadPoolExecutor(max_workers=self.max_workers) as ex:
-            futures = {ex.submit(self.analyze_file, f): f for f in files[:200]}  # límite 200
+            futures = {ex.submit(self.analyze_file, f): f for f in files_to_scan}
             for fut in as_completed(futures):
                 try:
                     all_metrics.append(fut.result())
                 except Exception as e:
                     log.error(f"Error: {e}")
+                    analysis_errors += 1
 
         # Contar issues
         total = critical = high = medium = low = auto_fixed = 0
@@ -455,6 +473,10 @@ class NexoSupervisor:
             quality_score=round(avg_quality, 2),
             improvements=improvements,
             metrics={
+                "scan_limit": self.max_files,
+                "files_total_collected": len(files),
+                "scan_truncated": truncated,
+                "analysis_errors": analysis_errors,
                 "files_by_score": self._bucket_scores(all_metrics),
                 "top_issues": self._top_issues(all_metrics),
                 "files_with_critical": [m.path for m in all_metrics if any(i.severity == "critical" for i in m.issues)]
@@ -723,9 +745,12 @@ def main():
     parser.add_argument("--improve", action="store_true", help="Ciclo de mejora con IA")
     parser.add_argument("--interval", type=int, default=30, help="Intervalo watch en segundos")
     parser.add_argument("--workers", type=int, default=4, help="Workers paralelos")
+    parser.add_argument("--max-files", type=int, default=0, help="Máximo de archivos por escaneo (0=usar env/default)")
     args = parser.parse_args()
 
     supervisor = NexoSupervisor(target_dir=args.dir, max_workers=args.workers)
+    if args.max_files and args.max_files > 0:
+        supervisor.max_files = args.max_files
 
     if args.watch:
         supervisor.watch(interval=args.interval, auto_fix=args.fix)

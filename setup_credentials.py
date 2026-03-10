@@ -4,6 +4,10 @@ Run this first if you don't have credenciales_google.json yet.
 """
 import os
 import json
+import logging
+
+logging.basicConfig(level=logging.INFO, format='%(message)s')
+log = logging.getLogger(__name__)
 
 TEMPLATE = {
     "type": "oauth2.0",

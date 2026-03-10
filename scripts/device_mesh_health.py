@@ -60,7 +60,7 @@ def main() -> int:
     out_file = out_dir / f"mesh_health_{ts}.json"
     out_file.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
 
-    print(f"✅ Mesh health: {out_file}")
+    log.info(f"✅ Mesh health: {out_file}")
     print(json.dumps({
         "adb_ok": adb_devices.get("ok"),
         "backend_ok": backend_root.get("ok"),

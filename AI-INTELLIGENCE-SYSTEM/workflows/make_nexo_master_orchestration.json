@@ -1,0 +1,107 @@
+{
+  "workflow_name": "nexo_master_orchestration",
+  "version": "1.0.0",
+  "goal": "Drive -> NotebookLM Bridge -> Claude Skill -> Leads + Guiones",
+  "defaults": {
+    "project_name": "NEXO_SOBERANO",
+    "language": "es",
+    "final_decider": "claude",
+    "modo_ahorro": true,
+    "fallback_provider": "gemini"
+  },
+  "stages": [
+    {
+      "name": "detect_new_drive_file",
+      "trigger": "google_drive_watch_folder",
+      "input": ["file_id", "file_name", "mime_type", "folder_id"],
+      "output": ["file_meta"]
+    },
+    {
+      "name": "classify_and_sync",
+      "action": "nexo_api_post",
+      "endpoint": "/agente/sync/unificado",
+      "payload": {
+        "dry_run": false,
+        "drive_limit": 50,
+        "photos_limit": 20,
+        "onedrive_limit": 20
+      },
+      "output": ["sync_metrics"]
+    },
+    {
+      "name": "ingest_notebooklm",
+      "action": "http_post",
+      "service": "notebooklm_bridge",
+      "endpoint": "http://127.0.0.1:8011/drive/sync-folder",
+      "payload_template": {
+        "folder_id": "{{file_meta.folder_id}}",
+        "notebook_id": "{{vars.notebook_id}}",
+        "max_files": 50
+      },
+      "output": ["bridge_job"]
+    },
+    {
+      "name": "generate_research_summary",
+      "action": "http_post",
+      "service": "notebooklm_bridge",
+      "endpoint": "http://127.0.0.1:8011/summaries/generate",
+      "payload_template": {
+        "notebook_id": "{{vars.notebook_id}}",
+        "objective": "Extraer tesis, evidencias y riesgos geopolíticos relevantes",
+        "strict_evidence": true
+      },
+      "output": ["research_summary"]
+    },
+    {
+      "name": "claude_skill_execution",
+      "action": "claude_skill_call",
+      "command": "/geopolitica generar_informe",
+      "input_contract": {
+        "task": "string",
+        "sources": "array",
+        "strict_evidence": "boolean"
+      },
+      "output_contract": {
+        "summary": "string",
+        "findings": "array",
+        "citations": "array",
+        "confidence": "number",
+        "action_plan": "array"
+      }
+    },
+    {
+      "name": "lead_extraction",
+      "action": "apify_or_vibe_prospecting",
+      "filters": {
+        "geo": ["Chile", "LatAm"],
+        "industry": ["medios", "educación", "think_tanks"],
+        "min_quality_score": 70
+      },
+      "output": ["qualified_leads"]
+    },
+    {
+      "name": "persist_outputs",
+      "action": "google_sheets_append_and_drive_write",
+      "targets": {
+        "leads_sheet": "{{secrets.drive.sheet_id_leads}}",
+        "reports_folder": "{{secrets.drive.folder_reports}}"
+      },
+      "output": ["saved_artifacts"]
+    }
+  ],
+  "guardrails": {
+    "require_citations": true,
+    "min_citations": 1,
+    "confidence_threshold": 0.7,
+    "on_insufficient_evidence": "stop_and_flag_human_review",
+    "max_retries": 3,
+    "dead_letter": "logs/nexo_master_deadletter.jsonl"
+  },
+  "kpi": [
+    "ingestion_success_rate",
+    "avg_summary_latency_ms",
+    "citations_per_report",
+    "lead_quality_avg",
+    "cost_per_run"
+  ]
+}

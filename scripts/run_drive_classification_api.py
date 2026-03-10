@@ -1,10 +1,13 @@
 from __future__ import annotations
 
 import json
+import logging
 from datetime import datetime, timezone
 from pathlib import Path
 from urllib import request
 import os
+
+log = logging.getLogger(__name__)
 
 BASE_URL = "http://127.0.0.1:8000"
 LOCK_PATH = Path("logs") / "sync_drive_api.lock"

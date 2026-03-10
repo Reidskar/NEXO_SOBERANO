@@ -1,0 +1,88 @@
+{
+  "version": "1.0.0",
+  "description": "Perfiles de transmisión NEXO para PC, teléfono y tablet",
+  "default_target": {
+    "platform": "Custom",
+    "rtmp_server": "rtmp://your-server/live",
+    "stream_key": "your-stream-key"
+  },
+  "profiles": {
+    "pc_stable_1080p": {
+      "label": "PC Estable 1080p",
+      "video": {
+        "resolution": "1920x1080",
+        "fps": 60,
+        "bitrate_kbps": 6000,
+        "keyframe_interval": 2
+      },
+      "audio": {
+        "bitrate_kbps": 160,
+        "sample_rate": 48000
+      },
+      "network": {
+        "reconnect": true,
+        "reconnect_delay_seconds": 10,
+        "max_retries": 20
+      },
+      "recommended_upload_mbps": 12
+    },
+    "mobile_optimized_720p": {
+      "label": "Móvil Optimizado 720p",
+      "video": {
+        "resolution": "1280x720",
+        "fps": 30,
+        "bitrate_kbps": 3000,
+        "keyframe_interval": 2
+      },
+      "audio": {
+        "bitrate_kbps": 128,
+        "sample_rate": 44100
+      },
+      "network": {
+        "reconnect": true,
+        "reconnect_delay_seconds": 8,
+        "max_retries": 25
+      },
+      "recommended_upload_mbps": 6,
+      "apps": [
+        "Larix Broadcaster",
+        "PRISM Live Studio",
+        "Streamlabs Mobile"
+      ]
+    },
+    "tablet_balanced_1080p30": {
+      "label": "Tablet Balanceado 1080p30",
+      "video": {
+        "resolution": "1920x1080",
+        "fps": 30,
+        "bitrate_kbps": 4500,
+        "keyframe_interval": 2
+      },
+      "audio": {
+        "bitrate_kbps": 160,
+        "sample_rate": 48000
+      },
+      "network": {
+        "reconnect": true,
+        "reconnect_delay_seconds": 8,
+        "max_retries": 20
+      },
+      "recommended_upload_mbps": 9,
+      "apps": [
+        "Larix Broadcaster",
+        "PRISM Live Studio"
+      ]
+    }
+  },
+  "switching_strategy": {
+    "rule": "same rtmp server + same stream key across devices",
+    "note": "No emitas simultáneamente desde dos dispositivos con la misma key a menos que tu plataforma lo permita."
+  },
+  "stability_checklist": [
+    "Usar Wi-Fi 5GHz o cable en PC",
+    "Activar modo No Molestar en teléfono/tablet",
+    "Bloquear rotación en móvil/tablet",
+    "Mantener cargador conectado durante transmisión",
+    "Cerrar apps en segundo plano no esenciales"
+  ]
+}

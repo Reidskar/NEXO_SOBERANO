@@ -1,0 +1,60 @@
+{
+  "rule_name": "auto_ingest_video_to_knowledge_infrastructure",
+  "project_name": "NEXO_SOBERANO",
+  "default_policy": {
+    "final_decider": "claude",
+    "modo_ahorro": true,
+    "fallback_provider": "gemini"
+  },
+  "trigger": {
+    "source": "google_drive_watch_folder",
+    "folder": "/videos",
+    "file_extensions": [
+      "mp4",
+      "mov",
+      "mkv",
+      "webm"
+    ]
+  },
+  "operating_modes": {
+    "fast": {
+      "depth": "minimal",
+      "cost": "lowest",
+      "default": true
+    },
+    "standard": {
+      "depth": "balanced",
+      "cost": "low"
+    },
+    "deep": {
+      "depth": "full_decomposition",
+      "cost": "high",
+      "requires_manual_approval": true
+    }
+  },
+  "pipeline": [
+    "analyze_video",
+    "reverse_engineer_system",
+    "generate_architecture_workflow_sql_prompts_docs",
+    "save_artifacts_manifest",
+    "append_knowledge_index",
+    "tag_metadata",
+    "semantic_deduplicate",
+    "if_duplicate_generate_delta_report"
+  ],
+  "deduplication": {
+    "method": "semantic_similarity",
+    "threshold": 0.85,
+    "on_duplicate": "delta_report"
+  },
+  "failsafe": {
+    "if_confidence_below": 0.7,
+    "set_needs_human_review": true,
+    "include": [
+      "exact_ambiguities",
+      "two_ranked_alternatives"
+    ],
+    "on_provider_unavailable": "fallback_to_gemini_then_continue",
+    "on_budget_risk": "force_fast_mode"
+  }
+}

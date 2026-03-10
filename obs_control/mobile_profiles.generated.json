@@ -1,0 +1,78 @@
+{
+  "meta": {
+    "generated_by": "NEXO mobile setup",
+    "output": "C:\\Users\\Admn\\Desktop\\NEXO_SOBERANO\\obs_control\\mobile_profiles.generated.json",
+    "stream_endpoint": "rtmp://your-server/live/your-stream-key"
+  },
+  "profiles": {
+    "phone_720p30_stable": {
+      "app": "Larix/PRISM/Streamlabs",
+      "video": {
+        "resolution": "1280x720",
+        "fps": 30,
+        "bitrate_kbps": 3000,
+        "keyframe_interval": 2
+      },
+      "audio": {
+        "bitrate_kbps": 128,
+        "sample_rate": 44100
+      },
+      "transport": {
+        "protocol": "RTMP",
+        "url": "rtmp://your-server/live",
+        "stream_key": "your-stream-key",
+        "full_endpoint": "rtmp://your-server/live/your-stream-key",
+        "reconnect": true,
+        "retries": 25
+      }
+    },
+    "tablet_1080p30_balanced": {
+      "app": "Larix/PRISM",
+      "video": {
+        "resolution": "1920x1080",
+        "fps": 30,
+        "bitrate_kbps": 4500,
+        "keyframe_interval": 2
+      },
+      "audio": {
+        "bitrate_kbps": 160,
+        "sample_rate": 48000
+      },
+      "transport": {
+        "protocol": "RTMP",
+        "url": "rtmp://your-server/live",
+        "stream_key": "your-stream-key",
+        "full_endpoint": "rtmp://your-server/live/your-stream-key",
+        "reconnect": true,
+        "retries": 20
+      }
+    },
+    "phone_low_bandwidth_540p": {
+      "app": "Larix/PRISM/Streamlabs",
+      "video": {
+        "resolution": "960x540",
+        "fps": 30,
+        "bitrate_kbps": 1800,
+        "keyframe_interval": 2
+      },
+      "audio": {
+        "bitrate_kbps": 96,
+        "sample_rate": 44100
+      },
+      "transport": {
+        "protocol": "RTMP",
+        "url": "rtmp://your-server/live",
+        "stream_key": "your-stream-key",
+        "full_endpoint": "rtmp://your-server/live/your-stream-key",
+        "reconnect": true,
+        "retries": 30
+      }
+    }
+  },
+  "operational_notes": [
+    "No transmitir al mismo tiempo desde PC y móvil/tablet con la misma stream key.",
+    "Usar la misma URL + stream key en todos los dispositivos para failover rápido.",
+    "Si el móvil calienta, bajar a perfil 540p.",
+    "Activar modo No Molestar y bloquear orientación en el teléfono."
+  ]
+}

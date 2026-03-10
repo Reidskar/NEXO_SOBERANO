@@ -1,39 +1,56 @@
 function Sidebar({ currentPage, setCurrentPage }) {
   const menuItems = [
-    { id: "dashboard", label: "Dashboard", icon: "📊" },
-    { id: "mapa", label: "Mapa", icon: "🗺️" },
-    { id: "inteligencia", label: "Inteligencia", icon: "🧠" },
-    { id: "documentos", label: "Documentos", icon: "📄" },
-    { id: "comunidad", label: "Comunidad", icon: "👥" },
-    { id: "admin", label: "Admin", icon: "⚙️" }
+    { id: "dashboard",    label: "Dashboard",    icon: "◈" },
+    { id: "inteligencia", label: "Inteligencia", icon: "◉" },
+    { id: "documentos",   label: "Documentos",   icon: "◫" },
+    { id: "mapa",         label: "Mapa",         icon: "◎" },
+    { id: "comunidad",    label: "Comunidad",    icon: "◆" },
+    { id: "admin",        label: "Admin",        icon: "⚙" },
   ];
 
   return (
-    <div className="w-64 bg-gray-800 border-r border-gray-700 flex flex-col">
-      <div className="p-6 border-b border-gray-700">
-        <h2 className="text-sm font-bold text-gray-400">MENÚ</h2>
+    <div className="w-[220px] bg-nexo-panel border-r border-nexo-border flex flex-col shrink-0">
+      {/* Branding */}
+      <div className="px-5 py-5 border-b border-nexo-border">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded bg-nexo-green flex items-center justify-center text-white font-bold text-sm shadow-nexo">
+            Nₛ
+          </div>
+          <div>
+            <h1 className="text-sm font-bold text-nexo-text leading-tight tracking-wide">NEXO</h1>
+            <p className="text-[10px] text-nexo-muted font-medium tracking-widest uppercase">Soberano</p>
+          </div>
+        </div>
       </div>
-      
-      <nav className="flex-1 p-4 space-y-2">
+
+      {/* Navigation */}
+      <nav className="flex-1 px-3 py-3 space-y-0.5">
+        <p className="text-[10px] text-nexo-dim font-semibold tracking-widest uppercase px-3 pb-2 pt-1">Módulos</p>
         {menuItems.map(item => (
           <button
             key={item.id}
             onClick={() => setCurrentPage(item.id)}
-            className={`w-full text-left px-4 py-3 rounded transition-all ${
+            className={`w-full text-left px-3 py-2.5 rounded text-sm flex items-center gap-2.5 transition-nexo group ${
               currentPage === item.id
-                ? "bg-blue-600 text-white"
-                : "text-gray-300 hover:bg-gray-700"
+                ? "bg-nexo-green text-white shadow-nexo"
+                : "text-nexo-muted hover:bg-nexo-surface hover:text-nexo-text"
             }`}
           >
-            <span className="mr-3">{item.icon}</span>
-            {item.label}
+            <span className={`text-xs w-5 text-center ${
+              currentPage === item.id ? "text-nexo-accent" : "text-nexo-dim group-hover:text-nexo-muted"
+            }`}>
+              {item.icon}
+            </span>
+            <span className="font-medium">{item.label}</span>
           </button>
         ))}
       </nav>
-      
-      <div className="p-4 border-t border-gray-700 space-y-2">
-        <div className="text-xs text-gray-500">
-          <p>v1.0.0</p>
+
+      {/* Footer */}
+      <div className="px-4 py-3 border-t border-nexo-border">
+        <div className="flex items-center justify-between">
+          <span className="text-[10px] text-nexo-dim font-medium">v2.0.0</span>
+          <span className="nexo-badge bg-nexo-green/20 text-nexo-green-l">Activo</span>
         </div>
       </div>
     </div>

@@ -4,6 +4,11 @@ NEXO SOBERANO - QUICK REFERENCE CARD
 Print this for your desk!
 """
 
+import logging
+
+log = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO)
+
 reference = """
 ╔════════════════════════════════════════════════════════════════════════════════╗
 ║                       NEXO SOBERANO - QUICK REFERENCE                         ║

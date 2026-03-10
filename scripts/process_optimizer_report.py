@@ -61,7 +61,7 @@ def main() -> int:
 
     out = Path("documentos/OPTIMIZACION_FLUJO_APPS.md")
     out.write_text("\n".join(lines), encoding="utf-8")
-    print(f"✅ Reporte generado: {out}")
+    log.info(f"✅ Reporte generado: {out}")
     return 0
 
 

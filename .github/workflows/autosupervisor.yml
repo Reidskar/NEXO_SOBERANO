@@ -30,11 +30,9 @@ jobs:
             -not -path "./node_modules/*" \
             -not -path "./__pycache__/*" \
             -print0 | xargs -0 python -m py_compile
-        continue-on-error: true
 
       - name: Run nexo_autosupervisor (scan mode)
         run: python nexo_autosupervisor.py --scan
-        continue-on-error: true
         env:
           NEXO_AUTOSUPERVISOR_NO_AI: "true"
 

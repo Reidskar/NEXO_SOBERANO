@@ -1,23 +1,27 @@
 import os
 import chromadb
-from chromadb.utils import embedding_functions
+from chromadb.utils.embedding_functions import SentenceTransformerEmbeddingFunction
+from typing import cast
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 import google.generativeai as genai
+from google.generativeai.generative_models import GenerativeModel
 from dotenv import load_dotenv
+import logging
 
 # --- CONFIGURACIÓN BASE ---
 load_dotenv()
 genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
-modelo = genai.GenerativeModel("gemini-1.5-flash")
+modelo = GenerativeModel("gemini-1.5-flash")
+log = logging.getLogger(__name__)
 
 app = FastAPI(title="Nexo Soberano - API de Inteligencia", version="1.0")
 
 # --- CONEXIÓN AL LÓBULO FRONTAL (ChromaDB) ---
 CHROMA_PATH = os.path.join("NEXO_SOBERANO", "memoria_vectorial")
 cliente_chroma = chromadb.PersistentClient(path=CHROMA_PATH)
-emb_fn = embedding_functions.SentenceTransformerEmbeddingFunction(model_name="all-MiniLM-L6-v2")
-coleccion = cliente_chroma.get_or_create_collection(name="inteligencia_geopolitica", embedding_function=emb_fn)
+emb_fn = SentenceTransformerEmbeddingFunction(model_name="all-MiniLM-L6-v2")
+coleccion = cliente_chroma.get_or_create_collection(name="inteligencia_geopolitica", embedding_function=cast(chromadb.EmbeddingFunction, emb_fn), metadata={"hnsw:space": "cosine"})
 
 # --- MODELO DE DATOS ---
 class Peticion(BaseModel):
@@ -41,7 +45,7 @@ async def consultar_boveda(peticion: Peticion):
 
         # 2. Construcción de Contexto
         evidencia_cruda = "\n---\n".join(resultados['documents'][0])
-        metadatos_fuentes = resultados['metadatas'][0]
+        metadatos_fuentes = resultados['metadatas'][0] if resultados['metadatas'] else []
 
         # 3. Razonamiento IA
         prompt_maestro = f"""

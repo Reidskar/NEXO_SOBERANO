@@ -37,6 +37,21 @@ This repository contains the core initialization scripts for the NEXO Soberano s
 
 The scripts will create the `NEXO_SOBERANO` directory structure, initialize the SQLite vault `boveda.db`, and populate the bitacora logs (MD, JSON and DOCX).
 
+## Créditos OSS (integraciones referenciadas)
+
+NEXO SOBERANO integra ideas/herramientas del ecosistema open source con adaptación propia para operación unificada.
+
+- WebOSINT — https://github.com/C3n7ral051nt4g3ncy/WebOSINT
+- SN0INT — https://github.com/kpcyrd/sn0int
+- GeoSentinel — https://github.com/h9zdev/GeoSentinel
+- Sightline — https://github.com/ni5arga/sightline
+- WorldMonitor — https://github.com/koala73/worldmonitor
+- Intercept — https://github.com/smittix/intercept
+- Ground Station — https://github.com/sgoudelis/ground-station
+- TVScreener — https://github.com/deepentropy/tvscreener
+
+Uso en NEXO: estas referencias se emplean como base de capacidades OSINT y monitoreo; el flujo de decisiones, correlación, analítica y UI operativa se ejecuta en la arquitectura propia de NEXO.
+
 ## Go-live rápido (hoy)
 
 1. Copia variables desde `.env.example` a `.env` y completa mínimo:

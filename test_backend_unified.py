@@ -6,10 +6,14 @@ Verifica que todos los componentes funcionen correctamente.
 """
 
 import sys
+import logging
 from pathlib import Path
 
 root = Path(__file__).parent
 sys.path.insert(0, str(root))
+
+log = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO, format='%(message)s')
 
 from backend import config
 from backend.services.rag_service import get_rag_service
@@ -29,6 +33,7 @@ def test_config():
 
 def test_cost_manager():
     """Test: Gestor de costos"""
+    global log
     log.info("\n🧪 TEST 2: Gestor de costos")
     cm = get_cost_manager()
     

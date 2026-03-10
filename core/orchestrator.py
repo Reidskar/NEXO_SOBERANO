@@ -64,4 +64,4 @@ if __name__ == "__main__":
     orch.load_state()
     orch.schedule_ingest()
     orch.schedule_vectorize()
-    log.info("Orchestrator executed")
+    orch.logger.info("Orchestrator executed")

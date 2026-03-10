@@ -1,0 +1,16 @@
+{
+  "name": "nexo-local-video-chase-h-ai-growth-demo",
+  "mode": "fast",
+  "cost_policy": {
+    "final_decider": "claude",
+    "modo_ahorro": true,
+    "fallback": "gemini"
+  },
+  "steps": [
+    "detect_video",
+    "generate_prompt_pack",
+    "generate_knowledge_artifacts",
+    "run_nexo_runtime_checks",
+    "persist_report"
+  ]
+}

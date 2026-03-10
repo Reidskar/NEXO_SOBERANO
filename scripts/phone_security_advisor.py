@@ -120,7 +120,7 @@ def main() -> int:
     out_file = out_dir / f"phone_advisor_{ts}.json"
     out_file.write_text(json.dumps(advisor, ensure_ascii=False, indent=2), encoding="utf-8")
 
-    print(f"✅ Advisor generado: {out_file}")
+    log.info(f"✅ Advisor generado: {out_file}")
     print(json.dumps({
         "battery_temp_c": advisor["battery_temp_c"],
         "risky_categories": list(advisor["risky_packages"].keys()),

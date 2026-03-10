@@ -1,0 +1,21 @@
+{
+  "project_name": "NEXO_SOBERANO",
+  "language": "es",
+  "mode": "fast",
+  "confidence_threshold": 0.7,
+  "final_decider": "claude",
+  "modo_ahorro": true,
+  "fallback_provider": "gemini",
+  "enable_deep_mode": false,
+  "slug": "miguebaenaia-20260305-0001",
+  "nexo_api_base_url": "http://127.0.0.1:8000",
+  "nexo_api_key": "{{secure:vault.nexo_api_key}}",
+  "drive_folder_videos": "{{secure:drive.folder.videos}}",
+  "drive_folder_knowledge": "{{secure:drive.folder.knowledge}}",
+  "drive_folder_architecture": "{{secure:drive.folder.architecture}}",
+  "drive_folder_workflows": "{{secure:drive.folder.workflows}}",
+  "drive_folder_prompts": "{{secure:drive.folder.prompts}}",
+  "drive_folder_sql": "{{secure:drive.folder.sql}}",
+  "drive_folder_implementation": "{{secure:drive.folder.implementation}}",
+  "discord_webhook": "{{secure:vault.discord_webhook}}"
+}

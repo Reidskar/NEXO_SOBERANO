@@ -1,0 +1,25 @@
+{
+  "generated_at": "2026-03-05T19:04:55.275891+00:00",
+  "tools": [
+    {
+      "name": "n8n",
+      "category": "Automation",
+      "integration": "integrations/n8n"
+    },
+    {
+      "name": "Discord Webhooks",
+      "category": "Communication",
+      "integration": "integrations/discord"
+    },
+    {
+      "name": "Google Drive API",
+      "category": "Storage",
+      "integration": "integrations/drive"
+    },
+    {
+      "name": "OpenAI API",
+      "category": "AI",
+      "integration": "backend/ai-services"
+    }
+  ]
+}

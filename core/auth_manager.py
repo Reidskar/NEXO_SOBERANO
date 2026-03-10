@@ -1,13 +1,19 @@
 import os
 import json
 import pickle
+import logging
+import time
 from pathlib import Path
 from typing import Optional
+
+# Configure logging
+log = logging.getLogger(__name__)
 
 # Google OAuth
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
+from google.auth.credentials import Credentials as BaseCredentials
 
 # Microsoft OAuth (MSAL)
 import msal
@@ -25,12 +31,12 @@ MICROSOFT_TOKEN_FILE = Path("token_microsoft.json")
 MICROSOFT_SCOPES = ["User.Read", "Files.Read.All"]
 
 
-def get_google_credentials() -> Credentials:
+def get_google_credentials() -> Optional[BaseCredentials]:
     """Return valid Google credentials, refreshing or performing OAuth if necessary.
     
     If credentials file doesn't exist, returns None (demo mode).
     """
-    creds: Optional[Credentials] = None
+    creds: Optional[BaseCredentials] = None
     
     if not GOOGLE_CREDENTIALS_FILE.exists():
         log.info(f"⚠️ [{GOOGLE_CREDENTIALS_FILE}] no encontrado.")
@@ -101,11 +107,11 @@ class MicrosoftAuth:
             with open(MICROSOFT_TOKEN_FILE, "r") as f:
                 token_data = json.load(f)
             # check expiration
-            if token_data.get("expires_at") and token_data["expires_at"] > msal.time.time():
+            if token_data.get("expires_at") and token_data["expires_at"] > time.time():
                 return token_data
         # Acquire new
         result = self.app.acquire_token_for_client(scopes=MICROSOFT_SCOPES)
-        if "access_token" in result:
+        if result and "access_token" in result:
             # persist
             with open(MICROSOFT_TOKEN_FILE, "w") as f:
                 json.dump(result, f)

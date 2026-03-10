@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import Dict
+from urllib.parse import urlparse
 
 from playwright.sync_api import sync_playwright
 
@@ -11,6 +12,7 @@ def auto_apply(
     job: Job,
     email: str,
     password: str,
+    base_url: str,
     dry_run: bool = True,
     headless: bool = True,
 ) -> Dict:
@@ -25,7 +27,9 @@ def auto_apply(
             browser = p.chromium.launch(headless=headless)
             page = browser.new_page()
 
-            page.goto("https://www.computrabajo.cl", wait_until="domcontentloaded", timeout=60000)
+            parsed = urlparse((base_url or "").strip())
+            safe_base_url = f"{parsed.scheme}://{parsed.netloc}" if parsed.scheme and parsed.netloc else "https://www.computrabajo.cl"
+            page.goto(safe_base_url, wait_until="domcontentloaded", timeout=60000)
 
             login_candidates = [
                 "a[href*='login']",
@@ -35,11 +39,13 @@ def auto_apply(
             for sel in login_candidates:
                 if page.locator(sel).count() > 0:
                     page.locator(sel).first.click()
+                    page.wait_for_timeout(500)
                     break
 
             page.locator("input[type='email'], input[name='email']").first.fill(email)
             page.locator("input[type='password'], input[name='password']").first.fill(password)
             page.locator("button[type='submit'], button:has-text('Ingresar'), button:has-text('Entrar')").first.click()
+            page.wait_for_load_state("domcontentloaded")
 
             page.goto(job.apply_url, wait_until="domcontentloaded", timeout=60000)
 
@@ -53,6 +59,7 @@ def auto_apply(
                 locator = page.locator(sel)
                 if locator.count() > 0:
                     locator.first.click()
+                    page.wait_for_timeout(800)
                     clicked = True
                     break
 

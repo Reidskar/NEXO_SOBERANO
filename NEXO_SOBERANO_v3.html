@@ -116,6 +116,24 @@ html, body { height:100%; overflow:hidden; background:var(--bg-0); color:var(--t
 </head>
 <body>
 <div class="notif" id="notif"><span id="notif-icon">✓</span><span id="notif-msg">Operación completada</span></div>
+<div id="alert-modal" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#111827;color:#e6edff;padding:16px;border:1px solid rgba(255,23,68,.45);border-radius:8px;z-index:10000;min-width:340px;max-width:560px;max-height:70vh;overflow:auto;box-shadow:0 10px 30px rgba(0,0,0,.55);">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;"><strong style="font-family:var(--font-ui);">Alertas activas</strong><button class="btn btn-outline" style="padding:4px 8px;font-size:10px;" onclick="closeAlertsModal()">Cerrar</button></div>
+  <ul id="alert-list" style="margin:0;padding-left:18px;font-family:var(--font-mono);font-size:11px;"></ul>
+</div>
+<div id="ai-control-modal" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#0f1524;color:#e6edff;padding:16px;border:1px solid rgba(0,229,255,.35);border-radius:8px;z-index:10001;min-width:420px;max-width:760px;max-height:76vh;overflow:auto;box-shadow:0 12px 36px rgba(0,0,0,.6);">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;"><strong style="font-family:var(--font-ui);">IA Control War Room</strong><button class="btn btn-outline" style="padding:4px 8px;font-size:10px;" onclick="closeAiControlModal()">Cerrar</button></div>
+  <div id="ai-control-summary" style="font-family:var(--font-mono);font-size:11px;color:var(--text-2);margin-bottom:10px;">Cargando...</div>
+  <div class="section-title" style="margin-top:8px;">GUÍA OPERATIVA</div>
+  <ul id="ai-control-guides" style="margin:0;padding-left:18px;font-family:var(--font-mono);font-size:11px;"></ul>
+  <div class="section-title" style="margin-top:14px;">MEJORAS DE CÓDIGO</div>
+  <ul id="ai-control-code" style="margin:0;padding-left:18px;font-family:var(--font-mono);font-size:11px;"></ul>
+  <div class="section-title" style="margin-top:14px;">ACCIÓN CORRECTIVA FODA</div>
+  <ul id="ai-control-corrective" style="margin:0;padding-left:18px;font-family:var(--font-mono);font-size:11px;"></ul>
+  <div class="section-title" style="margin-top:14px;">FALTANTES OPERATIVOS</div>
+  <ul id="ai-control-missing" style="margin:0;padding-left:18px;font-family:var(--font-mono);font-size:11px;"></ul>
+  <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;"><button class="btn btn-cyan" onclick="applyAiCodeImprovements()">▶ EJECUTAR MEJORA AUTOMÁTICA</button><button class="btn btn-outline" onclick="refreshAiCodeImproveStatus()">↻ VER ESTADO</button></div>
+  <div id="ai-control-run-status" style="margin-top:8px;font-family:var(--font-mono);font-size:10px;color:var(--text-3);"></div>
+</div>
 <header class="header">
   <div class="logo">NEXO<span>·</span>SOBERANO <span style="font-size:11px;margin-left:4px;">v3</span></div>
   <div class="header-status">
@@ -127,6 +145,7 @@ html, body { height:100%; overflow:hidden; background:var(--bg-0); color:var(--t
   <div class="header-actions">
     <button class="hbtn" onclick="toggleSidebar()">☰ MENÚ</button>
     <button class="hbtn" onclick="refreshAll()">↻ REFRESH</button>
+    <button class="hbtn" id="ai-control-btn">🧠 IA CTRL</button>
     <button class="hbtn active" id="alert-btn">🔔 <span id="alert-count">3</span></button>
   </div>
 </header>
@@ -149,7 +168,7 @@ html, body { height:100%; overflow:hidden; background:var(--bg-0); color:var(--t
     <div class="sstat"><span class="sstat-label">TOKENS HOY</span><span class="sstat-val" id="s-tok">12.4K</span></div>
     <div class="sstat"><span class="sstat-label">COSTO</span><span class="sstat-val" id="s-cost">$0.18</span></div>
   </div>
-  <div class="sidebar-bottom"><div class="sidebar-ver">NEXO SOBERANO v3.0.0<br><span style="color:var(--text-3)">© 2026 — Uso Operacional</span></div></div>
+  <div class="sidebar-bottom"><div class="sidebar-ver">NEXO SOBERANO v3.0.0<br><span style="color:var(--text-3)">© 2026 — Uso Operacional</span><br><span style="font-size:9px;"><a href="#" onclick="showTab('osint', null);return false;" style="color:var(--cyan);text-decoration:none;">Créditos OSS</a> · <a href="https://fastapi.tiangolo.com" target="_blank" rel="noopener noreferrer" style="color:var(--text-2);text-decoration:none;">FastAPI</a></span></div></div>
 </nav>
 <main class="main" id="main">
   <div class="tabs">
@@ -162,15 +181,65 @@ html, body { height:100%; overflow:hidden; background:var(--bg-0); color:var(--t
     <div class="tab" id="tab-sync" onclick="showTab('sync', null)"><span class="tab-icon">🔄</span> SYNC</div>
     <div class="tab" id="tab-settings" onclick="showTab('settings', null)"><span class="tab-icon">⚙</span> CONFIG</div>
   </div>
+  <div id="status-bar" class="warn-banner" style="display:none;margin:0 0 12px 0;"></div>
+  <div id="auth-status" class="warn-banner" style="display:none;margin:0 0 12px 0;">🔐 Autenticación requerida: configura X-NEXO-API-KEY para endpoints protegidos.</div>
 
   <div class="content active" id="panel-dashboard"><div class="panel-scroll">
     <div class="info-banner">💡 <strong>NEXO SOBERANO v3</strong> — Centro de comando unificado. Inteligencia operacional, OSINT, mercados de predicción y sincronización en una sola plataforma.</div>
     <div class="grid-4" style="margin-bottom:16px;">
-      <div class="stat-card cyan"><div class="stat-value" id="d-consultas">247</div><div class="stat-label">Consultas IA hoy</div><div class="stat-delta delta-up">↑ +18% vs ayer</div><div class="sparkline" style="margin-top:8px;" id="spark1"></div></div>
-      <div class="stat-card green"><div class="stat-value" id="d-archivos">1,892</div><div class="stat-label">Archivos sincronizados</div><div class="stat-delta delta-up">↑ +34 nuevos</div><div class="sparkline" style="margin-top:8px;" id="spark2"></div></div>
-      <div class="stat-card amber"><div class="stat-value" id="d-alertas">5</div><div class="stat-label">Alertas activas</div><div class="stat-delta delta-down">↑ +2 últimas 2h</div><div class="sparkline" style="margin-top:8px;" id="spark3"></div></div>
-      <div class="stat-card red"><div class="stat-value" id="d-amenazas">2</div><div class="stat-label">Amenazas OSINT</div><div class="stat-delta" style="color:var(--amber)">◉ Monitoreo activo</div><div class="sparkline" style="margin-top:8px;" id="spark4"></div></div>
+      <div class="stat-card cyan"><div class="stat-value" id="d-consultas">--</div><div class="stat-label">Consultas IA hoy</div><div class="stat-delta delta-up">Esperando backend</div><div class="sparkline" style="margin-top:8px;" id="spark1"></div></div>
+      <div class="stat-card green"><div class="stat-value" id="d-archivos">--</div><div class="stat-label">Archivos sincronizados</div><div class="stat-delta delta-up">Esperando backend</div><div class="sparkline" style="margin-top:8px;" id="spark2"></div></div>
+      <div class="stat-card amber"><div class="stat-value" id="d-alertas">0</div><div class="stat-label">Alertas activas</div><div class="stat-delta delta-down">Esperando backend</div><div class="sparkline" style="margin-top:8px;" id="spark3"></div></div>
+      <div class="stat-card red"><div class="stat-value" id="d-amenazas">0</div><div class="stat-label">Amenazas OSINT</div><div class="stat-delta" style="color:var(--amber)">Esperando backend</div><div class="sparkline" style="margin-top:8px;" id="spark4"></div></div>
     </div>
+    
+    <!-- 💰 PANEL DE COSTOS OPERACIONALES -->
+    <div class="card" style="margin-bottom:16px;">
+      <div class="card-header">
+        <span class="card-title">💰 Costos Operacionales — Hoy</span>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <select class="select-field" id="cost-period" onchange="refreshCosts()" style="font-size:10px;padding:4px 8px;">
+            <option value="today">Hoy</option>
+            <option value="week">7 días</option>
+            <option value="month">30 días</option>
+          </select>
+          <button class="btn btn-outline" onclick="refreshCosts()" style="padding:4px 8px;font-size:10px;">↻</button>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(180px, 1fr));gap:12px;padding:0 16px 16px 16px;">
+        <div style="background:rgba(0,255,255,0.05);border:1px solid rgba(0,255,255,0.2);border-radius:4px;padding:12px;">
+          <div style="font-family:var(--font-ui);font-size:10px;color:var(--cyan);margin-bottom:4px;">TOTAL HOY</div>
+          <div style="font-family:var(--font-mono);font-size:22px;font-weight:700;color:var(--text-1);" id="cost-total">$0.00</div>
+          <div style="font-family:var(--font-mono);font-size:9px;color:var(--text-3);margin-top:2px;" id="cost-detail">Cargando...</div>
+        </div>
+        <div style="background:rgba(34,139,34,0.05);border:1px solid rgba(34,139,34,0.2);border-radius:4px;padding:12px;">
+          <div style="font-family:var(--font-ui);font-size:10px;color:var(--green);margin-bottom:4px;">GEMINI FREE TIER</div>
+          <div style="font-family:var(--font-mono);font-size:16px;font-weight:700;color:var(--text-1);" id="cost-gemini-pct">0%</div>
+          <div style="font-family:var(--font-mono);font-size:9px;color:var(--text-3);margin-top:2px;" id="cost-gemini-tokens">0 / 900K tokens</div>
+          <div style="background:rgba(255,255,255,0.1);height:4px;border-radius:2px;margin-top:6px;overflow:hidden;">
+            <div id="cost-gemini-bar" style="background:var(--green);height:100%;width:0%;transition:width 0.3s;"></div>
+          </div>
+        </div>
+        <div style="background:rgba(255,193,7,0.05);border:1px solid rgba(255,193,7,0.2);border-radius:4px;padding:12px;">
+          <div style="font-family:var(--font-ui);font-size:10px;color:var(--amber);margin-bottom:4px;">APIs IA PAGADAS</div>
+          <div style="font-family:var(--font-mono);font-size:16px;font-weight:700;color:var(--text-1);" id="cost-paid-ai">$0.00</div>
+          <div style="font-family:var(--font-mono);font-size:9px;color:var(--text-3);margin-top:2px;" id="cost-paid-breakdown">Claude + OpenAI + Grok</div>
+        </div>
+        <div style="background:rgba(139,0,255,0.05);border:1px solid rgba(139,0,255,0.2);border-radius:4px;padding:12px;">
+          <div style="font-family:var(--font-ui);font-size:10px;color:#8B00FF;margin-bottom:4px;">SERVICIOS EXTERNOS</div>
+          <div style="font-family:var(--font-mono);font-size:16px;font-weight:700;color:var(--text-1);" id="cost-services">$0.00</div>
+          <div style="font-family:var(--font-mono);font-size:9px;color:var(--text-3);margin-top:2px;">X/Twitter + otros</div>
+        </div>
+      </div>
+      <div id="cost-warnings" style="padding:0 16px 8px 16px;display:none;">
+        <!-- Warnings dinámicos aquí -->
+      </div>
+      <div style="padding:0 16px 12px 16px;">
+        <div style="font-family:var(--font-ui);font-size:10px;color:var(--text-2);margin-bottom:8px;">TOP OPERACIONES (por costo)</div>
+        <div id="cost-operations" style="font-family:var(--font-mono);font-size:10px;"></div>
+      </div>
+    </div>
+    
     <div class="grid-2" style="margin-bottom:16px;">
       <div class="card"><div class="card-header"><span class="card-title">Actividad del Sistema — 7 días</span><span class="badge badge-cyan">EN VIVO</span></div><div class="chart-wrap"><canvas id="chart-actividad" height="160"></canvas></div></div>
       <div class="card"><div class="card-header"><span class="card-title">Distribución de uso IA</span><select class="select-field" style="font-size:10px;padding:4px 8px;"><option>Último 7D</option><option>30D</option><option>90D</option></select></div><div class="chart-wrap"><canvas id="chart-dist" height="160"></canvas></div></div>
@@ -235,6 +304,7 @@ html, body { height:100%; overflow:hidden; background:var(--bg-0); color:var(--t
     <div class="section-title">TERMINAL DE ANÁLISIS</div>
     <div class="terminal" id="osint-terminal"><div class="t-dim">══════════════════════════════════════════════════</div><div class="t-info"> NEXO SOBERANO — OSINT ENGINE v3.0</div><div class="t-dim">══════════════════════════════════════════════════</div><div class="t-ok">✓ Módulos cargados</div><div class="t-warn">⚠ SN0INT: requiere configuración local</div><div class="t-dim">Ingresa un objetivo arriba para comenzar...</div><div>&nbsp;</div><div><span class="t-info">nexo@soberano</span><span class="t-dim">:~$</span> <span class="terminal-cursor"></span></div></div>
     <div class="section-title" style="margin-top:16px;">RESULTADOS</div><div id="osint-results"></div>
+    <div class="section-title" style="margin-top:16px;">CRÉDITOS OSS</div><div id="oss-credits"></div>
   </div></div>
 
   <div class="content" id="panel-chat">
@@ -251,7 +321,7 @@ html, body { height:100%; overflow:hidden; background:var(--bg-0); color:var(--t
 
   <div class="content" id="panel-sync"><div class="panel-scroll">
     <div class="info-banner">🔄 <strong>CENTRO DE SINCRONIZACIÓN</strong> — Gestiona ingesta desde Google Drive, OneDrive, YouTube y otras fuentes.</div>
-    <div class="grid-3" style="margin-bottom:16px;"><div class="stat-card green"><div class="stat-value" id="sync-ok">1,892</div><div class="stat-label">Archivos sync OK</div></div><div class="stat-card amber"><div class="stat-value" id="sync-pending">47</div><div class="stat-label">Pendientes</div></div><div class="stat-card red"><div class="stat-value" id="sync-err">3</div><div class="stat-label">Errores</div></div></div>
+    <div class="grid-3" style="margin-bottom:16px;"><div class="stat-card green"><div class="stat-value" id="sync-ok">0</div><div class="stat-label">Archivos sync OK</div></div><div class="stat-card amber"><div class="stat-value" id="sync-pending">0</div><div class="stat-label">Pendientes</div></div><div class="stat-card red"><div class="stat-value" id="sync-err">0</div><div class="stat-label">Errores</div></div></div>
     <div class="grid-2" style="margin-bottom:16px;">
       <div class="card"><div class="card-header"><span class="card-title">Fuentes de datos</span></div><div id="sync-sources"></div><div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;"><button class="btn btn-cyan" onclick="runSync('all')">▶ SYNC TODO</button><button class="btn btn-outline" onclick="runSync('drive')">Google Drive</button><button class="btn btn-outline" onclick="runSync('onedrive')">OneDrive</button><button class="btn btn-outline" onclick="runSync('youtube')">YouTube</button></div></div>
       <div class="card"><div class="card-header"><span class="card-title">Log de sincronización</span></div><div class="terminal" id="sync-terminal" style="height:180px;"><div class="t-dim">Esperando operación de sync...</div></div></div>
@@ -261,19 +331,86 @@ html, body { height:100%; overflow:hidden; background:var(--bg-0); color:var(--t
   <div class="content" id="panel-settings"><div class="panel-scroll">
     <div class="section-title">CONFIGURACIÓN</div>
     <div class="card" style="margin-bottom:16px;">
-      <div class="settings-row"><div><div class="settings-key">Backend URL</div><div class="settings-desc">API local del backend</div></div><input type="text" class="osint-input" id="backend-url" value="http://localhost:8000" style="width:280px;"/></div>
+      <div class="settings-row"><div><div class="settings-key">Backend URL</div><div class="settings-desc">API local del backend</div></div><input type="text" class="osint-input" id="backend-url" value="" placeholder="Se autodetecta desde esta pestaña" style="width:280px;"/></div>
+      <div class="settings-row"><div><div class="settings-key">X-NEXO-API-KEY</div><div class="settings-desc">Header para endpoints protegidos (/agente, /api/stream)</div></div><input type="password" class="osint-input" id="nexo-api-key" value="" placeholder="Opcional: clave API" style="width:280px;"/></div>
       <div class="settings-row"><div><div class="settings-key">Modelo</div></div><select class="select-field" id="modelo-ia"><option>claude-sonnet-4-6</option><option>claude-opus-4-6</option><option>claude-haiku-4-5</option></select></div>
       <div style="margin-top:12px;display:flex;gap:8px;"><button class="btn btn-cyan" onclick="testConnection()">✓ PROBAR CONEXIÓN</button><button class="btn btn-outline" onclick="saveSettings()">💾 GUARDAR</button></div>
     </div>
   </div></div>
 </main>
+<footer style="position:fixed;bottom:10px;right:14px;color:#8ea0c7;font-size:10px;z-index:900;opacity:.9;">NEXO SOBERANO v3 • <a href="https://fastapi.tiangolo.com" target="_blank" rel="noopener noreferrer" style="color:#00c2ff;text-decoration:none;">FastAPI</a> • <a href="https://github.com/googleapis/google-api-python-client" target="_blank" rel="noopener noreferrer" style="color:#00c2ff;text-decoration:none;">Google API</a> • <a href="https://github.com/tweepy/tweepy" target="_blank" rel="noopener noreferrer" style="color:#00c2ff;text-decoration:none;">Tweepy</a> • <a href="https://moviepy.readthedocs.io" target="_blank" rel="noopener noreferrer" style="color:#00c2ff;text-decoration:none;">MoviePy</a></footer>
 
 <script>
-const CONFIG = { backendUrl: 'http://localhost:8000', polymarketApi: 'https://gamma-api.polymarket.com', refreshInterval: 30000, version: '3.0.0' };
+const DEFAULT_BACKEND_URL = window.location.origin.replace(/\/$/, '');
+const LOCAL_DEV_DEFAULT_API_KEY = 'NEXO_LOCAL_2026_OK';
+const CONFIG = { backendUrl: DEFAULT_BACKEND_URL, polymarketApi: 'https://gamma-api.polymarket.com', refreshInterval: 30000, version: '3.0.0' };
 const state = { currentTab:'dashboard', mapLayers:{eventos:true,activos:true,alertas:true,rutas:false}, markets:[], intel:[], feeds:[], chatHistory:[], sidebarOpen:true, leafletMap:null, markers:{eventos:[],activos:[],alertas:[]} };
+const PERF = { analyticsMs: 60000, preflightMs: 90000, autonomousCycleMinMs: 300000, aiControlMs: 300000 };
+let lastAutonomousCycleAt = 0;
+let lastAuthWarningAt = 0;
 
 function updateClock(){const n=new Date(),p=x=>String(x).padStart(2,'0');document.getElementById('clock').textContent=`${p(n.getUTCHours())}:${p(n.getUTCMinutes())}:${p(n.getUTCSeconds())} UTC`;} setInterval(updateClock,1000);updateClock();
 function notify(msg,type='info'){const el=document.getElementById('notif');const icon={info:'ℹ',success:'✓',warning:'⚠',error:'✕'}[type]||'ℹ';document.getElementById('notif-icon').textContent=icon;document.getElementById('notif-msg').textContent=msg;el.className=`notif show ${type}`;setTimeout(()=>el.className='notif',3000)}
+function getNexoApiKey(){return (document.getElementById('nexo-api-key')?.value||'').trim();}
+function getAuthHeaders(extra={}){const key=getNexoApiKey();return key?{...extra,'X-NEXO-API-KEY':key,'X-NEXO-KEY':key}:extra;}
+function hasProtectedAuth(){return getNexoApiKey().length>0;}
+function normalizeBackendUrl(url){
+  const origin=window.location.origin.replace(/\/$/, '');
+  const raw=(url||'').trim();
+  if(!raw) return origin;
+  try {
+    const resolved=new URL(raw, origin);
+    const isLocal=(h)=>h==='localhost'||h==='127.0.0.1';
+    if(isLocal(resolved.hostname)&&isLocal(window.location.hostname)&&resolved.hostname!==window.location.hostname){
+      return origin;
+    }
+    return resolved.origin.replace(/\/$/, '');
+  } catch(_) {
+    return origin;
+  }
+}
+function showError(msg){const bar=document.getElementById('status-bar');if(!bar)return;bar.style.display='block';bar.innerHTML=`⚠ ${msg}`;}
+function clearError(){const bar=document.getElementById('status-bar');if(!bar)return;bar.style.display='none';bar.innerHTML='';}
+function showAuthRequired(msg='Autenticación requerida para consultar backend protegido'){const bar=document.getElementById('auth-status');if(!bar)return;bar.style.display='block';bar.textContent=`🔐 ${msg}`;}
+function clearAuthRequired(){const bar=document.getElementById('auth-status');if(!bar)return;bar.style.display='none';}
+function setNeutralDashboard(){['d-consultas','d-archivos','d-alertas','d-amenazas'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent='--';});const ac=document.getElementById('alert-count');if(ac)ac.textContent='0';['sync-ok','sync-pending','sync-err'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent='0';});}
+let inflightRequests = 0;
+function setLoading(active){
+  inflightRequests = Math.max(0, inflightRequests + (active ? 1 : -1));
+  const apiEl=document.getElementById('api-status');
+  if(!apiEl) return;
+  if(inflightRequests>0){
+    apiEl.innerHTML='API: <span style="color:var(--cyan)">CARGANDO...</span>';
+  }
+}
+function closeAiControlModal(){const m=document.getElementById('ai-control-modal');if(m)m.style.display='none';}
+function escapeHtml(text=''){return String(text).replace(/[&<>"']/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s]||s));}
+function clearInvalidApiKey(reason='Clave API inválida o vencida'){
+  try {
+    const keyInput=document.getElementById('nexo-api-key');
+    if(keyInput) keyInput.value='';
+    localStorage.removeItem('nexo_v3_api_key');
+  } catch(_) {}
+  showAuthRequired(`${reason}. Vuelve a cargar X-NEXO-API-KEY en Configuración.`);
+}
+function handleUnauthorized(actionName, statusEl){
+  clearInvalidApiKey(`401 en ${actionName}`);
+  showTab('settings', null);
+  const keyInput=document.getElementById('nexo-api-key');
+  if(keyInput) keyInput.focus();
+  if(statusEl) statusEl.textContent='Clave inválida. Reingresa X-NEXO-API-KEY y guarda.';
+  notify('Clave API inválida. Reconfigúrala en Configuración','warning');
+}
+function requireAuthForAction(actionName, statusEl){
+  if(hasProtectedAuth()) return true;
+  showAuthRequired(`Falta X-NEXO-API-KEY para ${actionName}.`);
+  showTab('settings', null);
+  const keyInput=document.getElementById('nexo-api-key');
+  if(keyInput) keyInput.focus();
+  if(statusEl) statusEl.textContent='Configura y guarda X-NEXO-API-KEY en Configuración.';
+  notify('Configura X-NEXO-API-KEY antes de continuar','warning');
+  return false;
+}
 
 function showTab(name, navEl){state.currentTab=name;document.querySelectorAll('.content').forEach(el=>el.classList.remove('active'));document.querySelectorAll('.tab').forEach(el=>el.classList.remove('active'));document.querySelectorAll('.nav-item').forEach(el=>el.classList.remove('active'));const panel=document.getElementById(`panel-${name}`);const tab=document.getElementById(`tab-${name}`);if(panel)panel.classList.add('active');if(tab)tab.classList.add('active');if(navEl)navEl.classList.add('active');const inits={map:initMap,polymarket:initPolymarket,intel:initIntel};if(inits[name])inits[name]();}
 function toggleSidebar(){const sb=document.getElementById('sidebar');const mn=document.getElementById('main');state.sidebarOpen=!state.sidebarOpen;if(state.sidebarOpen){sb.style.transform='translateX(0)';mn.style.left='220px';}else{sb.style.transform='translateX(-220px)';mn.style.left='0';}}
@@ -355,35 +492,473 @@ async function sendChat(){
   CONFIG.backendUrl=base;
 
   try {
-    const response=await fetch(`${base}/agente/consultar-rag`,{
+    const response=await fetch(`${base}/agente/consultar`,{
       method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({pregunta:msg, usuario_id:'warroom_v3', categoria:state.currentTab})
+      headers:getAuthHeaders({'Content-Type':'application/json'}),
+      body:JSON.stringify({query:msg, mode:'normal'})
     });
     if(!response.ok){
       const err=await response.text();
       throw new Error(err||`HTTP ${response.status}`);
     }
     const data=await response.json();
-    const reply=data.respuesta||'Sin respuesta del backend.';
+    const reply=data.answer||'Sin respuesta del backend.';
     thinking.remove();
     addChatMsg(reply,'ai');
     state.chatHistory.push({role:'assistant',content:reply});
-    chatTokensUsed += Number(data.chunks_usados || Math.ceil((msg.length + reply.length) / 4));
+    chatTokensUsed += Number(data.chunks_used || Math.ceil((msg.length + reply.length) / 4));
     document.getElementById('chat-tokens').textContent=chatTokensUsed;
     document.getElementById('chat-mode').textContent='Backend RAG';
   } catch(e) {
     thinking.remove();
-    addChatMsg('Backend offline o sin credenciales. En modo demo: '+getDemoResponse(msg),'ai');
-    document.getElementById('chat-mode').textContent='Demo offline';
+    addChatMsg(`Backend no disponible o sin autorización: ${e?.message||'error desconocido'}`,'ai');
+    document.getElementById('chat-mode').textContent='Offline';
+    showError(`Chat sin conexión real: ${e?.message||'sin detalle'}`);
   }
 }
-function getDemoResponse(msg){const responses=['Como asistente de NEXO SOBERANO, esta consulta requiere validación en fuentes activas.','Para análisis completo, ejecuta el backend local y vuelve a intentar.','Datos operacionales: hay 5 alertas activas; prioridad actual en zona MENA.'];return responses[Math.floor(Math.random()*responses.length)];}
 function addChatMsg(text,role,isTemp=false){const c=document.getElementById('chat-messages');const div=document.createElement('div');div.className=`msg ${role}`;const time=new Date().toLocaleTimeString('es',{hour:'2-digit',minute:'2-digit'});div.innerHTML=`<div class="msg-avatar">${role==='ai'?'AI':'YO'}</div><div><div class="msg-bubble">${text.replace(/\n/g,'<br>')}</div><div class="msg-time">${time} — ${role==='ai'?'NEXO IA':'Operador'}</div></div>`;c.appendChild(div);c.scrollTop=c.scrollHeight;return div;}
 function clearChat(){state.chatHistory=[];document.getElementById('chat-messages').innerHTML='';addChatMsg('Chat limpiado. Historial reiniciado. ¿En qué puedo ayudarte?','ai');}
+function closeAlertsModal(){const m=document.getElementById('alert-modal');if(m)m.style.display='none';}
+async function showAlertsPanel(){
+  const list=document.getElementById('alert-list');
+  if(!list) return;
+  list.innerHTML='<li>Cargando alertas...</li>';
+  const modal=document.getElementById('alert-modal');
+  if(modal) modal.style.display='block';
+  const base=(document.getElementById('backend-url')?.value?.trim()||CONFIG.backendUrl).replace(/\/$/, '');
+  try {
+    const r=await fetch(`${base}/agente/alerts?limit=10`,{cache:'no-store',headers:getAuthHeaders()});
+    if(r.status===401){
+      handleUnauthorized('/agente/alerts', null);
+      throw new Error('alerts HTTP 401');
+    }
+    if(!r.ok) throw new Error(`alerts HTTP ${r.status}`);
+    const payload=await r.json();
+    const items=Array.isArray(payload?.items)?payload.items:[];
+    list.innerHTML=items.map(a=>`<li style="margin:8px 0;"><span class="badge badge-${a.level==='high'?'red':a.level==='medium'?'amber':'green'}" style="font-size:9px;margin-right:6px;">${String(a.type||'alert').toUpperCase()}</span>${String(a.message||'Sin detalle')} <span style="color:var(--text-3);font-size:9px;">(${String(a.time||'')})</span></li>`).join('') || '<li>Sin alertas activas.</li>';
+    notify('Alertas actualizadas','info');
+  } catch(e) {
+    const fallback=(INTEL_DATA||[]).slice(0,5).map(x=>`<li style="margin:8px 0;">${x.title}</li>`).join('');
+    list.innerHTML=fallback||'<li>No se pudieron cargar alertas.</li>';
+    showError(`No se pudo cargar /agente/alerts: ${e?.message||'sin detalle'}`);
+  }
+}
 
-function initCharts(){const ctx1=document.getElementById('chart-actividad');if(ctx1&&!ctx1._nexoChart){ctx1._nexoChart=new Chart(ctx1,{type:'line',data:{labels:['L','M','X','J','V','S','D'],datasets:[{label:'Consultas IA',data:[82,134,98,167,201,88,247],borderColor:'#00e5ff',backgroundColor:'rgba(0,229,255,0.08)',tension:.4,fill:true,pointRadius:3},{label:'Alertas',data:[2,5,3,8,4,2,5],borderColor:'#ffa726',backgroundColor:'rgba(255,167,38,0.08)',tension:.4,fill:true,pointRadius:3,yAxisID:'y2'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#8899bb',font:{family:'JetBrains Mono',size:9}}}},scales:{x:{ticks:{color:'#4a5878',font:{family:'JetBrains Mono',size:9}},grid:{color:'rgba(255,255,255,0.04)'}},y:{ticks:{color:'#4a5878',font:{family:'JetBrains Mono',size:9}},grid:{color:'rgba(255,255,255,0.04)'}},y2:{position:'right',ticks:{color:'#4a5878',font:{size:9}},grid:{display:false}}}}});}
-const ctx2=document.getElementById('chart-dist');if(ctx2&&!ctx2._nexoChart){ctx2._nexoChart=new Chart(ctx2,{type:'bar',data:{labels:['OSINT','Intel','Chat','Sync','Admin'],datasets:[{data:[35,28,22,10,5],backgroundColor:['#00e5ff','#ce93d8','#00e676','#ffa726','#ff1744'],borderWidth:0,borderRadius:3}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#4a5878',font:{family:'JetBrains Mono',size:9}},grid:{display:false}},y:{ticks:{color:'#4a5878',font:{family:'JetBrains Mono',size:9}},grid:{color:'rgba(255,255,255,0.04)'}}}}});}}
+async function runAiControl(){
+  const modal=document.getElementById('ai-control-modal');
+  const summaryEl=document.getElementById('ai-control-summary');
+  const guideEl=document.getElementById('ai-control-guides');
+  const codeEl=document.getElementById('ai-control-code');
+  const correctiveEl=document.getElementById('ai-control-corrective');
+  const missingEl=document.getElementById('ai-control-missing');
+  if(!modal||!summaryEl||!guideEl||!codeEl||!correctiveEl||!missingEl) return;
+  if(!requireAuthForAction('IA Control', summaryEl)) return;
+  modal.style.display='block';
+  summaryEl.textContent='Cargando IA de mando...';
+  guideEl.innerHTML='';
+  codeEl.innerHTML='';
+  correctiveEl.innerHTML='';
+  missingEl.innerHTML='';
+
+  const base=(document.getElementById('backend-url')?.value?.trim()||CONFIG.backendUrl).replace(/\/$/, '');
+  try {
+    setLoading(true);
+    const [r, rfoda, rhealth]=await Promise.all([
+      fetch(`${base}/agente/warroom/ai-control?include_autonomous_cycle=true`,{cache:'no-store',headers:getAuthHeaders()}),
+      fetch(`${base}/api/ai/foda-status`,{cache:'no-store',headers:getAuthHeaders()}),
+      fetch(`${base}/api/health/`,{cache:'no-store'})
+    ]);
+    if(r.status===401){
+      handleUnauthorized('IA Control', summaryEl);
+      throw new Error('ai-control HTTP 401');
+    }
+    if(!r.ok) throw new Error(`ai-control HTTP ${r.status}`);
+    const payload=await r.json();
+    let fodaPayload={ok:false,has_data:false,data:{}};
+    let healthPayload={status:'unknown',ai_web:{}};
+    if(rfoda && rfoda.ok){
+      fodaPayload=await rfoda.json();
+    }
+    if(rhealth && rhealth.ok){
+      healthPayload=await rhealth.json();
+    }
+    const s=(payload?.data?.summary||{});
+    const aiWeb=(healthPayload?.ai_web||{});
+    const visual=(aiWeb?.visual_summary||{});
+    const freshness=(aiWeb?.data_freshness||{});
+    const visualGuardOk=Boolean(visual?.guard_ok);
+    const contextAge=(freshness?.context_age_seconds ?? 'n/d');
+    const webAge=(freshness?.web_monitor_age_seconds ?? 'n/d');
+    const coverage=(visual?.coverage_percent ?? 'n/d');
+    summaryEl.innerHTML=`Drive: <b>${Number(s.drive_recent||0)}</b> · Photos: <b>${Number(s.photos_recent||0)}</b> · OneDrive: <b>${Number(s.onedrive_recent||0)}</b> · RAG docs: <b>${Number(s.rag_docs||0)}</b> · Sync errores: <b>${Number(s.sync_errors||0)}</b> · Alertas: <b>${Number(s.alerts||0)}</b><br>Supervisor visual: <b style="color:${visualGuardOk?'var(--green)':'var(--amber)'};">${visualGuardOk?'AL DÍA':'DEGRADADO'}</b> · Cobertura checks: <b>${coverage}%</b> · Edad contexto: <b>${contextAge}s</b> · Edad monitor web: <b>${webAge}s</b>`;
+
+    const guides=Array.isArray(payload?.guides)?payload.guides:[];
+    guideEl.innerHTML=guides.map(g=>`<li style="margin:7px 0;">${escapeHtml(g)}</li>`).join('') || '<li>Sin guía disponible.</li>';
+
+    const code=Array.isArray(payload?.code_improvements)?payload.code_improvements:[];
+    codeEl.innerHTML=code.map(c=>`<li style="margin:7px 0;"><span class="badge badge-${c.priority==='high'?'red':c.priority==='medium'?'amber':'cyan'}" style="font-size:9px;margin-right:6px;">${escapeHtml(String(c.priority||'info').toUpperCase())}</span>${escapeHtml(c.title||'')}<div style="color:var(--text-3);font-size:10px;margin-top:3px;">${escapeHtml(c.reason||'')}</div><div style="color:var(--cyan);font-size:10px;margin-top:3px;">${escapeHtml(c.command||'')}</div></li>`).join('') || '<li>Sin mejoras propuestas.</li>';
+
+    const corrective=((fodaPayload?.data||{}).accion_correctiva||{});
+    const correctiveItems=Array.isArray(corrective?.items)?corrective.items:[];
+    correctiveEl.innerHTML=correctiveItems.slice(0,6).map(item=>`<li style="margin:7px 0;"><span class="badge badge-${item.priority==='P1'?'red':item.priority==='P2'?'amber':'cyan'}" style="font-size:9px;margin-right:6px;">${escapeHtml(String(item.priority||'P3'))}</span>${escapeHtml(item.title||'Acción correctiva')}<div style="color:var(--text-3);font-size:10px;margin-top:3px;">Dueño: ${escapeHtml(item.owner||'n/d')} · ETA: ${escapeHtml(String(item.eta_hours??'n/d'))}h</div><div style="color:var(--text-2);font-size:10px;margin-top:3px;">${escapeHtml(item.action||'')}</div><div style="color:var(--cyan);font-size:10px;margin-top:3px;">${escapeHtml(item.api_or_command||'')}</div><div style="color:var(--green);font-size:10px;margin-top:3px;">Éxito: ${escapeHtml(item.success_criteria||'')}</div></li>`).join('') || '<li>Sin acción correctiva disponible.</li>';
+
+    const missing=[];
+    const stream=(payload?.data?.stream||{});
+    const analyticsWorkspace=((payload?.data?.analytics||{}).workspace||{});
+    if(stream?.obs_connected===false) missing.push('Falta conectar OBS (stream.obs_connected=false).');
+    if(stream?.discord_connected===false) missing.push('Falta conectar Discord (stream.discord_connected=false).');
+    if(analyticsWorkspace?.drive_error) missing.push(`Falta autorización/estado de Drive: ${analyticsWorkspace.drive_error}`);
+    if(analyticsWorkspace?.photos_error) missing.push(`Falta corregir Google Photos OAuth/scopes: ${analyticsWorkspace.photos_error}`);
+    if((payload?.data?.summary?.rag_docs||0) < 20) missing.push('Falta ampliar corpus RAG (objetivo recomendado: >=20 docs).');
+    if(correctiveItems.length===0) missing.push('Falta generar acción correctiva FODA (ejecuta /api/ai/foda-critical).');
+    if(visualGuardOk===false) missing.push('Supervisor visual degradado: revisión constante detecta datos/página potencialmente desactualizados.');
+    if(freshness?.context_fresh===false) missing.push(`Contexto IA desactualizado (edad ${contextAge}s > SLO).`);
+    if(freshness?.web_monitor_fresh===false) missing.push(`Monitor web desactualizado (edad ${webAge}s > SLO).`);
+    if((visual?.endpoints||{})?.analytics?.ok===false) missing.push('No se pudo validar analytics para métricas visuales en tiempo real.');
+
+    missingEl.innerHTML=missing.map(m=>`<li style="margin:7px 0;">${escapeHtml(m)}</li>`).join('') || '<li>No hay faltantes críticos detectados.</li>';
+
+    notify('IA Control actualizada','success');
+  } catch(e) {
+    summaryEl.textContent=`No se pudo cargar IA Control: ${e?.message||'sin detalle'}`;
+    showError(`Error IA Control: ${e?.message||'sin detalle'}`);
+  } finally {
+    setLoading(false);
+  }
+}
+
+async function applyAiCodeImprovements(){
+  const statusEl=document.getElementById('ai-control-run-status');
+  if(!requireAuthForAction('mejora automática', statusEl)) return;
+  const base=(document.getElementById('backend-url')?.value?.trim()||CONFIG.backendUrl).replace(/\/$/, '');
+  try {
+    setLoading(true);
+    if(statusEl) statusEl.textContent='Iniciando mejora automática de código...';
+    const r=await fetch(`${base}/agente/warroom/apply-code-improvements`,{method:'POST',headers:getAuthHeaders()});
+    if(r.status===401){
+      handleUnauthorized('mejora automática de código', statusEl);
+      throw new Error('apply-code-improvements HTTP 401');
+    }
+    if(!r.ok) throw new Error(`apply-code-improvements HTTP ${r.status}`);
+    const payload=await r.json();
+    if(statusEl) statusEl.textContent=`Proceso iniciado. PID=${payload.pid} · Log=${payload.log}`;
+    notify('Mejora automática iniciada','success');
+  } catch(e) {
+    if(statusEl) statusEl.textContent=`No se pudo iniciar mejora: ${e?.message||'sin detalle'}`;
+    showError(`Error al iniciar mejora automática: ${e?.message||'sin detalle'}`);
+  } finally {
+    setLoading(false);
+  }
+}
+
+async function refreshAiCodeImproveStatus(){
+  const statusEl=document.getElementById('ai-control-run-status');
+  if(!requireAuthForAction('consulta de estado', statusEl)) return;
+  const base=(document.getElementById('backend-url')?.value?.trim()||CONFIG.backendUrl).replace(/\/$/, '');
+  try {
+    setLoading(true);
+    const r=await fetch(`${base}/agente/warroom/code-improvements-status`,{cache:'no-store',headers:getAuthHeaders()});
+    if(!r.ok) throw new Error(`code-improvements-status HTTP ${r.status}`);
+    const payload=await r.json();
+    if(statusEl){
+      statusEl.textContent = payload.running
+        ? `RUNNING PID=${payload.pid||'-'} · started_at=${payload.started_at||'-'} · log=${payload.log||'-'}`
+        : (payload.message||'Sin ejecuciones activas');
+    }
+  } catch(e) {
+    if(statusEl) statusEl.textContent=`No se pudo leer estado: ${e?.message||'sin detalle'}`;
+  } finally {
+    setLoading(false);
+  }
+}
+
+// ═══════════════════════════════════════════════
+// 💰 SISTEMA DE COSTOS OPERACIONALES
+// ═══════════════════════════════════════════════
+
+async function refreshCosts(){
+  const period = document.getElementById('cost-period')?.value || 'today';
+  const base = (document.getElementById('backend-url')?.value?.trim() || CONFIG.backendUrl).replace(/\/$/, '');
+  
+  try {
+    const rCosts = await fetch(`${base}/agente/costs/report?period=${period}`, {cache:'no-store',headers:getAuthHeaders()});
+    const rBudget = await fetch(`${base}/agente/costs/budget`, {cache:'no-store',headers:getAuthHeaders()});
+    
+    if (!rCosts.ok || !rBudget.ok) {
+      console.warn('Error fetching costs:', rCosts.status, rBudget.status);
+      return;
+    }
+    
+    const costs = await rCosts.json();
+    const budget = await rBudget.json();
+    updateCostsPanel(costs, budget);
+  } catch (error) {
+    console.error('Error refreshing costs:', error);
+    document.getElementById('cost-detail').textContent = 'Error al cargar costos';
+  }
+}
+
+function updateCostsPanel(costs, budget) {
+  const totalEl = document.getElementById('cost-total');
+  if (totalEl) totalEl.textContent = `$${costs.total_cost_usd.toFixed(2)}`;
+  
+  const detailEl = document.getElementById('cost-detail');
+  if (detailEl) detailEl.textContent = `IA: $${costs.total_ai_cost_usd.toFixed(2)} | Servicios: $${costs.total_services_cost_usd.toFixed(2)}`;
+  
+  const pctEl = document.getElementById('cost-gemini-pct');
+  const tokensEl = document.getElementById('cost-gemini-tokens');
+  const barEl = document.getElementById('cost-gemini-bar');
+  
+  if (pctEl && tokensEl && barEl) {
+    const usage = budget.gemini_usage_percent || 0;
+    const color = usage > 90 ? 'var(--red)' : usage > 70 ? 'var(--amber)' : 'var(--green)';
+    pctEl.textContent = `${usage.toFixed(1)}%`;
+    pctEl.style.color = color;
+    tokensEl.textContent = `${(budget.gemini_tokens_today || 0).toLocaleString()} / ${(budget.gemini_free_tier_limit || 900000).toLocaleString()} tokens`;
+    barEl.style.width = `${Math.min(usage, 100)}%`;
+    barEl.style.background = color;
+  }
+  
+  const paidAiEl = document.getElementById('cost-paid-ai');
+  const paidBreakdownEl = document.getElementById('cost-paid-breakdown');
+  
+  if (paidAiEl && costs.ai_providers) {
+    let paidTotal = 0;
+    const breakdown = [];
+    ['anthropic', 'openai', 'grok'].forEach(provider => {
+      if (costs.ai_providers[provider]) {
+        const cost = costs.ai_providers[provider].cost_usd || 0;
+        paidTotal += cost;
+        if (cost > 0) breakdown.push(`${provider}: $${cost.toFixed(2)}`);
+      }
+    });
+    paidAiEl.textContent = `$${paidTotal.toFixed(2)}`;
+    if (paidBreakdownEl) paidBreakdownEl.textContent = breakdown.length > 0 ? breakdown.join(' + ') : 'Sin uso';
+  }
+  
+  const servicesEl = document.getElementById('cost-services');
+  if (servicesEl) servicesEl.textContent = `$${costs.total_services_cost_usd.toFixed(2)}`;
+  
+  const warningsEl = document.getElementById('cost-warnings');
+  if (warningsEl && costs.warnings && costs.warnings.length > 0) {
+    warningsEl.innerHTML = costs.warnings.map(w => `<div style="background:rgba(255,193,7,0.1);border-left:3px solid var(--amber);padding:8px 12px;margin-bottom:6px;font-family:var(--font-mono);font-size:10px;color:var(--text-1);">${w}</div>`).join('');
+    warningsEl.style.display = 'block';
+  } else if (warningsEl) {
+    warningsEl.style.display = 'none';
+  }
+  
+  const opsEl = document.getElementById('cost-operations');
+  if (opsEl && costs.breakdown_by_operation && costs.breakdown_by_operation.length > 0) {
+    opsEl.innerHTML = costs.breakdown_by_operation.slice(0, 5).map((op, idx) => `<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.05);"><span style="color:var(--text-2);">${idx + 1}. ${op.operation || 'N/A'} (${op.provider})</span><span style="color:var(--text-1);">$${op.cost_usd.toFixed(4)} <span style="color:var(--text-3);">(${op.count}×)</span></span></div>`).join('');
+  } else if (opsEl) {
+    opsEl.innerHTML = '<div style="color:var(--text-3);padding:8px 0;">Sin operaciones registradas aún</div>';
+  }
+}
+
+function initCharts(){
+  const ctx1=document.getElementById('chart-actividad');
+  if(ctx1&&!ctx1._nexoChart){
+    ctx1._nexoChart=new Chart(ctx1,{type:'line',data:{labels:['-','-','-','-','-','-','-'],datasets:[{label:'Actividad Drive',data:[0,0,0,0,0,0,0],borderColor:'#00e5ff',backgroundColor:'rgba(0,229,255,0.08)',tension:.4,fill:true,pointRadius:3},{label:'Alertas Sync',data:[0,0,0,0,0,0,0],borderColor:'#ffa726',backgroundColor:'rgba(255,167,38,0.08)',tension:.4,fill:true,pointRadius:3,yAxisID:'y2'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#8899bb',font:{family:'JetBrains Mono',size:9}}}},scales:{x:{ticks:{color:'#4a5878',font:{family:'JetBrains Mono',size:9}},grid:{color:'rgba(255,255,255,0.04)'}},y:{ticks:{color:'#4a5878',font:{family:'JetBrains Mono',size:9}},grid:{color:'rgba(255,255,255,0.04)'}},y2:{position:'right',ticks:{color:'#4a5878',font:{size:9}},grid:{display:false}}}}});
+  }
+  const ctx2=document.getElementById('chart-dist');
+  if(ctx2&&!ctx2._nexoChart){
+    ctx2._nexoChart=new Chart(ctx2,{type:'bar',data:{labels:['sin datos'],datasets:[{data:[0],backgroundColor:['#00e5ff'],borderWidth:0,borderRadius:3}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#4a5878',font:{family:'JetBrains Mono',size:9}},grid:{display:false}},y:{ticks:{color:'#4a5878',font:{family:'JetBrains Mono',size:9}},grid:{color:'rgba(255,255,255,0.04)'}}}}});
+  }
+}
+
+function applyLiveAnalytics(analytics){
+  const charts=analytics?.charts||{};
+  const activityLabels=(charts?.drive_activity_7d?.labels||[]);
+  const activityValues=(charts?.drive_activity_7d?.values||[]).map(v=>Number(v||0));
+  const syncErrors=Number((charts?.drive_sync?.values||[])[3]||0);
+  const alertsSeries=activityLabels.map(()=>syncErrors);
+
+  const c1=document.getElementById('chart-actividad');
+  if(c1&&c1._nexoChart){
+    c1._nexoChart.data.labels=activityLabels.length?activityLabels:['-','-','-','-','-','-','-'];
+    c1._nexoChart.data.datasets[0].data=activityLabels.length?activityValues:[0,0,0,0,0,0,0];
+    c1._nexoChart.data.datasets[1].data=activityLabels.length?alertsSeries:[0,0,0,0,0,0,0];
+    c1._nexoChart.update('none');
+  }
+
+  const topicsLabels=(charts?.drive_ai_topics?.labels||[]).slice(0,8);
+  const topicsValues=(charts?.drive_ai_topics?.values||[]).slice(0,8).map(v=>Number(v||0));
+  const cloudLabels=(charts?.workspace_vs_m365?.labels||[]);
+  const cloudValues=(charts?.workspace_vs_m365?.values||[]).map(v=>Number(v||0));
+
+  const finalLabels = topicsLabels.length ? topicsLabels : cloudLabels;
+  const finalValues = topicsLabels.length ? topicsValues : cloudValues;
+  const c2=document.getElementById('chart-dist');
+  if(c2&&c2._nexoChart){
+    c2._nexoChart.data.labels=finalLabels.length?finalLabels:['sin datos'];
+    c2._nexoChart.data.datasets[0].data=finalValues.length?finalValues:[0];
+    c2._nexoChart.update('none');
+  }
+
+  const syncDrive=(charts?.drive_sync?.values||[]);
+  const analyzed=Number(syncDrive[0]||0);
+  const classified=Number(syncDrive[1]||0);
+  const errors=Number(syncDrive[3]||0);
+  const pending=Math.max(0, analyzed-classified);
+  const okEl=document.getElementById('sync-ok');
+  const pendingEl=document.getElementById('sync-pending');
+  const errEl=document.getElementById('sync-err');
+  if(okEl) okEl.textContent=String(classified);
+  if(pendingEl) pendingEl.textContent=String(pending);
+  if(errEl) errEl.textContent=String(errors);
+
+  const aiQueries=Number(analytics?.ai?.rag_queries_today||analytics?.metrics?.rag_queries_today||0);
+  const alerts=Number(errors||0);
+  const threats=Math.min(alerts, 9);
+  const dConsultas=document.getElementById('d-consultas');
+  const dArchivos=document.getElementById('d-archivos');
+  const dAlertas=document.getElementById('d-alertas');
+  const dAmenazas=document.getElementById('d-amenazas');
+  const alertCount=document.getElementById('alert-count');
+  if(dConsultas) dConsultas.textContent=String(aiQueries);
+  if(dArchivos) dArchivos.textContent=String(classified);
+  if(dAlertas) dAlertas.textContent=String(alerts);
+  if(dAmenazas) dAmenazas.textContent=String(threats);
+  if(alertCount) alertCount.textContent=String(alerts);
+
+  clearError();
+}
+
+function applyAutonomousBriefing(payload){
+  const briefing=payload?.briefing||{};
+  const text=(briefing?.briefing||'').trim();
+  if(!text) return;
+
+  const entry={
+    id:Date.now(),
+    level:'high',
+    title:'Briefing autónomo IA',
+    body:text,
+    sources:['Drive','OneDrive','RAG'],
+    time:'ahora',
+    tags:['AUTO','BRIEFING','IA']
+  };
+
+  const existing=(window.INTEL_DATA||INTEL_DATA||[]).filter(i=>i.title!=='Briefing autónomo IA');
+  const merged=[entry,...existing].slice(0,12);
+  if(window.INTEL_DATA) window.INTEL_DATA=merged;
+  renderIntelFeed(merged);
+}
+
+async function refreshAutonomousIntelligence(){
+  const base=(document.getElementById('backend-url')?.value?.trim()||CONFIG.backendUrl).replace(/\/$/, '');
+  CONFIG.backendUrl=base;
+  if(!hasProtectedAuth()){
+    const now=Date.now();
+    if(now-lastAuthWarningAt>60000){
+      notify('Configura X-NEXO-API-KEY para habilitar datos protegidos','warning');
+      lastAuthWarningAt=now;
+    }
+    showAuthRequired('Autenticación requerida: define X-NEXO-API-KEY en Configuración.');
+    return;
+  }
+  clearAuthRequired();
+  try {
+    setLoading(true);
+    const headers=getAuthHeaders();
+    const [a, statusResp] = await Promise.all([
+      fetch(`${base}/agente/control-center/analytics`,{cache:'no-store',headers}),
+      fetch(`${base}/agente/intelligence/autonomous-status`,{cache:'no-store',headers})
+    ]);
+
+    if(a.status===401 || statusResp.status===401){
+      handleUnauthorized('/agente/control-center/*', null);
+      return;
+    }
+
+    if(!a.ok) throw new Error(`analytics HTTP ${a.status}`);
+    const analytics=await a.json();
+    applyLiveAnalytics(analytics);
+
+    const status = statusResp.ok ? await statusResp.json() : {ok:false,has_data:false};
+    if(status?.ok&&status?.has_data){
+      applyAutonomousBriefing((status?.data||{}));
+      return;
+    }
+
+    const now=Date.now();
+    if(now-lastAutonomousCycleAt < PERF.autonomousCycleMinMs){
+      return;
+    }
+
+    const cycle=await fetch(`${base}/agente/intelligence/autonomous-cycle`,{method:'POST',headers});
+    if(cycle.ok){
+      const payload=await cycle.json();
+      applyAutonomousBriefing(payload);
+      lastAutonomousCycleAt=now;
+    }
+  } catch(e) {
+    showError(`Error cargando datos reales: ${e?.message||'sin detalle'}`);
+  } finally {
+    setLoading(false);
+  }
+}
+
+async function refreshStreamPreflight(){
+  const base=(document.getElementById('backend-url')?.value?.trim()||CONFIG.backendUrl).replace(/\/$/, '');
+  if(!hasProtectedAuth()){
+    const apiEl=document.getElementById('api-status');
+    if(apiEl) apiEl.innerHTML='API: <span style="color:var(--amber)">AUTH REQ</span>';
+    showAuthRequired('Autenticación requerida: falta X-NEXO-API-KEY para /api/stream/*');
+    return;
+  }
+  clearAuthRequired();
+  try {
+    setLoading(true);
+    const r=await fetch(`${base}/api/stream/preflight`,{cache:'no-store',headers:getAuthHeaders()});
+    if(r.status===401){handleUnauthorized('/api/stream/preflight', null);throw new Error('preflight HTTP 401');}
+    if(!r.ok) throw new Error(`preflight HTTP ${r.status}`);
+    const data=await r.json();
+    const apiEl=document.getElementById('api-status');
+    if(apiEl){
+      const ok=Boolean(data?.ok);
+      apiEl.innerHTML=`API: <span style="color:${ok?'var(--green)':'var(--amber)'}">${ok?'READY':'DEGRADED'}</span>`;
+    }
+    if(!data?.ok){
+      showError(`Preflight con bloqueos: ${(data?.blockers||[]).join(' | ')||'sin detalle'}`);
+    }
+  } catch(e) {
+    showError(`Preflight no disponible: ${e?.message||'sin detalle'}`);
+  } finally {
+    setLoading(false);
+  }
+}
+
+async function loadDashboardFromGoLivePreflight(){
+  const base=(document.getElementById('backend-url')?.value?.trim()||CONFIG.backendUrl).replace(/\/$/, '');
+  if(!hasProtectedAuth()){
+    renderSyncSources([]);
+    return;
+  }
+  try {
+    setLoading(true);
+    const r=await fetch(`${base}/agente/go-live/preflight`,{cache:'no-store',headers:getAuthHeaders()});
+    if(r.status===401){handleUnauthorized('/agente/go-live/preflight', null);throw new Error('go-live preflight HTTP 401');}
+    if(!r.ok) throw new Error(`go-live preflight HTTP ${r.status}`);
+    const data=await r.json();
+    const files=data?.files||{};
+    const ffmpegFound=Boolean(data?.ffmpeg?.found);
+    const ready=Boolean(data?.ready);
+
+    const sources=[
+      {name:'Google Drive',icon:'💠',files:null,status:(files.drive_token_write||files.google_credentials_json)?'ok':'warn',last:ready?'listo':'pendiente auth'},
+      {name:'Google Photos',icon:'📸',files:null,status:files.google_credentials_json?'ok':'warn',last:files.google_credentials_json?'con credenciales':'sin credenciales'},
+      {name:'OneDrive',icon:'☁',files:null,status:'active',last:'monitoreo externo'},
+      {name:'YouTube',icon:'▶',files:null,status:files.youtube_token_upload?'ok':'warn',last:files.youtube_token_upload?'token OK':'falta token'},
+      {name:'FFmpeg',icon:'🎬',files:null,status:ffmpegFound?'ok':'warn',last:ffmpegFound?'instalado':'no encontrado'}
+    ];
+    renderSyncSources(sources);
+  } catch(e) {
+    showError(`Error cargando preflight operativo: ${e?.message||'sin detalle'}`);
+  } finally {
+    setLoading(false);
+  }
+}
 
 const FEED_EVENTS=[
 {source:'X/TWITTER',text:'#BreakingNews — Actividad diplomática inusual detectada en región MENA',color:'var(--amber)',tag:'TRENDING',tagColor:'var(--amber)'},
@@ -392,34 +967,90 @@ const FEED_EVENTS=[
 {source:'DISCORD',text:'Canal #geopolitica: 23 mensajes nuevos sobre escalada en Medio Oriente',color:'var(--purple)',tag:'COMUNIDAD',tagColor:'var(--purple)'},
 {source:'GOOGLE DRIVE',text:'Clasificación automática: 34 documentos nuevos procesados por IA',color:'var(--cyan)',tag:'SYNC',tagColor:'var(--cyan)'}
 ];
+const OSS_CREDITS=[
+{name:'WebOSINT',url:'https://github.com/C3n7ral051nt4g3ncy/WebOSINT',use:'Recon web y pivoteo inicial'},
+{name:'SN0INT',url:'https://github.com/kpcyrd/sn0int',use:'Framework OSINT modular'},
+{name:'GeoSentinel',url:'https://github.com/h9zdev/GeoSentinel',use:'Contexto geoespacial'},
+{name:'Sightline',url:'https://github.com/ni5arga/sightline',use:'Monitoreo de superficie'},
+{name:'WorldMonitor',url:'https://github.com/koala73/worldmonitor',use:'Eventos globales'},
+{name:'Intercept',url:'https://github.com/smittix/intercept',use:'Análisis de tráfico'},
+{name:'Ground Station',url:'https://github.com/sgoudelis/ground-station',use:'Señales satelitales'},
+{name:'TVScreener',url:'https://github.com/deepentropy/tvscreener',use:'Monitor de medios TV'}
+];
 let feedIdx=0;function addFeedItem(){const feed=document.getElementById('live-feed');if(!feed)return;const ev=FEED_EVENTS[feedIdx%FEED_EVENTS.length];feedIdx++;const t=new Date().toLocaleTimeString('es',{hour:'2-digit',minute:'2-digit',second:'2-digit'});const item=document.createElement('div');item.className='feed-item';item.innerHTML=`<div class="feed-dot" style="background:${ev.color};box-shadow:0 0 6px ${ev.color};"></div><div class="feed-content"><div class="feed-source">${ev.source} <span class="feed-tag" style="background:${ev.tagColor}22;color:${ev.tagColor};border:1px solid ${ev.tagColor}44;">${ev.tag}</span></div><div class="feed-text">${ev.text}</div><div class="feed-time">${t}</div></div>`;feed.insertBefore(item,feed.firstChild);if(feed.children.length>8)feed.removeChild(feed.lastChild);}
 function renderSparklines(){const data1=[40,65,45,80,72,90,95,247],data2=[1600,1700,1780,1800,1840,1860,1880,1892],data3=[1,3,2,4,3,2,4,5],data4=[0,1,0,2,1,2,2,2];[['spark1',data1,'#00e5ff'],['spark2',data2,'#00e676'],['spark3',data3,'#ffa726'],['spark4',data4,'#ff1744']].forEach(([id,d,c])=>{const el=document.getElementById(id);if(!el)return;const max=Math.max(...d);el.innerHTML=d.map(v=>`<div class="spark-bar" style="height:${Math.max(3,(v/max)*100)}%;background:${c};"></div>`).join('');});}
-function renderSyncSources(){const sources=[{name:'Google Drive',icon:'💠',files:1245,status:'ok',last:'hace 3m'},{name:'Google Photos',icon:'📸',files:389,status:'ok',last:'hace 3m'},{name:'OneDrive',icon:'☁',files:258,status:'warn',last:'hace 15m'},{name:'YouTube',icon:'▶',files:0,status:'ok',last:'hace 1h'},{name:'Discord',icon:'💬',files:0,status:'active',last:'ahora'}];document.getElementById('sync-sources').innerHTML=sources.map(s=>`<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);"><span style="font-size:18px;">${s.icon}</span><div style="flex:1;"><div style="font-family:var(--font-ui);font-size:12px;font-weight:600;">${s.name}</div><div style="font-family:var(--font-mono);font-size:9px;color:var(--text-3);">${s.files>0?s.files+' archivos':'Stream'} · ${s.last}</div></div><span class="badge badge-${s.status==='ok'?'green':s.status==='warn'?'amber':'cyan'}">${s.status==='ok'?'OK':s.status==='warn'?'PARCIAL':'ACTIVO'}</span></div>`).join('');}
+function renderOssCredits(){
+  const container=document.getElementById('oss-credits');
+  if(!container) return;
+  container.innerHTML=OSS_CREDITS.map(item=>`<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);"><span class="badge badge-cyan" style="font-size:9px;">OSS</span><div style="flex:1;"><div style="font-family:var(--font-ui);font-size:12px;font-weight:600;">${item.name}</div><div style="font-family:var(--font-mono);font-size:9px;color:var(--text-3);">Uso en NEXO: ${item.use}</div></div><a href="${item.url}" target="_blank" rel="noopener noreferrer" class="btn btn-outline" style="padding:4px 8px;font-size:9px;">LINK</a></div>`).join('');
+}
+function renderSyncSources(sources=[]){const fallback=[{name:'Google Drive',icon:'💠',files:null,status:'active',last:'verificando...'},{name:'Google Photos',icon:'📸',files:null,status:'active',last:'verificando...'},{name:'OneDrive',icon:'☁',files:null,status:'active',last:'verificando...'},{name:'YouTube',icon:'▶',files:null,status:'active',last:'verificando...'}];const finalSources=sources.length?sources:fallback;document.getElementById('sync-sources').innerHTML=finalSources.map(s=>`<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);"><span style="font-size:18px;">${s.icon}</span><div style="flex:1;"><div style="font-family:var(--font-ui);font-size:12px;font-weight:600;">${s.name}</div><div style="font-family:var(--font-mono);font-size:9px;color:var(--text-3);">${(typeof s.files==='number'&&s.files>0)?(s.files+' archivos'):'sin conteo'} · ${s.last||'--'}</div></div><span class="badge badge-${s.status==='ok'?'green':s.status==='warn'?'amber':'cyan'}">${s.status==='ok'?'OK':s.status==='warn'?'PARCIAL':'ACTIVO'}</span></div>`).join('');}
 async function runSync(source){const term=document.getElementById('sync-terminal');term.innerHTML='';addTermLine(term,`[${new Date().toISOString()}] Iniciando sync: ${source}`,'t-info');addTermLine(term,'⟳ Conectando con servicios...','t-dim');const base=(document.getElementById('backend-url')?.value?.trim()||CONFIG.backendUrl).replace(/\/$/, '');
+  if(!hasProtectedAuth()){
+    addTermLine(term,'✕ Sync bloqueado: falta X-NEXO-API-KEY en Configuración','t-warn');
+    notify('Configura X-NEXO-API-KEY para ejecutar sync','warning');
+    return;
+  }
   try {
     const payload={dry_run:false,photos_limit:20,drive_limit:50,onedrive_limit:20,onedrive_max_mb:20,youtube_per_channel:10,drive_include_trashed:true,drive_full_scan:true,drive_auto_rename:true,retry_attempts:3,retry_backoff_seconds:1.2};
-    const r=await fetch(`${base}/agente/sync/unificado`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
-    const data=await r.json();
-    if(!r.ok||!data.ok) throw new Error(data.detail||'sync failed');
+    const r=await fetch(`${base}/agente/sync/unificado`,{method:'POST',headers:getAuthHeaders({'Content-Type':'application/json'}),body:JSON.stringify(payload)});
+    const data=await r.json().catch(()=>({ok:false,detail:'Respuesta no JSON del backend'}));
+    if(!r.ok||!data.ok) throw new Error(data.detail||`sync failed: HTTP ${r.status}`);
     addTermLine(term,'✓ Sync completado desde backend','t-ok');
+    addTermLine(term,`Drive analizados: ${Number(data?.metrics?.drive_analyzed||0)}`,'t-info');
+    addTermLine(term,`Documentos clasificados: ${Number(data?.metrics?.classified||0)}`,'t-info');
+    addTermLine(term,`Errores detectados: ${Number(data?.metrics?.errors||0)}`,'t-warn');
     notify('Sync completado exitosamente','success');
+    await refreshAutonomousIntelligence();
+    await refreshStreamPreflight();
   } catch (e) {
-    setTimeout(()=>{addTermLine(term,'✓ Google Drive: 34 archivos nuevos encontrados','t-ok');},600);
-    setTimeout(()=>{addTermLine(term,'✓ Clasificación IA: procesando...','t-info');},1200);
-    setTimeout(()=>{addTermLine(term,'✓ Sync demo completado. 34 archivos clasificados.','t-ok');notify('Sync demo completado (backend no disponible)','warning');},2400);
+    addTermLine(term,`✕ Sync falló: ${(e?.message||'backend no disponible')}`,'t-warn');
+    addTermLine(term,'Revisa backend URL, credenciales y endpoint /agente/sync/unificado.','t-dim');
+    notify('Sync falló. Sin fallback demo.','error');
+    showError(`Sync falló: ${e?.message||'sin detalle'}`);
   }
 }
-function testConnection(){const base=(document.getElementById('backend-url')?.value?.trim()||CONFIG.backendUrl).replace(/\/$/, '');CONFIG.backendUrl=base;fetch(`${base}/health`).then(r=>r.json()).then(d=>{notify('Backend online: '+(d.service||'ok'),'success');document.getElementById('api-status').innerHTML='API: <span style="color:var(--green)">ONLINE</span>';}).catch(()=>{notify('Backend offline (modo demo activo)','warning');document.getElementById('api-status').innerHTML='API: <span style="color:var(--amber)">OFFLINE</span>';});}
-function saveSettings(){const base=(document.getElementById('backend-url')?.value?.trim()||CONFIG.backendUrl).replace(/\/$/, '');CONFIG.backendUrl=base;localStorage.setItem('nexo_v3_backend_url',base);localStorage.setItem('nexo_v3_model',document.getElementById('modelo-ia')?.value||'claude-sonnet-4-6');notify('Configuración guardada','success');}
+function testConnection(){const base=(document.getElementById('backend-url')?.value?.trim()||CONFIG.backendUrl).replace(/\/$/, '');CONFIG.backendUrl=base;fetch(`${base}/health`).then(r=>r.json()).then(async d=>{notify('Backend online: '+(d.status||'ok'),'success');await refreshStreamPreflight();}).catch(()=>{notify('Backend offline','warning');document.getElementById('api-status').innerHTML='API: <span style="color:var(--amber)">OFFLINE</span>';showError('Backend sin respuesta en /health');});}
+async function saveSettings(){const base=(document.getElementById('backend-url')?.value?.trim()||CONFIG.backendUrl).replace(/\/$/, '');CONFIG.backendUrl=base;localStorage.setItem('nexo_v3_backend_url',base);localStorage.setItem('nexo_v3_model',document.getElementById('modelo-ia')?.value||'claude-sonnet-4-6');localStorage.setItem('nexo_v3_api_key',getNexoApiKey());notify('Configuración guardada','success');await refreshStreamPreflight();}
 function updateSystemStats(){const cpu=25+Math.floor(Math.random()*30),ram=55+Math.floor(Math.random()*20);document.getElementById('s-cpu').textContent=cpu+'%';document.getElementById('s-ram').textContent=ram+'%';document.getElementById('s-cpu-bar').style.width=cpu+'%';document.getElementById('s-ram-bar').style.width=ram+'%';}
-function refreshAll(){notify('Actualizando todos los módulos...','info');updateSystemStats();addFeedItem();}
+async function refreshAll(){notify('Actualizando todos los módulos...','info');updateSystemStats();addFeedItem();await refreshAutonomousIntelligence();await refreshStreamPreflight();}
 
 document.addEventListener('DOMContentLoaded',()=>{
+  const input=document.getElementById('backend-url');
   const savedBase=localStorage.getItem('nexo_v3_backend_url');
-  if(savedBase){CONFIG.backendUrl=savedBase;const input=document.getElementById('backend-url');if(input)input.value=savedBase;}
+  const normalizedBase=normalizeBackendUrl(savedBase||CONFIG.backendUrl||DEFAULT_BACKEND_URL);
+  CONFIG.backendUrl=normalizedBase;
+  if(input) input.value=normalizedBase;
+  localStorage.setItem('nexo_v3_backend_url',normalizedBase);
+  const savedApiKey=localStorage.getItem('nexo_v3_api_key');
+  const keyInput=document.getElementById('nexo-api-key');
+  if(savedApiKey){
+    if(keyInput) keyInput.value=savedApiKey;
+  } else {
+    const isLocalHost=['127.0.0.1','localhost'].includes(window.location.hostname);
+    if(isLocalHost){
+      if(keyInput) keyInput.value=LOCAL_DEV_DEFAULT_API_KEY;
+      localStorage.setItem('nexo_v3_api_key', LOCAL_DEV_DEFAULT_API_KEY);
+    }
+  }
   const savedModel=localStorage.getItem('nexo_v3_model');
   if(savedModel&&document.getElementById('modelo-ia'))document.getElementById('modelo-ia').value=savedModel;
-  initCharts();renderSparklines();renderSyncSources();for(let i=0;i<4;i++)setTimeout(addFeedItem,i*200);setInterval(addFeedItem,8000);setInterval(updateSystemStats,15000);testConnection();
+  const alertBtn=document.getElementById('alert-btn');
+  if(alertBtn) alertBtn.addEventListener('click', showAlertsPanel);
+  const aiControlBtn=document.getElementById('ai-control-btn');
+  if(aiControlBtn) aiControlBtn.addEventListener('click', runAiControl);
+  setNeutralDashboard();
+  initCharts();renderSparklines();renderSyncSources();renderOssCredits();for(let i=0;i<4;i++)setTimeout(addFeedItem,i*200);setInterval(addFeedItem,8000);setInterval(updateSystemStats,15000);testConnection();
+  refreshAutonomousIntelligence();
+  refreshStreamPreflight();
+  loadDashboardFromGoLivePreflight();
+  runAiControl();
+  refreshCosts();
+  setInterval(refreshCosts, 60000);
+  setInterval(refreshAutonomousIntelligence, PERF.analyticsMs);
+  setInterval(refreshStreamPreflight, PERF.preflightMs);
+  setInterval(loadDashboardFromGoLivePreflight, 120000);
+  setInterval(runAiControl, PERF.aiControlMs);
 });
 </script>
 

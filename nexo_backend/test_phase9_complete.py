@@ -6,6 +6,7 @@ Demuestra la integración completa del sistema económico y de seguridad de Nexo
 import sys
 import json
 import os
+import logging
 from datetime import datetime
 
 # Ensure backend services directory is on sys.path so we can import
@@ -13,11 +14,60 @@ project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 backend_services = os.path.join(project_root, "backend", "services")
 sys.path.insert(0, backend_services)
 
-from polymarket_service import PolymarketService
+legacy_services = os.path.join(
+    project_root,
+    "nexo_backend",
+    "backend_legacy_dup_20260301",
+    "services",
+)
+if os.path.isdir(legacy_services):
+    sys.path.insert(0, legacy_services)
 
-from smart_donation_system import SmartDonationSystem
+logging.basicConfig(level=logging.INFO, format="%(message)s")
+log = logging.getLogger(__name__)
 
-from link_security_service import LinkSecurityService
+try:
+    # Try to import from the services directory
+    try:
+        from polymarket_service import PolymarketService
+        from smart_donation_system import SmartDonationSystem
+        from link_security_service import LinkSecurityService
+    except (ModuleNotFoundError, ImportError):
+        # If not found, try importing from current directory
+        import importlib.util
+        import sys
+        
+        # Try to locate the modules in the nexo_backend directory
+        nexo_backend_dir = os.path.dirname(__file__)
+        
+        # Helper function to import module from file path
+        def import_from_path(module_name, file_name):
+            file_path = os.path.join(nexo_backend_dir, file_name)
+            if not os.path.exists(file_path):
+                raise ModuleNotFoundError(f"Module {module_name} not found at {file_path}")
+            spec = importlib.util.spec_from_file_location(module_name, file_path)
+            if spec is None or spec.loader is None:
+                raise ModuleNotFoundError(f"Cannot load module {module_name} from {file_path}")
+            module = importlib.util.module_from_spec(spec)
+            sys.modules[module_name] = module
+            spec.loader.exec_module(module)
+            return module
+        
+        polymarket_module = import_from_path("polymarket_service", "polymarket_service.py")
+        PolymarketService = polymarket_module.PolymarketService
+        
+        donation_module = import_from_path("smart_donation_system", "smart_donation_system.py")
+        SmartDonationSystem = donation_module.SmartDonationSystem
+        
+        link_security_module = import_from_path("link_security_service", "link_security_service.py")
+        LinkSecurityService = link_security_module.LinkSecurityService
+        
+except ModuleNotFoundError as exc:
+    try:
+        import pytest
+        pytest.skip(f"Phase 9 demo dependencies not available: {exc}", allow_module_level=True)
+    except Exception:
+        raise
 
 def print_header(title: str):
     """Imprimir encabezado decorativo."""

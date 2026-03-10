@@ -50,6 +50,19 @@ def run_cycle() -> dict:
         return summary
 
     try:
+        if not config.DRY_RUN and (not config.COMPUTRABAJO_EMAIL or not config.COMPUTRABAJO_PASSWORD):
+            summary = {
+                "device_id": config.DEVICE_ID,
+                "jobs_scraped": 0,
+                "jobs_filtered": 0,
+                "jobs_processed": 0,
+                "jobs_applied": 0,
+                "max_applications_per_cycle": max(1, int(config.MAX_APPLICATIONS_PER_CYCLE)),
+                "dry_run": config.DRY_RUN,
+                "skipped_reason": "missing_computrabajo_credentials",
+            }
+            return summary
+
         jobs = fetch_jobs(config.SEARCH_URL, config.COMPUTRABAJO_URL)
         filtered = apply_rules(
             jobs,
@@ -62,6 +75,7 @@ def run_cycle() -> dict:
         rows_for_sheet = []
         processed = 0
         applied = 0
+        dry_run_simulated = 0
         max_applications = max(1, int(config.MAX_APPLICATIONS_PER_CYCLE))
 
         for job in filtered:
@@ -88,12 +102,15 @@ def run_cycle() -> dict:
                         job,
                         email=config.COMPUTRABAJO_EMAIL,
                         password=config.COMPUTRABAJO_PASSWORD,
+                        base_url=config.COMPUTRABAJO_URL,
                         dry_run=config.DRY_RUN,
                         headless=config.PLAYWRIGHT_HEADLESS,
                     )
                     status = result.get("status", "unknown")
-                    if result.get("ok"):
+                    if result.get("ok") and not config.DRY_RUN:
                         applied += 1
+                    if result.get("ok") and config.DRY_RUN:
+                        dry_run_simulated += 1
 
             row = {
                 "timestamp": datetime.now(timezone.utc).isoformat(),
@@ -126,6 +143,7 @@ def run_cycle() -> dict:
             "jobs_filtered": len(filtered),
             "jobs_processed": processed,
             "jobs_applied": applied,
+            "jobs_simulated": dry_run_simulated,
             "max_applications_per_cycle": max_applications,
             "dry_run": config.DRY_RUN,
         }

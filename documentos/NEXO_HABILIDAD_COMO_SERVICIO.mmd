@@ -1,0 +1,23 @@
+flowchart TD
+    A[Google Drive / Fuentes] --> B[Ingesta de skills]
+    B --> C[Catalogador masivo]
+    C --> D[(skills_catalog.json)]
+
+    D --> E[Selector por contexto]
+    E --> F{Bundle}
+    F -->|engineering| G[Skills de ingeniería]
+    F -->|marketing| H[Skills de marketing]
+    F -->|research| I[Skills de geopolítica / análisis]
+    F -->|operations| J[Skills de automatización]
+
+    G --> K[Router IA Claude/Gemini]
+    H --> K
+    I --> K
+    J --> K
+
+    K --> L[Make / n8n Orquestación]
+    L --> M[Salidas: War Room, Discord, Reportes]
+
+    C --> N[Auditoría de terceros]
+    N --> O[Validación: origen, integridad, score]
+    O --> D

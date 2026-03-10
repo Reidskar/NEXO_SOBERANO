@@ -1,6 +1,8 @@
 python-docx
 python-dotenv
 google-generativeai
+anthropic
+openai
 sentence-transformers
 chromadb
 fastapi
@@ -31,6 +33,9 @@ PyJWT
 
 # Database
 sqlalchemy
+psycopg2-binary
+alembic
+asyncpg
 
 # Additional utilities
 python-multipart

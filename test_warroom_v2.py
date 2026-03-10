@@ -8,7 +8,12 @@ import requests
 import json
 import sys
 import time
+import logging
 from pathlib import Path
+
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='%(message)s')
+log = logging.getLogger(__name__)
 
 # ════════════════════════════════════════════════════════════════════
 # COLOREO DE SALIDA

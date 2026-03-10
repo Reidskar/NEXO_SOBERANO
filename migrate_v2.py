@@ -6,7 +6,11 @@ Herramienta para limpiar estructura vieja y verificar integración.
 
 import os
 import shutil
+import logging
 from pathlib import Path
+
+log = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO, format='%(message)s')
 
 ROOT = Path(__file__).parent
 

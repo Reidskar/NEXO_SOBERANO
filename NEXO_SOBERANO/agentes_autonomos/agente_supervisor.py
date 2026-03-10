@@ -16,7 +16,6 @@ MODO DE USO:
 from __future__ import annotations
 
 import argparse
-import base64
 import json
 import logging
 import os
@@ -55,6 +54,14 @@ logging.basicConfig(
 log = logging.getLogger("nexo.agente_supervisor")
 
 
+def _try_secure_chmod(path: Path) -> None:
+    """Intenta restringir permisos del archivo de clave (best effort)."""
+    try:
+        path.chmod(0o600)
+    except Exception as exc:
+        log.debug("No se pudo aplicar chmod 600 en %s: %s", path, exc)
+
+
 def _load_or_create_key() -> bytes:
     """Carga la clave Fernet existente o genera una nueva."""
     try:
@@ -69,7 +76,7 @@ def _load_or_create_key() -> bytes:
 
     key = Fernet.generate_key()
     _KEY_FILE.write_bytes(key)
-    _KEY_FILE.chmod(0o600)
+    _try_secure_chmod(_KEY_FILE)
     log.info("🔑 Nueva clave de cifrado generada: %s", _KEY_FILE)
     return key
 
@@ -92,7 +99,7 @@ def rotate_key() -> Path:
 
     new_key = Fernet.generate_key()
     _KEY_FILE.write_bytes(new_key)
-    _KEY_FILE.chmod(0o600)
+    _try_secure_chmod(_KEY_FILE)
     log.info("🔑 Clave rotada y guardada: %s", _KEY_FILE)
     return _KEY_FILE
 
@@ -200,10 +207,13 @@ class AgenteSupervisor:
     - Ciclo watch continuo con auto-reparación
     """
 
-    def __init__(self, target_dir: Optional[Path] = None, workers: int = 4):
+    def __init__(self, target_dir: Optional[Path] = None, workers: int = 4, max_files: int = 0):
         self.target_dir = target_dir or _ROOT_DIR
         self.supervisor = NexoSupervisor(target_dir=self.target_dir, max_workers=workers)
+        self.max_files = max_files if max_files > 0 else 0
         log.info("🤖 AgenteSupervisor iniciado — dir: %s", self.target_dir)
+        if self.max_files:
+            log.info("📏 Límite de archivos por scan: %d", self.max_files)
 
     def scan(self, auto_fix: bool = False) -> SupervisorReport:
         report, all_metrics = self._run_scan(auto_fix=auto_fix)
@@ -213,11 +223,19 @@ class AgenteSupervisor:
         # Recolectar y analizar archivos directamente desde el supervisor
         files = self.supervisor.collect_files()
         from concurrent.futures import ThreadPoolExecutor, as_completed
-        from dataclasses import asdict
+
+        files_to_scan = files[:self.max_files] if self.max_files else files
+        if self.max_files and len(files) > self.max_files:
+            log.warning(
+                "⚠️ Se aplicó límite max_files=%d (descubiertos=%d, escaneados=%d)",
+                self.max_files,
+                len(files),
+                len(files_to_scan),
+            )
 
         all_metrics: List[FileMetrics] = []
         with ThreadPoolExecutor(max_workers=self.supervisor.max_workers) as ex:
-            futures = {ex.submit(self.supervisor.analyze_file, f): f for f in files[:200]}
+            futures = {ex.submit(self.supervisor.analyze_file, f): f for f in files_to_scan}
             for fut in as_completed(futures):
                 try:
                     all_metrics.append(fut.result())
@@ -346,13 +364,16 @@ def main() -> None:
     parser.add_argument("--genkey", action="store_true", help="Generar/rotar clave de cifrado")
     parser.add_argument("--interval", type=int, default=30, help="Intervalo watch (segundos)")
     parser.add_argument("--workers", type=int, default=4, help="Workers paralelos")
+    parser.add_argument("--max-files", type=int, default=0, help="Máximo de archivos por scan (0 = sin límite)")
     args = parser.parse_args()
 
     if args.genkey:
         rotate_key()
         return
 
-    agente = AgenteSupervisor(target_dir=args.dir, workers=args.workers)
+    env_max_files = int(os.getenv("NEXO_SUPERVISOR_MAX_FILES", "0") or "0")
+    max_files = args.max_files if args.max_files > 0 else env_max_files
+    agente = AgenteSupervisor(target_dir=args.dir, workers=args.workers, max_files=max_files)
 
     if args.watch:
         agente.watch(interval=args.interval, auto_fix=args.fix)

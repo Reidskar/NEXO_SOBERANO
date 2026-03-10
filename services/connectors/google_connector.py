@@ -5,8 +5,9 @@ import logging
 import mimetypes
 import requests
 from pathlib import Path
-from typing import Optional, Dict
+from typing import Optional, Dict, Any, Union
 from google.oauth2.credentials import Credentials
+from google.auth.external_account_authorized_user import Credentials as ExternalAccountCredentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
 from googleapiclient.discovery import build
@@ -123,7 +124,7 @@ def _resolve_google_credentials_file(require_drive_write: bool = False) -> Path:
     return AUTH_DIR / "credenciales_google.json"
 
 
-def get_google_credentials(require_photos: bool = False, require_drive_write: bool = False, allow_interactive: bool = False) -> Credentials:
+def get_google_credentials(require_photos: bool = False, require_drive_write: bool = False, allow_interactive: bool = False) -> Union[Credentials, ExternalAccountCredentials]:
     creds = None
     if require_drive_write and require_photos:
         token_name = "token_google_manage_full.json"
@@ -264,17 +265,45 @@ def get_drive_manage_service():
 
 def list_recent_photos(max_results=20):
     """Lista elementos recientes de Google Photos."""
+    page_size = max(1, min(int(max_results or 20), 100))
+
+    def _request_with_creds(creds_obj):
+        headers = {'Authorization': f'Bearer {creds_obj.token}'}
+        url = "https://photoslibrary.googleapis.com/v1/mediaItems"
+        return requests.get(url, headers=headers, params={"pageSize": page_size}, timeout=30)
+
     try:
         creds = get_google_credentials(require_photos=True, allow_interactive=False)
     except Exception as e:
         logger.warning("Google Photos no disponible: %s", e)
         return []
-    headers = {'Authorization': f'Bearer {creds.token}'}
-    url = "https://photoslibrary.googleapis.com/v1/mediaItems"
-    page_size = max(1, min(int(max_results or 20), 100))
-    resp = requests.get(url, headers=headers, params={"pageSize": page_size}, timeout=30)
+
+    resp = _request_with_creds(creds)
+
+    if resp.status_code == 403:
+        try:
+            payload = resp.json() if resp.content else {}
+        except Exception:
+            payload = {}
+        err = (payload or {}).get("error") or {}
+        msg = str(err.get("message") or "")
+        if "insufficient authentication scopes" in msg.lower():
+            try:
+                alt_creds = get_google_credentials(
+                    require_photos=True,
+                    require_drive_write=True,
+                    allow_interactive=False,
+                )
+                resp = _request_with_creds(alt_creds)
+            except Exception as alt_exc:
+                logger.warning("Google Photos reintento con token manage_full falló: %s", alt_exc)
+
     if resp.status_code >= 400:
         detail = ""
+        action_hint = (
+            "Acción: ejecutar POST /agente/photos/authorize con include_drive_write=true, "
+            "habilitar Photos Library API y agregar tu cuenta en OAuth Test Users."
+        )
         try:
             payload = resp.json()
             err = (payload or {}).get("error") or {}
@@ -286,8 +315,7 @@ def list_recent_photos(max_results=20):
             detail = resp.text[:500]
         raise RuntimeError(
             "Google Photos request failed. "
-            f"HTTP {resp.status_code}. {detail}. "
-            "Acción: habilita Photos Library API en Google Cloud y agrega tu cuenta en OAuth Test Users (o publica la app)."
+            f"HTTP {resp.status_code}. {detail}. {action_hint}"
         )
     items = resp.json().get("mediaItems", [])
     normalizados = []
@@ -531,7 +559,7 @@ def upload_bytes_to_drive(
 ):
     """Upload bytes into Drive with optional parent folder and appProperties."""
     service = get_drive_manage_service()
-    metadata = {"name": filename}
+    metadata: Dict[str, Any] = {"name": filename}
     if parent_id:
         metadata["parents"] = [parent_id]
     if app_properties:
@@ -661,4 +689,4 @@ class GoogleConnector:
 
 if __name__ == "__main__":
     files = list_recent_files()
-    log.info(json.dumps(files, indent=2))
+    logger.info(json.dumps(files, indent=2))

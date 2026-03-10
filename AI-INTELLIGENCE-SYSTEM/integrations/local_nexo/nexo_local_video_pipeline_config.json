@@ -1,0 +1,29 @@
+{
+  "project_name": "NEXO_SOBERANO",
+  "language": "es",
+  "mode": "fast",
+  "confidence_threshold": 0.7,
+  "final_decider": "claude",
+  "modo_ahorro": true,
+  "providers": {
+    "primary": "anthropic",
+    "fallback": "gemini",
+    "disabled": [
+      "openai",
+      "grok"
+    ]
+  },
+  "runtime": {
+    "base_url": "http://127.0.0.1:8000",
+    "timeout_seconds": 20,
+    "validate_endpoints": true
+  },
+  "output_manifest": {
+    "knowledge": "knowledge/{slug}_system.md",
+    "architecture": "architectures/{slug}_architecture.md",
+    "workflow": "workflows/{slug}_n8n.json",
+    "prompts": "prompts/generated/{slug}_prompts.md",
+    "sql": "database/{slug}_schema.sql",
+    "implementation": "implementation/{slug}_roadmap.md"
+  }
+}

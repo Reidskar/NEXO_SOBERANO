@@ -1,0 +1,142 @@
+version: "3.9"
+
+# ═══════════════════════════════════════════════════════════════
+#  NEXO SOBERANO — Stack Multi-Tenant
+#  Servicios: FastAPI + PostgreSQL + Redis + Qdrant
+#  Costo infraestructura: $0 (todo self-hosted)
+# ═══════════════════════════════════════════════════════════════
+
+services:
+
+  # ── BACKEND PRINCIPAL ────────────────────────────────────────
+  nexo_api:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: nexo_api
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://nexo:${POSTGRES_PASSWORD}@nexo_db:5432/nexo_soberano
+      - REDIS_URL=redis://nexo_redis:6379/0
+      - QDRANT_URL=http://nexo_qdrant:6333
+      - ENVIRONMENT=production
+    env_file:
+      - ../.env
+    depends_on:
+      nexo_db:
+        condition: service_healthy
+      nexo_redis:
+        condition: service_healthy
+      nexo_qdrant:
+        condition: service_started
+    volumes:
+      - ../logs:/app/logs
+      - ../documentos:/app/documentos
+      - ../reportes_cifrados:/app/reportes_cifrados
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ── WORKERS CELERY (reemplaza APScheduler in-process) ────────
+  nexo_worker:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: nexo_worker
+    command: celery -A backend.worker.celery_app worker --loglevel=info --concurrency=2
+    environment:
+      - DATABASE_URL=postgresql://nexo:${POSTGRES_PASSWORD}@nexo_db:5432/nexo_soberano
+      - REDIS_URL=redis://nexo_redis:6379/0
+      - QDRANT_URL=http://nexo_qdrant:6333
+    env_file:
+      - ../.env
+    depends_on:
+      - nexo_db
+      - nexo_redis
+    volumes:
+      - ../logs:/app/logs
+      - ../documentos:/app/documentos
+    restart: unless-stopped
+
+  # ── CELERY BEAT (scheduler de tareas periódicas) ─────────────
+  nexo_beat:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: nexo_beat
+    command: celery -A backend.worker.celery_app beat --loglevel=info
+    environment:
+      - DATABASE_URL=postgresql://nexo:${POSTGRES_PASSWORD}@nexo_db:5432/nexo_soberano
+      - REDIS_URL=redis://nexo_redis:6379/0
+    env_file:
+      - ../.env
+    depends_on:
+      - nexo_db
+      - nexo_redis
+    restart: unless-stopped
+
+  # ── POSTGRESQL ───────────────────────────────────────────────
+  nexo_db:
+    image: postgres:16-alpine          # Alpine = imagen mínima, más liviana
+    container_name: nexo_db
+    environment:
+      POSTGRES_DB: nexo_soberano
+      POSTGRES_USER: nexo
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=es_CL.UTF-8"
+    volumes:
+      - nexo_postgres_data:/var/lib/postgresql/data
+      - ./init_db.sql:/docker-entrypoint-initdb.d/init_db.sql
+    ports:
+      - "5432:5432"                    # Solo exponer en desarrollo
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nexo -d nexo_soberano"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── REDIS (cache + broker Celery) ────────────────────────────
+  nexo_redis:
+    image: redis:7-alpine
+    container_name: nexo_redis
+    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru --save ""
+    # maxmemory-policy: borra las claves menos usadas cuando se llena (LRU)
+    # --save "": desactiva persistencia en disco (cache puro, más rápido)
+    volumes:
+      - nexo_redis_data:/data
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # ── QDRANT (vector store, reemplaza ChromaDB) ─────────────────
+  nexo_qdrant:
+    image: qdrant/qdrant:latest
+    container_name: nexo_qdrant
+    volumes:
+      - nexo_qdrant_data:/qdrant/storage
+    ports:
+      - "6333:6333"
+      - "6334:6334"
+    restart: unless-stopped
+    environment:
+      QDRANT__SERVICE__HTTP_PORT: 6333
+      QDRANT__SERVICE__GRPC_PORT: 6334
+
+volumes:
+  nexo_postgres_data:
+  nexo_redis_data:
+  nexo_qdrant_data:
+
+networks:
+  default:
+    name: nexo_network

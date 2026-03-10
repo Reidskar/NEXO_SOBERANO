@@ -103,7 +103,7 @@ def main() -> int:
     x_urls = split_urls(args.x_urls)
 
     if not yt_urls and not x_urls:
-        print("No hay URLs para recolectar. Usa --youtube-urls y/o --x-urls")
+        log.info("No hay URLs para recolectar. Usa --youtube-urls y/o --x-urls")
         return 1
 
     root = Path(args.output)
@@ -150,8 +150,8 @@ def main() -> int:
     report_file = report_dir / f"media_collect_fast_{ts}.json"
     report_file.write_text(json.dumps(summary, ensure_ascii=False, indent=2), encoding="utf-8")
 
-    print(f"✅ Recolección finalizada. Reporte: {report_file}")
-    print(json.dumps({"ok": summary["ok"], "failed": summary["failed"]}, ensure_ascii=False, indent=2))
+    log.info(f"✅ Recolección finalizada. Reporte: {report_file}")
+    log.info(json.dumps({"ok": summary["ok"], "failed": summary["failed"]}, ensure_ascii=False, indent=2))
     return 0
 
 

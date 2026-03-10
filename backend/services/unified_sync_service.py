@@ -12,9 +12,11 @@ import logging
 import os
 import re
 import time
+import hashlib
 from pathlib import Path
 from dataclasses import dataclass
 from typing import Dict, List, Optional
+from collections import Counter
 
 from services.connectors.google_connector import GoogleConnector
 from services.connectors.microsoft_connector import MicrosoftConnector
@@ -39,6 +41,46 @@ SOURCE_FOLDERS = {
     "google_drive": (os.getenv("NEXO_DRIVE_FOLDER_GOOGLE_DRIVE", "GoogleDrive") or "GoogleDrive").strip(),
     "onedrive": (os.getenv("NEXO_DRIVE_FOLDER_ONEDRIVE", "OneDrive") or "OneDrive").strip(),
 }
+GEOPOLITICA_FOLDER = (os.getenv("NEXO_DRIVE_FOLDER_GEOPOLITICA", "GEOPOLITICA") or "GEOPOLITICA").strip()
+GEOPOLITICA_BUCKETS = {
+    "israel": (os.getenv("NEXO_DRIVE_FOLDER_ISRAEL", "ISRAEL") or "ISRAEL").strip(),
+    "argentina": (os.getenv("NEXO_DRIVE_FOLDER_ARGENTINA", "ARGENTINA") or "ARGENTINA").strip(),
+    "otros_conflictos": (os.getenv("NEXO_DRIVE_FOLDER_OTROS_CONFLICTOS", "OTROS_CONFLICTOS") or "OTROS_CONFLICTOS").strip(),
+}
+
+KEYWORDS_ISRAEL = {
+    "israel", "gaza", "hamas", "idf", "jerusalem", "jerusalen", "telaviv", "tel aviv", "hezbollah", "netanyahu",
+}
+KEYWORDS_ARGENTINA = {
+    "argentina", "milei", "buenos aires", "rosada", "patagonia", "malvinas", "peron", "peronismo",
+}
+
+DEFAULT_CONFLICT_TAXONOMY = {
+    "ISRAEL": {"israel", "gaza", "hamas", "idf", "jerusalem", "jerusalen", "telaviv", "tel aviv", "hezbollah", "netanyahu"},
+    "ARGENTINA": {"argentina", "milei", "buenos aires", "rosada", "patagonia", "malvinas", "peron", "peronismo"},
+    "UCRANIA_RUSIA": {"ucrania", "ukraine", "rusia", "russia", "donbass", "crimea", "moscu", "moscow", "kiev", "kyiv", "zelensky", "putin"},
+    "IRAN": {"iran", "teheran", "tehran", "persa", "khamenei", "irgc"},
+    "CHINA_TAIWAN": {"china", "taiwan", "beijing", "pekin", "xi jinping", "taipei", "mar del sur de china"},
+    "SIRIA": {"siria", "syria", "alepo", "damasco", "damascus", "assad"},
+    "VENEZUELA": {"venezuela", "maduro", "caracas", "guaido", "pdvsa"},
+    "EEUU": {"eeuu", "usa", "u.s.", "estados unidos", "washington", "trump", "biden", "pentagono", "pentagon"},
+    "EUROPA": {"otan", "nato", "ue", "european union", "bruselas", "brussels", "francia", "alemania", "reino unido", "uk"},
+    "LATAM": {"latam", "america latina", "colombia", "chile", "peru", "ecuador", "mexico", "brasil", "bolivia", "paraguay", "uruguay"},
+}
+
+
+def _normalize_bucket_label(value: str) -> str:
+    label = re.sub(r"[^0-9A-Za-zÁÉÍÓÚáéíóúÑñÜü _\-]", " ", (value or "").strip())
+    label = re.sub(r"\s+", " ", label).strip()
+    if not label:
+        return GEOPOLITICA_BUCKETS["otros_conflictos"]
+    return label.upper().replace(" ", "_")
+
+
+def _tokenize_text(value: str) -> set[str]:
+    normalized = (value or "").lower()
+    chunks = re.split(r"[^a-z0-9áéíóúñü]+", normalized)
+    return {chunk for chunk in chunks if len(chunk) >= 3}
 
 
 @dataclass
@@ -131,10 +173,35 @@ def _classify_category(name: str, mime_type: str) -> str:
     return "OTROS"
 
 
+def _classify_geopolitica_bucket(name: str, extra_text: str = "") -> str:
+    normalized = f"{name or ''}\n{extra_text or ''}".lower()
+    if any(token in normalized for token in KEYWORDS_ISRAEL):
+        return GEOPOLITICA_BUCKETS["israel"]
+    if any(token in normalized for token in KEYWORDS_ARGENTINA):
+        return GEOPOLITICA_BUCKETS["argentina"]
+    return GEOPOLITICA_BUCKETS["otros_conflictos"]
+
+
+def _extract_text_preview(payload: bytes, name: str, mime_type: str, limit: int = 10000) -> str:
+    if not payload:
+        return ""
+    mime = (mime_type or "").lower()
+    ext = _extension_from_name(name)
+    textual_ext = {".txt", ".md", ".csv", ".json", ".xml", ".log", ".html", ".htm"}
+    if mime.startswith("text/") or ext in textual_ext:
+        try:
+            return payload[:limit].decode("utf-8", errors="ignore")
+        except Exception:
+            return ""
+    return ""
+
+
 class UnifiedSyncService:
     def __init__(self):
         self.gc = GoogleConnector()
         self._alerts: List[Dict] = []
+        self._folder_cache: Dict[str, List[Dict]] = {}
+        self._bucket_taxonomy_cache: Dict[str, Dict[str, set[str]]] = {}
 
     def _track_alert(self, level: str, source: str, message: str, extra: Optional[Dict] = None):
         event = {
@@ -172,12 +239,132 @@ class UnifiedSyncService:
             raise last_exc
         raise RuntimeError(f"{op_name} failed without captured exception")
 
-    def _ensure_target_folder(self, source_key: str, category: str) -> str:
+    def _get_bucket_taxonomy_for_source(self, source_key: str) -> Dict[str, set[str]]:
+        cached = self._bucket_taxonomy_cache.get(source_key)
+        if cached is not None:
+            return cached
+
+        taxonomy: Dict[str, set[str]] = {
+            _normalize_bucket_label(label): set(words)
+            for label, words in DEFAULT_CONFLICT_TAXONOMY.items()
+        }
+        taxonomy[_normalize_bucket_label(GEOPOLITICA_BUCKETS["israel"])] = set(KEYWORDS_ISRAEL)
+        taxonomy[_normalize_bucket_label(GEOPOLITICA_BUCKETS["argentina"])] = set(KEYWORDS_ARGENTINA)
+        taxonomy.setdefault(_normalize_bucket_label(GEOPOLITICA_BUCKETS["otros_conflictos"]), set())
+
+        source_folder = SOURCE_FOLDERS.get(source_key, source_key)
+        try:
+            # We want to look at the GLOBAL Geopolitica folder: ROOT_DRIVE_FOLDER/GEOPOLITICA
+            geo_folder_id = self.gc.ensure_folder_path([ROOT_DRIVE_FOLDER, GEOPOLITICA_FOLDER])
+            folder_items = self.gc.list_files_in_folder(geo_folder_id, 200) or []
+            for item in folder_items:
+                if (item.get("mimeType") or "") != "application/vnd.google-apps.folder":
+                    continue
+                bucket_name = _normalize_bucket_label(str(item.get("name") or ""))
+                if not bucket_name:
+                    continue
+                taxonomy.setdefault(bucket_name, set())
+                taxonomy[bucket_name].update(_tokenize_text(bucket_name.replace("_", " ")))
+        except Exception as exc:
+            self._track_alert("warning", "taxonomy", "folder_learning_failed", {"source_key": source_key, "error": str(exc)})
+
+        self._bucket_taxonomy_cache[source_key] = taxonomy
+        return taxonomy
+
+    def _infer_conflict_bucket(self, source_key: str, item_name: str, extra_text: str = "") -> Dict:
+        taxonomy = self._get_bucket_taxonomy_for_source(source_key)
+        text = f"{item_name or ''}\n{extra_text or ''}".lower()
+        tokens = _tokenize_text(text)
+        best_bucket = _normalize_bucket_label(GEOPOLITICA_BUCKETS["otros_conflictos"])
+        best_score = 0
+        matched_terms: List[str] = []
+
+        for bucket, keywords in taxonomy.items():
+            if not keywords:
+                continue
+            hits = [kw for kw in keywords if kw in text or kw in tokens]
+            score = len(hits)
+            if score > best_score:
+                best_score = score
+                best_bucket = bucket
+                matched_terms = sorted(set(hits))[:10]
+
+        return {
+            "bucket": best_bucket,
+            "score": best_score,
+            "matched_terms": matched_terms,
+            "taxonomy_size": len(taxonomy),
+        }
+
+    def _build_target_parts(self, source_key: str, category: str, item_name: str = "", extra_text: str = "", conflict_bucket: Optional[str] = None) -> List[str]:
         source_folder = SOURCE_FOLDERS[source_key]
-        return self.gc.ensure_folder_path([ROOT_DRIVE_FOLDER, source_folder, category])
+        target_parts = [ROOT_DRIVE_FOLDER, source_folder]
+        if source_key in {"google_photos", "onedrive"}:
+            selected_bucket = conflict_bucket
+            if not selected_bucket:
+                selected_bucket = self._infer_conflict_bucket(source_key, item_name, extra_text).get("bucket")
+            target_parts.extend([GEOPOLITICA_FOLDER, _normalize_bucket_label(str(selected_bucket or ""))])
+        target_parts.append(category)
+        return target_parts
+
+    def _ensure_target_folder(
+        self,
+        source_key: str,
+        category: str,
+        item_name: str = "",
+        extra_text: str = "",
+        conflict_bucket: Optional[str] = None,
+    ) -> str:
+        return self.gc.ensure_folder_path(
+            self._build_target_parts(
+                source_key,
+                category,
+                item_name,
+                extra_text=extra_text,
+                conflict_bucket=conflict_bucket,
+            )
+        )
 
     def _already_synced(self, source: str, source_id: str):
         return self.gc.find_file_by_app_properties({"nexo_source": source, "nexo_source_id": source_id})
+
+    def _find_duplicate_by_hash(self, sha1_hex: str):
+        if not sha1_hex:
+            return None
+        return self.gc.find_file_by_app_properties({"nexo_content_sha1": sha1_hex})
+
+    def _list_folder_cached(self, folder_id: str) -> List[Dict]:
+        if folder_id in self._folder_cache:
+            return self._folder_cache[folder_id]
+        try:
+            files = self.gc.list_files_in_folder(folder_id, 500) or []
+        except Exception:
+            files = []
+        self._folder_cache[folder_id] = files
+        return files
+
+    def _build_learning_snapshot(self, result: Dict) -> Dict:
+        by_category = Counter()
+        by_bucket = Counter()
+        by_status = Counter()
+        by_country_or_conflict = Counter()
+        for source in ("google_photos", "google_drive", "onedrive", "youtube"):
+            for item in (result.get(source, {}).get("items") or []):
+                status = str(item.get("status") or "unknown")
+                by_status[status] += 1
+                category = item.get("category")
+                if category:
+                    by_category[str(category)] += 1
+                bucket = item.get("conflict_bucket")
+                if bucket:
+                    by_bucket[str(bucket)] += 1
+                    by_country_or_conflict[str(bucket)] += 1
+        return {
+            "categories": dict(sorted(by_category.items(), key=lambda x: (-x[1], x[0]))),
+            "conflict_buckets": dict(sorted(by_bucket.items(), key=lambda x: (-x[1], x[0]))),
+            "country_or_conflict": dict(sorted(by_country_or_conflict.items(), key=lambda x: (-x[1], x[0]))),
+            "statuses": dict(sorted(by_status.items(), key=lambda x: (-x[1], x[0]))),
+        }
 
     def sync(self, limits: Optional[SyncLimits] = None, dry_run: bool = False, youtube_channels: Optional[List[str]] = None) -> Dict:
         limits = limits or SyncLimits()
@@ -195,6 +382,7 @@ class UnifiedSyncService:
         self._classify_google_drive(result, limits, dry_run)
         self._sync_onedrive(result, limits, dry_run)
         self._sync_youtube(result, limits, dry_run, youtube_channels=youtube_channels or [])
+        result["learning"] = self._build_learning_snapshot(result)
         result["alerts"] = list(self._alerts)
         return result
 
@@ -283,7 +471,16 @@ class UnifiedSyncService:
             source_id = str(photo.get("id") or "")
             name = _safe_name(photo.get("filename", ""), f"photo_{source_id or 'sin_id'}.jpg")
             mime_type = photo.get("mimeType") or "image/jpeg"
+            renamed_from = None
+            normalized_name = _normalize_name(name, f"photo_{source_id or 'sin_id'}.jpg")
+            if normalized_name != name:
+                renamed_from = name
+                name = normalized_name
             category = _classify_category(name, mime_type)
+            semantic_context = str(photo.get("description") or "")
+            conflict_inference = self._infer_conflict_bucket("google_photos", name, semantic_context)
+            conflict_bucket = conflict_inference["bucket"]
+            target_path = self._build_target_parts("google_photos", category, name, extra_text=semantic_context, conflict_bucket=conflict_bucket)
 
             if not source_id:
                 result["google_photos"]["skipped"] += 1
@@ -296,15 +493,28 @@ class UnifiedSyncService:
                 continue
 
             try:
-                folder_id = self._ensure_target_folder("google_photos", category)
+                folder_id = self._ensure_target_folder(
+                    "google_photos",
+                    category,
+                    name,
+                    extra_text=semantic_context,
+                    conflict_bucket=conflict_bucket,
+                )
                 if dry_run:
                     result["google_photos"]["imported"] += 1
-                    result["google_photos"]["items"].append({
+                    item = {
                         "id": source_id,
                         "name": name,
                         "category": category,
+                        "conflict_bucket": conflict_bucket,
+                        "conflict_score": conflict_inference["score"],
+                        "conflict_terms": conflict_inference["matched_terms"],
+                        "target_path": target_path,
                         "status": "dry_run_import",
-                    })
+                    }
+                    if renamed_from:
+                        item["renamed_from"] = renamed_from
+                    result["google_photos"]["items"].append(item)
                     continue
 
                 payload = self._with_retries(
@@ -314,6 +524,24 @@ class UnifiedSyncService:
                     attempts=limits.retry_attempts,
                     backoff_seconds=limits.retry_backoff_seconds,
                 )
+                content_sha1 = hashlib.sha1(payload).hexdigest()
+                duplicate = self._find_duplicate_by_hash(content_sha1)
+                if duplicate:
+                    result["google_photos"]["skipped"] += 1
+                    item = {
+                        "id": source_id,
+                        "name": name,
+                        "status": "duplicate_skipped",
+                        "duplicate_of": duplicate.get("id"),
+                        "conflict_bucket": conflict_bucket,
+                        "conflict_score": conflict_inference["score"],
+                        "conflict_terms": conflict_inference["matched_terms"],
+                        "target_path": target_path,
+                    }
+                    if renamed_from:
+                        item["renamed_from"] = renamed_from
+                    result["google_photos"]["items"].append(item)
+                    continue
                 uploaded = self._with_retries(
                     "google_photos.upload",
                     self.gc.upload_bytes,
@@ -325,18 +553,28 @@ class UnifiedSyncService:
                         "nexo_source": "google_photos",
                         "nexo_source_id": source_id,
                         "nexo_category": category,
+                        "nexo_conflict_bucket": conflict_bucket,
+                        "nexo_conflict_score": str(conflict_inference["score"]),
+                        "nexo_content_sha1": content_sha1,
                     },
                     attempts=limits.retry_attempts,
                     backoff_seconds=limits.retry_backoff_seconds,
                 )
                 result["google_photos"]["imported"] += 1
-                result["google_photos"]["items"].append({
+                item = {
                     "id": source_id,
                     "name": name,
                     "category": category,
+                    "conflict_bucket": conflict_bucket,
+                    "conflict_score": conflict_inference["score"],
+                    "conflict_terms": conflict_inference["matched_terms"],
+                    "target_path": target_path,
                     "drive_file_id": uploaded.get("id"),
                     "status": "imported",
-                })
+                }
+                if renamed_from:
+                    item["renamed_from"] = renamed_from
+                result["google_photos"]["items"].append(item)
             except Exception as exc:
                 logger.error("Error importando foto %s: %s", name, exc)
                 result["google_photos"]["errors"] += 1
@@ -435,6 +673,49 @@ class UnifiedSyncService:
             category = _classify_category(name, mime_type)
             try:
                 target_folder = self._ensure_target_folder("google_drive", category)
+                current_size = int(file_info.get("size") or 0)
+                same_folder_files = self._list_folder_cached(target_folder)
+                duplicate_in_folder = next(
+                    (
+                        other for other in same_folder_files
+                        if str(other.get("id") or "") != str(file_id)
+                        and str(other.get("name") or "") == name
+                        and int(other.get("size") or 0) == current_size
+                    ),
+                    None,
+                )
+                if duplicate_in_folder:
+                    if dry_run:
+                        result["google_drive"]["skipped"] += 1
+                        result["google_drive"]["items"].append(
+                            {
+                                "id": file_id,
+                                "name": name,
+                                "status": "dry_run_deduplicated",
+                                "duplicate_of": duplicate_in_folder.get("id"),
+                                "category": category,
+                            }
+                        )
+                        continue
+                    self._with_retries(
+                        "google_drive.deduplicate_trash",
+                        self.gc.trash_file,
+                        file_id,
+                        True,
+                        attempts=limits.retry_attempts,
+                        backoff_seconds=limits.retry_backoff_seconds,
+                    )
+                    result["google_drive"]["skipped"] += 1
+                    result["google_drive"]["items"].append(
+                        {
+                            "id": file_id,
+                            "name": name,
+                            "status": "deduplicated",
+                            "duplicate_of": duplicate_in_folder.get("id"),
+                            "category": category,
+                        }
+                    )
+                    continue
                 parents = file_info.get("parents") or []
                 if target_folder in parents:
                     result["google_drive"]["skipped"] += 1
@@ -556,17 +837,31 @@ class UnifiedSyncService:
                 continue
 
             category = _classify_category(name, mime_type)
+            renamed_from = None
+            normalized_name = _normalize_name(name, f"onedrive_{item_id or 'sin_id'}")
+            if normalized_name != name:
+                renamed_from = name
+                name = normalized_name
             try:
-                folder_id = self._ensure_target_folder("onedrive", category)
                 if dry_run:
+                    conflict_inference = self._infer_conflict_bucket("onedrive", name, str(item.get("relative_path") or ""))
+                    conflict_bucket = conflict_inference["bucket"]
+                    target_path = self._build_target_parts("onedrive", category, name, extra_text=str(item.get("relative_path") or ""), conflict_bucket=conflict_bucket)
                     result["onedrive"]["imported"] += 1
-                    result["onedrive"]["items"].append({
+                    dry_item = {
                         "id": item_id,
                         "name": name,
                         "status": "dry_run_import",
                         "category": category,
+                        "conflict_bucket": conflict_bucket,
+                        "conflict_score": conflict_inference["score"],
+                        "conflict_terms": conflict_inference["matched_terms"],
+                        "target_path": target_path,
                         "source": "local_onedrive" if using_local_fallback else "graph",
-                    })
+                    }
+                    if renamed_from:
+                        dry_item["renamed_from"] = renamed_from
+                    result["onedrive"]["items"].append(dry_item)
                     continue
 
                 if using_local_fallback:
@@ -589,6 +884,40 @@ class UnifiedSyncService:
                     result["onedrive"]["items"].append({"id": item_id, "name": name, "status": "error", "error": "sin_contenido"})
                     continue
 
+                semantic_text = str(item.get("relative_path") or "")
+                semantic_text = f"{semantic_text}\n{_extract_text_preview(payload, name, mime_type)}"
+                conflict_inference = self._infer_conflict_bucket("onedrive", name, semantic_text)
+                conflict_bucket = conflict_inference["bucket"]
+                target_path = self._build_target_parts("onedrive", category, name, extra_text=semantic_text, conflict_bucket=conflict_bucket)
+                folder_id = self._ensure_target_folder(
+                    "onedrive",
+                    category,
+                    name,
+                    extra_text=semantic_text,
+                    conflict_bucket=conflict_bucket,
+                )
+
+                content_sha1 = hashlib.sha1(payload).hexdigest()
+                duplicate = self._find_duplicate_by_hash(content_sha1)
+                if duplicate:
+                    result["onedrive"]["skipped"] += 1
+                    dup_item = {
+                        "id": item_id,
+                        "name": name,
+                        "status": "duplicate_skipped",
+                        "duplicate_of": duplicate.get("id"),
+                        "category": category,
+                        "conflict_bucket": conflict_bucket,
+                        "conflict_score": conflict_inference["score"],
+                        "conflict_terms": conflict_inference["matched_terms"],
+                        "target_path": target_path,
+                        "source": "local_onedrive" if using_local_fallback else "graph",
+                    }
+                    if renamed_from:
+                        dup_item["renamed_from"] = renamed_from
+                    result["onedrive"]["items"].append(dup_item)
+                    continue
+
                 uploaded = self._with_retries(
                     "onedrive.upload_to_drive",
                     self.gc.upload_bytes,
@@ -600,19 +929,29 @@ class UnifiedSyncService:
                         "nexo_source": "onedrive",
                         "nexo_source_id": item_id,
                         "nexo_category": category,
+                        "nexo_conflict_bucket": conflict_bucket,
+                        "nexo_conflict_score": str(conflict_inference["score"]),
+                        "nexo_content_sha1": content_sha1,
                     },
                     attempts=limits.retry_attempts,
                     backoff_seconds=limits.retry_backoff_seconds,
                 )
                 result["onedrive"]["imported"] += 1
-                result["onedrive"]["items"].append({
+                out_item = {
                     "id": item_id,
                     "name": name,
                     "status": "imported",
                     "category": category,
+                    "conflict_bucket": conflict_bucket,
+                    "conflict_score": conflict_inference["score"],
+                    "conflict_terms": conflict_inference["matched_terms"],
+                    "target_path": target_path,
                     "drive_file_id": uploaded.get("id"),
                     "source": "local_onedrive" if using_local_fallback else "graph",
-                })
+                }
+                if renamed_from:
+                    out_item["renamed_from"] = renamed_from
+                result["onedrive"]["items"].append(out_item)
             except Exception as exc:
                 logger.error("Error importando OneDrive %s: %s", name, exc)
                 result["onedrive"]["errors"] += 1

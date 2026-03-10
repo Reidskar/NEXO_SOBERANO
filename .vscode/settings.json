@@ -81,8 +81,7 @@
     // ─── WORKSPACE TRUST ───
     "security.workspace.trust.untrustedFiles": "open",
     // ─── TEMAS Y UI ───
-    "workbench.colorTheme": "One Dark Pro",
-    "workbench.iconTheme": "material-icon-theme",
+    "workbench.colorTheme": "Default Dark Modern",
     "workbench.tree.indent": 16,
     // ─── NEXO SUPERVISOR - Tarea automática en guardado ───
     "emeraldwalk.runonsave": {

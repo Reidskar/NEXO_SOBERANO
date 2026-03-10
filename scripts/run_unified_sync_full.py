@@ -5,13 +5,17 @@ import logging
 import os
 import sys
 import traceback
+from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
 from urllib import request as urlrequest
+from dotenv import load_dotenv
 
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
+
+load_dotenv(ROOT / ".env")
 
 from backend.services.unified_sync_service import run_unified_sync
 from scripts.ai_context_tracker import update_ai_context_state
@@ -25,6 +29,9 @@ LOCK_PATH = LOGS / "sync_unified.lock"
 STATUS_PATH = LOGS / "sync_unified_status.json"
 REPORT_PATH = LOGS / "sync_unified_last.json"
 ALERTS_PATH = LOGS / "sync_unified_alerts.jsonl"
+INDICATORS_PATH = LOGS / "sync_unified_indicators.json"
+GRAPH_DIR = LOGS / "sync_unified_graphs"
+APPROVAL_PATH = LOGS / "system_approval.json"
 
 
 def _env_int(name: str, default: int) -> int:
@@ -81,6 +88,17 @@ def _notify_webhook(payload: dict) -> None:
         req = urlrequest.Request(webhook, data=body, method="POST", headers={"Content-Type": "application/json"})
         with urlrequest.urlopen(req, timeout=8):
             pass
+        try:
+            from backend.services.unified_cost_tracker import get_cost_tracker
+
+            get_cost_tracker().track_service_call(
+                servicio="discord_webhook",
+                operaciones=1,
+                tipo_operacion="sync_alert_webhook",
+                metadata={"source": "scripts.run_unified_sync_full", "channel": "NEXO_ALERT_WEBHOOK"},
+            )
+        except Exception:
+            pass
     except Exception:
         pass
 
@@ -117,6 +135,225 @@ def _summary(result: dict) -> dict:
 
 def _has_errors(summary: dict) -> bool:
     return any(int((section or {}).get("errors", 0) or 0) > 0 for section in summary.values())
+
+
+def _llm_provider_status() -> dict:
+    provider = (os.getenv("NEXO_LLM_PROVIDER", "auto") or "auto").strip().lower()
+    available = {
+        "anthropic": bool((os.getenv("ANTHROPIC_API_KEY", "") or "").strip()),
+        "grok": bool((os.getenv("XAI_API_KEY", "") or "").strip()),
+        "openai_copilot": bool((os.getenv("OPENAI_API_KEY", "") or "").strip()),
+        "gemini": bool((os.getenv("GEMINI_API_KEY", "") or "").strip()),
+    }
+    return {
+        "selected": provider,
+        "available": available,
+        "ready_count": sum(1 for v in available.values() if v),
+    }
+
+
+def _provider_comparison(llm_status: dict) -> list[dict]:
+    availability = llm_status.get("available", {}) or {}
+    providers = [
+        {
+            "provider": "gemini",
+            "available": bool(availability.get("gemini")),
+            "best_for": ["clasificación multimodal", "OCR/contexto imagen", "coste contenido"],
+            "risks": ["scope/credenciales Google", "cuotas API"],
+        },
+        {
+            "provider": "anthropic_claude",
+            "available": bool(availability.get("anthropic")),
+            "best_for": ["análisis largo", "razonamiento estructurado", "síntesis de riesgo"],
+            "risks": ["API key faltante", "coste por token"],
+        },
+        {
+            "provider": "grok_xai",
+            "available": bool(availability.get("grok")),
+            "best_for": ["señales X/Twitter", "tiempo real", "contexto social"],
+            "risks": ["API key faltante", "dependencia fuente externa"],
+        },
+        {
+            "provider": "openai_copilot",
+            "available": bool(availability.get("openai_copilot")),
+            "best_for": ["QA RAG general", "orquestación", "fallback robusto"],
+            "risks": ["API key/base_url", "coste variable"],
+        },
+    ]
+    return providers
+
+
+def _credentials_status() -> dict:
+    root = ROOT
+    credential_candidates = {
+        "google_credentials": [
+            root / "credenciales_google.json",
+            root / "backend" / "auth" / "credenciales_google.json",
+        ],
+        "microsoft_credentials": [
+            root / "credenciales_microsoft.json",
+            root / "backend" / "auth" / "credenciales_microsoft.json",
+        ],
+        "drive_client_secrets": [
+            root / "backend" / "auth" / "drive_client_secrets.json",
+            root / "backend" / "auth" / "credenciales_google.json",
+        ],
+    }
+    env_keys = {
+        "GEMINI_API_KEY": bool((os.getenv("GEMINI_API_KEY", "") or "").strip()),
+        "OPENAI_API_KEY": bool((os.getenv("OPENAI_API_KEY", "") or "").strip()),
+        "ANTHROPIC_API_KEY": bool((os.getenv("ANTHROPIC_API_KEY", "") or "").strip()),
+        "XAI_API_KEY": bool((os.getenv("XAI_API_KEY", "") or "").strip()),
+    }
+    files = {
+        name: any(path.exists() for path in candidates)
+        for name, candidates in credential_candidates.items()
+    }
+    return {
+        "files": files,
+        "env_keys": env_keys,
+    }
+
+
+def _build_approval(summary: dict, indicators: dict) -> dict:
+    llm = indicators.get("llm_coordination", {}) or {}
+    creds = _credentials_status()
+    blockers: list[str] = []
+    warnings: list[str] = []
+
+    if int(llm.get("ready_count", 0) or 0) == 0:
+        blockers.append("Sin proveedor IA activo (GEMINI/OPENAI/ANTHROPIC/XAI)")
+
+    files = creds.get("files", {}) or {}
+    if not bool(files.get("google_credentials")):
+        blockers.append("Falta credenciales_google.json")
+    if not bool(files.get("microsoft_credentials")):
+        blockers.append("Falta credenciales_microsoft.json")
+
+    gp_errors = int((summary.get("google_photos") or {}).get("errors", 0) or 0)
+    od_errors = int((summary.get("onedrive") or {}).get("errors", 0) or 0)
+    gd_errors = int((summary.get("google_drive") or {}).get("errors", 0) or 0)
+    if gp_errors > 0:
+        warnings.append(f"Google Photos con errores: {gp_errors}")
+    if od_errors > 0:
+        warnings.append(f"OneDrive con errores: {od_errors}")
+    if gd_errors > 0:
+        warnings.append(f"Google Drive con errores: {gd_errors}")
+
+    approved = len(blockers) == 0 and (gp_errors + od_errors + gd_errors) == 0
+    grade = "A" if approved else ("B" if len(blockers) == 0 else "C")
+
+    return {
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "approved": approved,
+        "grade": grade,
+        "blockers": blockers,
+        "warnings": warnings,
+        "credentials": creds,
+        "llm": llm,
+        "provider_comparison": _provider_comparison(llm),
+        "next_actions": [
+            "Autorizar Drive/Photos via endpoint /agente/drive/authorize y /agente/photos/authorize",
+            "Configurar credenciales Microsoft válidas para Graph o fallback local",
+            "Configurar al menos una API key LLM para aprobación completa",
+        ],
+    }
+
+
+def _build_indicators(result: dict) -> dict:
+    source_status = {}
+    category_counter = Counter()
+    bucket_counter = Counter()
+    status_counter = Counter()
+
+    for source in ("google_photos", "google_drive", "onedrive", "youtube"):
+        section = result.get(source, {}) or {}
+        source_status[source] = {
+            "imported": int(section.get("imported", 0) or 0),
+            "classified": int(section.get("classified", 0) or 0),
+            "processed": int(section.get("processed", 0) or 0),
+            "analyzed": int(section.get("analyzed", 0) or 0),
+            "skipped": int(section.get("skipped", 0) or 0),
+            "errors": int(section.get("errors", 0) or 0),
+        }
+        for item in (section.get("items") or []):
+            status_counter[str(item.get("status") or "unknown")] += 1
+            category = item.get("category")
+            if category:
+                category_counter[str(category)] += 1
+            bucket = item.get("conflict_bucket")
+            if bucket:
+                bucket_counter[str(bucket)] += 1
+
+    return {
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "llm_coordination": _llm_provider_status(),
+        "source_status": source_status,
+        "category_distribution": dict(sorted(category_counter.items(), key=lambda x: (-x[1], x[0]))),
+        "conflict_bucket_distribution": dict(sorted(bucket_counter.items(), key=lambda x: (-x[1], x[0]))),
+        "item_status_distribution": dict(sorted(status_counter.items(), key=lambda x: (-x[1], x[0]))),
+    }
+
+
+def _render_graphs(indicators: dict) -> list[str]:
+    try:
+        import matplotlib  # pyright: ignore[reportMissingModuleSource]
+        matplotlib.use("Agg")
+        import matplotlib.pyplot as plt  # pyright: ignore[reportMissingModuleSource]
+    except Exception as exc:
+        log.warning("No se generaron gráficos (matplotlib no disponible): %s", exc)
+        return []
+
+    GRAPH_DIR.mkdir(parents=True, exist_ok=True)
+    generated = []
+
+    source_status = indicators.get("source_status", {})
+    labels = list(source_status.keys())
+    processed = [
+        int(source_status.get(s, {}).get("imported", 0))
+        + int(source_status.get(s, {}).get("classified", 0))
+        + int(source_status.get(s, {}).get("processed", 0))
+        for s in labels
+    ]
+    errors = [int(source_status.get(s, {}).get("errors", 0)) for s in labels]
+
+    fig, ax = plt.subplots(figsize=(9, 4))
+    ax.bar(labels, processed, label="procesado")
+    ax.bar(labels, errors, bottom=processed, label="errores")
+    ax.set_title("Sync unificado: procesado y errores por fuente")
+    ax.set_ylabel("items")
+    ax.legend()
+    fig.tight_layout()
+    out_a = GRAPH_DIR / "sync_sources.png"
+    fig.savefig(str(out_a), dpi=140)
+    plt.close(fig)
+    generated.append(str(out_a))
+
+    cat_dist = indicators.get("category_distribution", {}) or {}
+    if cat_dist:
+        fig, ax = plt.subplots(figsize=(9, 4))
+        ax.bar(list(cat_dist.keys()), list(cat_dist.values()))
+        ax.set_title("Distribución por categoría")
+        ax.set_ylabel("items")
+        fig.tight_layout()
+        out_b = GRAPH_DIR / "sync_categories.png"
+        fig.savefig(str(out_b), dpi=140)
+        plt.close(fig)
+        generated.append(str(out_b))
+
+    bucket_dist = indicators.get("conflict_bucket_distribution", {}) or {}
+    if bucket_dist:
+        fig, ax = plt.subplots(figsize=(9, 4))
+        ax.bar(list(bucket_dist.keys()), list(bucket_dist.values()))
+        ax.set_title("Distribución geopolítica por bucket")
+        ax.set_ylabel("items")
+        fig.tight_layout()
+        out_c = GRAPH_DIR / "sync_conflict_buckets.png"
+        fig.savefig(str(out_c), dpi=140)
+        plt.close(fig)
+        generated.append(str(out_c))
+
+    return generated
 
 
 def main() -> int:
@@ -213,7 +450,15 @@ def main() -> int:
             "summary": _summary(result),
             "result": result,
         }
+        indicators = _build_indicators(result)
+        chart_paths = _render_graphs(indicators)
+        indicators["graph_files"] = chart_paths
+        approval = _build_approval(payload["summary"], indicators)
+        payload["indicators"] = indicators
+        payload["approval"] = approval
         _write_json(REPORT_PATH, payload)
+        _write_json(INDICATORS_PATH, indicators)
+        _write_json(APPROVAL_PATH, approval)
         if payload["summary"] and _has_errors(payload["summary"]):
             alert = {
                 "timestamp": datetime.now(timezone.utc).isoformat(),

@@ -1,7 +1,12 @@
 import os
 import sqlite3
 import json
+import logging
 from datetime import datetime
+
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='%(message)s')
+log = logging.getLogger(__name__)
 
 # try to import Document from python-docx; provide guidance if missing
 try:

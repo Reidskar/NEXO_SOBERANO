@@ -142,20 +142,20 @@ def main() -> int:
     args = parser.parse_args()
 
     if not ADB_CMD:
-        print("❌ ADB no está instalado o no está en PATH.")
-        print("Instala Android Platform Tools y vuelve a ejecutar.")
+        log.info("❌ ADB no está instalado o no está en PATH.")
+        log.info("Instala Android Platform Tools y vuelve a ejecutar.")
         return 1
 
     serial = parse_adb_device(args.serial or None)
     if not serial:
-        print("❌ No hay dispositivo Android conectado/autorizado por ADB.")
-        print("Conecta el teléfono por USB, habilita depuración USB y autoriza la huella RSA.")
+        log.info("❌ No hay dispositivo Android conectado/autorizado por ADB.")
+        log.info("Conecta el teléfono por USB, habilita depuración USB y autoriza la huella RSA.")
         return 2
 
     if args.serial:
         run_cmd([ADB_CMD, "-s", args.serial, "get-state"])
 
-    print(f"🔎 Escaneando dispositivo: {serial}")
+    log.info(f"🔎 Escaneando dispositivo: {serial}")
     report = collect_scan(args.mode)
 
     out_dir = Path(args.output)
@@ -164,8 +164,8 @@ def main() -> int:
     out_file = out_dir / f"phone_scan_{ts}.json"
     out_file.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
 
-    print(f"✅ Reporte generado: {out_file}")
-    print("⚠️ Revisa findings y comparte el JSON si quieres análisis forense guiado.")
+    log.info(f"✅ Reporte generado: {out_file}")
+    log.info("⚠️ Revisa findings y comparte el JSON si quieres análisis forense guiado.")
     return 0
 
 

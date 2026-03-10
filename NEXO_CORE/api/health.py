@@ -6,6 +6,7 @@ from fastapi import APIRouter
 
 from NEXO_CORE.core.state_manager import state_manager
 from NEXO_CORE.services.obs_manager import obs_manager
+from NEXO_CORE.agents.web_ai_supervisor import web_ai_supervisor
 
 router = APIRouter(prefix="/api/health", tags=["health"])
 
@@ -18,6 +19,7 @@ async def health_check():
         "status": "operational",
         "uptime_seconds": int(uptime),
         "state": snapshot,
+        "ai_web": web_ai_supervisor.snapshot(),
     }
 
 
@@ -31,3 +33,8 @@ async def stream_health():
         "discord_connected": snapshot["discord_connected"],
         "current_scene": current_scene,
     }
+
+
+@router.get("/ai")
+async def ai_health():
+    return web_ai_supervisor.snapshot()
