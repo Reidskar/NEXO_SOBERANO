@@ -170,8 +170,8 @@ def verify_connection() -> bool:
         with engine.connect() as conn:
             conn.execute(text("SELECT 1"))
         host_info = DATABASE_URL.split("@")[-1] if "@" in DATABASE_URL else DATABASE_URL
-        print(f"✅ PostgreSQL conectado: {host_info}")
+        log.info(f"✅ PostgreSQL conectado: {host_info}")
         return True
     except Exception as e:
-        print(f"❌ Error conectando a PostgreSQL: {e}")
+        log.info(f"❌ Error conectando a PostgreSQL: {e}")
         return False

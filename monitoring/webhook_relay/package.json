@@ -1,0 +1,13 @@
+{
+  "name": "nexo-webhook-relay",
+  "version": "1.0.0",
+  "description": "Minimal webhook relay for NEXO alerts",
+  "main": "index.js",
+  "type": "module",
+  "dependencies": {
+    "node-fetch": "^3.3.0"
+  },
+  "scripts": {
+    "start": "node index.js"
+  }
+}

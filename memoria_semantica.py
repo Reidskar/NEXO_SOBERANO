@@ -1,8 +1,15 @@
 import os
+import asyncio
 import sqlite3
 import logging
-import chromadb
-from chromadb.utils import embedding_functions
+from datetime import datetime
+
+# Ajuste temporal para poder importar vector_db
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).parent))
+
+from backend.services.vector_db import ensure_table, asimilar_documento, close_pool
 
 # Configurar logging
 logging.basicConfig(level=logging.INFO)
@@ -11,21 +18,9 @@ log = logging.getLogger(__name__)
 # --- CONFIGURACIÓN ESTRATÉGICA ---
 BASE_PATH = "NEXO_SOBERANO"
 DB_PATH = os.path.join(BASE_PATH, "base_sqlite", "boveda.db")
-CHROMA_PATH = os.path.join(BASE_PATH, "memoria_vectorial")
 
-log.info("Iniciando conexión con el lóbulo frontal (ChromaDB)...")
-
-# Inicializamos ChromaDB en tu disco local
-cliente_chroma = chromadb.PersistentClient(path=CHROMA_PATH)
-
-# Creamos o cargamos la colección de conocimiento
-coleccion = cliente_chroma.get_or_create_collection(
-    name="inteligencia_geopolitica", 
-    metadata={"hnsw:space": "cosine"}
-)
-
-def preparar_esquema_vectorial():
-    """Crea una tabla en SQLite para recordar qué archivos ya se convirtieron en vectores."""
+async def preparar_esquema_vectorial():
+    """Asegura la tabla vectorizados en SQLite y en Supabase."""
     conn = sqlite3.connect(DB_PATH)
     conn.execute("""
         CREATE TABLE IF NOT EXISTS vectorizados_log (
@@ -35,13 +30,15 @@ def preparar_esquema_vectorial():
     """)
     conn.commit()
     conn.close()
+    
+    # Inicializa pgvector
+    await ensure_table()
 
-def asimilar_conocimiento():
-    """Toma los resúmenes de Gemini en SQLite y los convierte en memoria matemática."""
+async def asimilar_conocimiento():
+    """Toma los resúmenes de Gemini en SQLite y los inyecta en Supabase pgvector."""
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     
-    # Buscamos archivos que Gemini ya resumió, pero que ChromaDB aún no ha vectorizado
     cursor.execute("""
         SELECT e.hash_sha256, e.nombre_archivo, e.categoria, e.resumen_ia, e.ruta_local 
         FROM evidencia e
@@ -55,32 +52,37 @@ def asimilar_conocimiento():
         conn.close()
         return
 
-    log.info(f"🧠 Asimilando {len(pendientes)} fragmentos de inteligencia en la red neuronal...")
+    log.info(f"🧠 Asimilando {len(pendientes)} fragmentos de inteligencia en Supabase Vector...")
     
     for row in pendientes:
         hash_id, nombre, cat, resumen, ruta = row
         
-        try:
-            # Inyección a la memoria vectorial con metadatos para la futura Web
-            coleccion.add(
-                documents=[resumen],
-                metadatas=[{"fuente": "local", "categoria": cat, "archivo": nombre, "ruta": ruta}],
-                ids=[hash_id]
-            )
+        metadata = {
+            "fuente": "local", 
+            "categoria": cat, 
+            "archivo": nombre, 
+            "ruta": ruta
+        }
+        
+        exito = await asimilar_documento(hash_id, resumen, metadata)
             
-            # Marcamos en SQLite que ya lo asimilamos
-            from datetime import datetime
+        if exito:
             cursor.execute("INSERT INTO vectorizados_log (hash_sha256, fecha_vectorizacion) VALUES (?, ?)", 
-                           (hash_id, datetime.now()))
-            log.info(f"✅ Conocimiento asimilado: {nombre}")
-            
-        except Exception as e:
-            log.info(f"❌ Error vectorizando {nombre}: {e}")
+                            (hash_id, datetime.now()))
             
     conn.commit()
     conn.close()
-    log.info("🎯 Proceso de asimilación semántica completado.")
+    log.info("🎯 Proceso de asimilación semántica en la nube completado.")
+
+async def main():
+    log.info("Iniciando conexión con el lóbulo frontal (Supabase pgvector)...")
+    await preparar_esquema_vectorial()
+    await asimilar_conocimiento()
+    await close_pool()
 
 if __name__ == "__main__":
-    preparar_esquema_vectorial()
-    asimilar_conocimiento()
+    # Workaround Windows ProactorEventLoop issues on exit
+    if sys.platform == 'win32':
+        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+        
+    asyncio.run(main())

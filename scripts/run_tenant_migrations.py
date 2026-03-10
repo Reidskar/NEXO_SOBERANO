@@ -55,7 +55,7 @@ def get_active_tenants() -> list[dict]:
         # La tabla tenants aún no existe (primera migración)
         return []
     except Exception as e:
-        print(f"⚠️  No se pudo conectar a la DB para obtener tenants: {e}")
+        log.info(f"⚠️  No se pudo conectar a la DB para obtener tenants: {e}")
         return []
 
 
@@ -71,9 +71,9 @@ def run_alembic(target_schema: str, dry_run: bool = False) -> bool:
 
     if dry_run:
         cmd = ["alembic", "upgrade", "head", "--sql"]
-        print(f"\n📋 SQL que se ejecutaría en schema '{target_schema}':")
+        log.info(f"\n📋 SQL que se ejecutaría en schema '{target_schema}':")
     else:
-        print(f"  🔄 Migrando schema: {target_schema} ...", end=" ", flush=True)
+        log.info(f"  🔄 Migrando schema: {target_schema} ...", end=" ", flush=True)
 
     try:
         result = subprocess.run(
@@ -86,24 +86,24 @@ def run_alembic(target_schema: str, dry_run: bool = False) -> bool:
 
         if result.returncode == 0:
             if dry_run:
-                print(result.stdout or "(sin cambios pendientes)")
+                log.info(result.stdout or "(sin cambios pendientes)")
             else:
-                print("✅")
+                log.info("✅")
             return True
         else:
             if dry_run:
-                print(result.stdout)
+                log.info(result.stdout)
             else:
-                print("❌")
+                log.info("❌")
             if result.stderr:
-                print(f"     Error: {result.stderr.strip()}")
+                log.info(f"     Error: {result.stderr.strip()}")
             return False
 
     except FileNotFoundError:
-        print("❌")
-        print("  Error: 'alembic' no encontrado. ¿Está el .venv activado?")
-        print("  Ejecuta: .venv/Scripts/activate  (Windows)")
-        print("           source .venv/bin/activate  (Linux/Mac)")
+        log.info("❌")
+        log.info("  Error: 'alembic' no encontrado. ¿Está el .venv activado?")
+        log.info("  Ejecuta: .venv/Scripts/activate  (Windows)")
+        log.info("           source .venv/bin/activate  (Linux/Mac)")
         return False
 
 
@@ -112,7 +112,7 @@ def ensure_public_schema_first(dry_run: bool = False) -> bool:
     Migra primero el schema public (tablas globales: tenants, users, sessions).
     Debe correr antes que cualquier schema de tenant.
     """
-    print("\n[1/2] Schema público (tenants · users · sessions)")
+    log.info("\n[1/2] Schema público (tenants · users · sessions)")
     return run_alembic("public", dry_run=dry_run)
 
 
@@ -139,21 +139,21 @@ def main():
     )
     args = parser.parse_args()
 
-    print("=" * 60)
-    print("  NEXO SOBERANO — Migraciones Alembic Multi-tenant")
-    print("=" * 60)
+    log.info("=" * 60)
+    log.info("  NEXO SOBERANO — Migraciones Alembic Multi-tenant")
+    log.info("=" * 60)
 
     if args.dry_run:
-        print("  Modo DRY-RUN: solo se muestra el SQL, no se ejecuta nada.\n")
+        log.info("  Modo DRY-RUN: solo se muestra el SQL, no se ejecuta nada.\n")
 
     # 1. Schema public siempre primero
     ok = ensure_public_schema_first(dry_run=args.dry_run)
     if not ok and not args.dry_run:
-        print("\n❌ Fallo en schema public. Abortando.")
+        log.info("\n❌ Fallo en schema public. Abortando.")
         sys.exit(1)
 
     if args.public_only:
-        print("\n✅ Solo schema public solicitado. Fin.")
+        log.info("\n✅ Solo schema public solicitado. Fin.")
         return
 
     # 2. Obtener tenants
@@ -164,11 +164,11 @@ def main():
 
     if not tenants:
         if not args.tenant:
-            print("\n  ℹ️  No hay tenants activos en la DB todavía.")
-            print("  (Normal en la primera ejecución antes de registrar empresas)")
+            log.info("\n  ℹ️  No hay tenants activos en la DB todavía.")
+            log.info("  (Normal en la primera ejecución antes de registrar empresas)")
         return
 
-    print(f"\n[2/2] Schemas de tenants ({len(tenants)} encontrados)")
+    log.info(f"\n[2/2] Schemas de tenants ({len(tenants)} encontrados)")
 
     exitosos = 0
     fallidos = []
@@ -179,7 +179,7 @@ def main():
         plan   = tenant.get("plan", "?")
         schema = f"tenant_{slug.lower().replace('-', '_').replace(' ', '_')}"
 
-        print(f"  → {name} [{plan}] (schema: {schema})", end="")
+        log.info(f"  → {name} [{plan}] (schema: {schema})", end="")
 
         if not args.dry_run:
             print()  # newline antes del ✅/❌ de run_alembic
@@ -192,16 +192,16 @@ def main():
             fallidos.append(slug)
 
     # ── Resumen ─────────────────────────────────────────────────
-    print("\n" + "=" * 60)
-    print(f"  Resultado: {exitosos}/{len(tenants)} schemas migrados correctamente")
+    log.info("\n" + "=" * 60)
+    log.info(f"  Resultado: {exitosos}/{len(tenants)} schemas migrados correctamente")
 
     if fallidos:
-        print(f"  ❌ Fallidos: {', '.join(fallidos)}")
-        print("\n  Para reintentar un tenant específico:")
-        print(f"    python scripts/run_tenant_migrations.py --tenant {fallidos[0]}")
+        log.info(f"  ❌ Fallidos: {', '.join(fallidos)}")
+        log.info("\n  Para reintentar un tenant específico:")
+        log.info(f"    python scripts/run_tenant_migrations.py --tenant {fallidos[0]}")
         sys.exit(1)
     else:
-        print("  ✅ Todas las migraciones completadas.")
+        log.info("  ✅ Todas las migraciones completadas.")
 
 
 if __name__ == "__main__":

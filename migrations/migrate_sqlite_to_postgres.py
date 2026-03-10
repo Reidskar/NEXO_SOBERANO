@@ -24,7 +24,7 @@ try:
     from psycopg2.extras import execute_values, RealDictCursor
     from tqdm import tqdm
 except ImportError:
-    print("❌ Instala dependencias: pip install psycopg2-binary tqdm")
+    log.info("❌ Instala dependencias: pip install psycopg2-binary tqdm")
     sys.exit(1)
 
 # ── Configuración ──────────────────────────────────────────────
@@ -69,7 +69,7 @@ def ensure_tenant_exists(pg_conn, slug: str, name: str = None):
         )
         row = cur.fetchone()
         if row:
-            print(f"   ✅ Tenant '{slug}' ya existe (id={row[0]})")
+            log.info(f"   ✅ Tenant '{slug}' ya existe (id={row[0]})")
             return row[0]
 
         cur.execute(
@@ -82,7 +82,7 @@ def ensure_tenant_exists(pg_conn, slug: str, name: str = None):
         schema = get_tenant_schema(slug)
         cur.execute(f"SELECT create_tenant_schema('{slug}')")
         pg_conn.commit()
-        print(f"   ✅ Tenant '{slug}' creado (id={tenant_id}, schema={schema})")
+        log.info(f"   ✅ Tenant '{slug}' creado (id={tenant_id}, schema={schema})")
         return tenant_id
 
 
@@ -90,7 +90,7 @@ def migrate_users(pg_conn, sqlite_auth_path: str, tenant_id: str):
     """Migra usuarios desde auth.db."""
     conn = get_sqlite_conn(sqlite_auth_path)
     if not conn:
-        print("   ⚠️  auth.db no encontrado, saltando usuarios")
+        log.info("   ⚠️  auth.db no encontrado, saltando usuarios")
         return {}
 
     user_map = {}  # old_id -> new_uuid
@@ -101,10 +101,10 @@ def migrate_users(pg_conn, sqlite_auth_path: str, tenant_id: str):
         rows = cur.fetchall()
 
         if not rows:
-            print("   ⚠️  No hay usuarios en auth.db")
+            log.info("   ⚠️  No hay usuarios en auth.db")
             return {}
 
-        print(f"   📦 Migrando {len(rows)} usuarios...")
+        log.info(f"   📦 Migrando {len(rows)} usuarios...")
         with pg_conn.cursor() as pg_cur:
             for row in tqdm(rows, desc="   Usuarios"):
                 pg_cur.execute("""
@@ -124,7 +124,7 @@ def migrate_users(pg_conn, sqlite_auth_path: str, tenant_id: str):
                 user_map[str(row["id"])] = str(new_id)
 
         pg_conn.commit()
-        print(f"   ✅ {len(user_map)} usuarios migrados")
+        log.info(f"   ✅ {len(user_map)} usuarios migrados")
     finally:
         conn.close()
 
@@ -135,7 +135,7 @@ def migrate_conversations(pg_conn, sqlite_path: str, tenant_slug: str, user_map:
     """Migra conversaciones y mensajes."""
     conn = get_sqlite_conn(sqlite_path)
     if not conn:
-        print("   ⚠️  conversations.db no encontrado")
+        log.info("   ⚠️  conversations.db no encontrado")
         return
 
     schema = get_tenant_schema(tenant_slug)
@@ -146,7 +146,7 @@ def migrate_conversations(pg_conn, sqlite_path: str, tenant_slug: str, user_map:
         # Conversaciones
         cur.execute("SELECT * FROM conversations")
         convs = cur.fetchall()
-        print(f"   📦 Migrando {len(convs)} conversaciones...")
+        log.info(f"   📦 Migrando {len(convs)} conversaciones...")
 
         conv_map = {}
         with pg_conn.cursor() as pg_cur:
@@ -167,7 +167,7 @@ def migrate_conversations(pg_conn, sqlite_path: str, tenant_slug: str, user_map:
         # Mensajes
         cur.execute("SELECT * FROM messages ORDER BY timestamp ASC")
         messages = cur.fetchall()
-        print(f"   📦 Migrando {len(messages)} mensajes...")
+        log.info(f"   📦 Migrando {len(messages)} mensajes...")
 
         with pg_conn.cursor() as pg_cur:
             batch = []
@@ -201,7 +201,7 @@ def migrate_conversations(pg_conn, sqlite_path: str, tenant_slug: str, user_map:
                 """, batch)
 
         pg_conn.commit()
-        print(f"   ✅ Conversaciones y mensajes migrados")
+        log.info(f"   ✅ Conversaciones y mensajes migrados")
     finally:
         conn.close()
 
@@ -210,7 +210,7 @@ def migrate_costs(pg_conn, sqlite_path: str, tenant_slug: str):
     """Migra historial de costos."""
     conn = get_sqlite_conn(sqlite_path)
     if not conn:
-        print("   ⚠️  cost_tracking.db no encontrado")
+        log.info("   ⚠️  cost_tracking.db no encontrado")
         return
 
     schema = get_tenant_schema(tenant_slug)
@@ -219,7 +219,7 @@ def migrate_costs(pg_conn, sqlite_path: str, tenant_slug: str):
         cur = conn.cursor()
         cur.execute("SELECT * FROM costos_api")
         rows = cur.fetchall()
-        print(f"   📦 Migrando {len(rows)} registros de costos...")
+        log.info(f"   📦 Migrando {len(rows)} registros de costos...")
 
         with pg_conn.cursor() as pg_cur:
             batch = []
@@ -247,7 +247,7 @@ def migrate_costs(pg_conn, sqlite_path: str, tenant_slug: str):
                 """, batch)
 
         pg_conn.commit()
-        print(f"   ✅ Costos migrados")
+        log.info(f"   ✅ Costos migrados")
     finally:
         conn.close()
 
@@ -256,7 +256,7 @@ def migrate_preferences(pg_conn, sqlite_path: str, tenant_slug: str, user_map: d
     """Migra perfiles cognitivos."""
     conn = get_sqlite_conn(sqlite_path)
     if not conn:
-        print("   ⚠️  preferences.db no encontrado")
+        log.info("   ⚠️  preferences.db no encontrado")
         return
 
     schema = get_tenant_schema(tenant_slug)
@@ -266,11 +266,11 @@ def migrate_preferences(pg_conn, sqlite_path: str, tenant_slug: str, user_map: d
         try:
             cur.execute("SELECT * FROM cognitive_profile")
         except sqlite3.OperationalError:
-            print("   ⚠️  Tabla cognitive_profile no existe en preferences.db")
+            log.info("   ⚠️  Tabla cognitive_profile no existe en preferences.db")
             return
 
         rows = cur.fetchall()
-        print(f"   📦 Migrando {len(rows)} perfiles cognitivos...")
+        log.info(f"   📦 Migrando {len(rows)} perfiles cognitivos...")
 
         with pg_conn.cursor() as pg_cur:
             for row in tqdm(rows, desc="   Perfiles"):
@@ -301,54 +301,54 @@ def migrate_preferences(pg_conn, sqlite_path: str, tenant_slug: str, user_map: d
                 ))
 
         pg_conn.commit()
-        print(f"   ✅ Perfiles cognitivos migrados")
+        log.info(f"   ✅ Perfiles cognitivos migrados")
     finally:
         conn.close()
 
 
 def run_migration(tenant_slug: str, tenant_name: str = None, sqlite_dir: str = "."):
     """Ejecuta la migración completa."""
-    print(f"\n{'='*55}")
-    print(f"  MIGRACIÓN NEXO SOBERANO → PostgreSQL")
-    print(f"  Tenant: {tenant_slug}")
-    print(f"  Directorio SQLite: {sqlite_dir}")
-    print(f"{'='*55}\n")
+    log.info(f"\n{'='*55}")
+    log.info(f"  MIGRACIÓN NEXO SOBERANO → PostgreSQL")
+    log.info(f"  Tenant: {tenant_slug}")
+    log.info(f"  Directorio SQLite: {sqlite_dir}")
+    log.info(f"{'='*55}\n")
 
     # Actualizar rutas según directorio indicado
     paths = {k: os.path.join(sqlite_dir, Path(v).name) for k, v in SQLITE_PATHS.items()}
 
     pg_conn = get_pg_conn()
-    print("✅ Conectado a PostgreSQL\n")
+    log.info("✅ Conectado a PostgreSQL\n")
 
     try:
         # 1. Asegurar tenant
-        print("── Paso 1/5: Configurando tenant...")
+        log.info("── Paso 1/5: Configurando tenant...")
         tenant_id = ensure_tenant_exists(pg_conn, tenant_slug, tenant_name)
 
         # 2. Usuarios
-        print("\n── Paso 2/5: Migrando usuarios...")
+        log.info("\n── Paso 2/5: Migrando usuarios...")
         user_map = migrate_users(pg_conn, paths["auth"], tenant_id)
 
         # 3. Conversaciones y mensajes
-        print("\n── Paso 3/5: Migrando conversaciones...")
+        log.info("\n── Paso 3/5: Migrando conversaciones...")
         migrate_conversations(pg_conn, paths["conversations"], tenant_slug, user_map)
 
         # 4. Costos
-        print("\n── Paso 4/5: Migrando historial de costos...")
+        log.info("\n── Paso 4/5: Migrando historial de costos...")
         migrate_costs(pg_conn, paths["cost_tracking"], tenant_slug)
 
         # 5. Preferencias cognitivas
-        print("\n── Paso 5/5: Migrando perfiles cognitivos...")
+        log.info("\n── Paso 5/5: Migrando perfiles cognitivos...")
         migrate_preferences(pg_conn, paths["preferences"], tenant_slug, user_map)
 
-        print(f"\n{'='*55}")
-        print(f"  ✅ MIGRACIÓN COMPLETADA para tenant '{tenant_slug}'")
-        print(f"  Schema: tenant_{tenant_slug.replace('-','_')}")
-        print(f"{'='*55}\n")
+        log.info(f"\n{'='*55}")
+        log.info(f"  ✅ MIGRACIÓN COMPLETADA para tenant '{tenant_slug}'")
+        log.info(f"  Schema: tenant_{tenant_slug.replace('-','_')}")
+        log.info(f"{'='*55}\n")
 
     except Exception as e:
         pg_conn.rollback()
-        print(f"\n❌ ERROR en migración: {e}")
+        log.info(f"\n❌ ERROR en migración: {e}")
         import traceback
         traceback.print_exc()
         sys.exit(1)

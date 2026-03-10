@@ -14,6 +14,64 @@ const {
 const axios = require('axios');
 const discordTTS = require('discord-tts');
 const OBSWebSocket = require('obs-websocket-js').default;
+const fs = require('fs');
+const path = require('path');
+const { pipeline } = require('stream');
+const prism = require('prism-media');
+const { createWriteStream } = require('fs');
+
+const http = require('http');
+const { sendAlert } = require('./alert_client');
+
+// ═══ CRASH PROTECTION & ALERTING ═══
+process.on('uncaughtException', async (err) => {
+  console.error('CRITICAL ERROR:', err);
+  await sendAlert({
+    type: 'system',
+    source: 'nexo-bot',
+    title: 'uncaughtException - Bot Crashed',
+    text: err.stack || err.message,
+    level: 'critical'
+  });
+  process.exit(1);
+});
+
+process.on('unhandledRejection', async (reason) => {
+  console.error('Unhandled Rejection:', reason);
+  await sendAlert({
+    type: 'system',
+    source: 'nexo-bot',
+    title: 'unhandledRejection',
+    text: String(reason),
+    level: 'error'
+  });
+});
+
+// ═══ HEALTH MONITORING & INTERNAL TEST ═══
+http.createServer(async (req, res) => {
+  if (req.url === '/health') {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ status: 'ok', bot: client.user?.tag || 'offline' }));
+  } else if (req.url === '/internal/tts_test' && req.method === 'POST') {
+    let body = '';
+    for await (const chunk of req) body += chunk;
+    try {
+      const { text, voice_id } = JSON.parse(body);
+      console.log(`[HTTP TEST] Solicitando TTS para: "${text}"`);
+      await speakInVoice(text || 'Prueba de voz interna ejecutada correctamente.', voice_id);
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ status: 'queued', text }));
+    } catch (err) {
+      res.writeHead(400);
+      res.end(JSON.stringify({ error: err.message }));
+    }
+  } else {
+    res.writeHead(404);
+    res.end();
+  }
+}).listen(process.env.PORT || 3000, () => {
+  console.log(`Servidor de monitoreo del bot escuchando en puerto ${process.env.PORT || 3000}`);
+});
 
 // ═══ OBS MANAGER ═══
 const OBS_HOST = process.env.OBS_HOST || 'localhost';
@@ -60,6 +118,7 @@ const AUTOCHAT_CHANNEL_IDS = new Set(
     .map(item => item.trim())
     .filter(Boolean)
 );
+const NEXO_API_KEY = process.env.NEXO_API_KEY || '';
 const AUTOCHAT_MIN_INTERVAL_MS = Number(process.env.AUTOCHAT_MIN_INTERVAL_SECONDS || 10) * 1000;
 const AUTOCHAT_ACTIVE_WINDOW_MS = Number(process.env.AUTOCHAT_ACTIVE_WINDOW_SECONDS || 180) * 1000;
 const AUTOCHAT_MAX_CONTEXT_MESSAGES = Number(process.env.AUTOCHAT_MAX_CONTEXT_MESSAGES || 12);
@@ -76,6 +135,10 @@ const VOICE_TTS_MAX_CHARS = Number(process.env.VOICE_TTS_MAX_CHARS || 220);
 if (!process.env.DISCORD_TOKEN) {
   throw new Error('Falta DISCORD_TOKEN en .env');
 }
+
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY || '';
+const TEMP_DIR = path.join(__dirname, 'temp_audio');
+if (!fs.existsSync(TEMP_DIR)) fs.mkdirSync(TEMP_DIR);
 
 const channelRuntime = new Map();
 const autoDisabledChannels = new Set();
@@ -150,7 +213,10 @@ const commands = [
         .setName('mensaje')
         .setDescription('Mensaje de prueba para hablar en la llamada')
         .setRequired(false)
-    )
+    ),
+  new SlashCommandBuilder()
+    .setName('nexo')
+    .setDescription('Consulta el estado de la bóveda de memoria de NEXO SOBERANO (VectorDB y RAG)')
 ];
 
 function voiceConfigured() {
@@ -179,65 +245,141 @@ function getOrCreateVoicePlayer() {
   return voicePlayer;
 }
 
-async function speakInVoice(text) {
+const { transcribeFile } = require('./stt_service');
+const { playTTS } = require('./tts_service');
+const { concurrencySemaphore } = require('./concurrency_semaphore');
+
+// ... (existing OBS and config code remains same)
+
+async function speakInVoice(text, voiceId = null) {
   if (!VOICE_TTS_ENABLED) return { ok: false, reason: 'VOICE_TTS disabled' };
   if (!voiceConfigured()) return { ok: false, reason: 'VOICE not configured' };
 
-  const clean = String(text || '').replace(/\s+/g, ' ').trim();
-  if (!clean) return { ok: false, reason: 'empty text' };
-  const maxLen = Math.min(VOICE_TTS_MAX_CHARS, 190);
-  const clipped = clean.slice(0, maxLen);
+  console.log(`[TTS] Solicitante: IA | Texto: "${text.slice(0, 60)}..."`);
 
-  voiceSpeakQueue = voiceSpeakQueue.then(async () => {
-    const connection = getVoiceConnectionSafe();
-    if (!connection) {
-      await ensureVoiceConnected();
-    }
+  const connection = getVoiceConnectionSafe();
+  if (!connection) {
+    console.log('[TTS] No hay conexión activa, intentando conectar...');
+    await ensureVoiceConnected();
+  }
 
-    const readyConnection = getVoiceConnectionSafe();
-    if (!readyConnection) {
-      throw new Error('No hay conexión de voz activa');
-    }
+  const readyConnection = getVoiceConnectionSafe();
+  if (!readyConnection) {
+    console.error('[TTS] Error: No se pudo establecer conexión de voz para reproducir.');
+    return { ok: false, reason: 'No voice connection' };
+  }
 
-    const player = getOrCreateVoicePlayer();
-    readyConnection.subscribe(player);
+  try {
+    const result = await playTTS(readyConnection, text, { voiceId });
+    console.log('[TTS] Proceso de reproducción completado:', result || 'ok');
+    return { ok: true };
+  } catch (error) {
+    console.error('[TTS] Error crítico en speakInVoice:', error.message);
+    return { ok: false, error: error.message };
+  }
+}
 
-    const stream = discordTTS.getVoiceStream(clipped);
-    const resource = createAudioResource(stream, { inputType: StreamType.Arbitrary });
-    player.play(resource);
+async function handleVoiceTranscript(userId, username, text) {
+  if (!text || text.length < 3) return;
+  console.log(`[STT] ${username}: ${text}`);
 
+  const state = getChannelState(VOICE_CHANNEL_ID);
+  state.lastHumanAt = Date.now();
+  state.participants.add(userId);
+  pushHistory(state, 'user', username, userId, text);
+
+  // Wake word or question
+  const wakeSignal = text.toLowerCase().includes(AUTOCHAT_NAME);
+  const questionSignal = hasQuestionSignal(text);
+
+  if (wakeSignal || questionSignal) {
     try {
-      await entersState(player, AudioPlayerStatus.Playing, 5000);
-    } catch {
-      // Puede terminar rápido si el audio es corto.
+      const prompt = buildAutonomousPrompt(state, { author: { username }, content: text });
+      
+      const res = await axios.post(
+        `${FASTAPI_URL}/agente/consultar-rag`,
+        {
+          pregunta: prompt,
+          usuario_id: userId
+        },
+        {
+          timeout: 45000,
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${NEXO_API_KEY}`
+          }
+        }
+      );
+
+      const respuesta = res?.data?.respuesta || 'No pude procesar tu solicitud por voz.';
+      await speakInVoice(respuesta);
+      pushHistory(state, 'assistant', 'NEXO', 'assistant', respuesta);
+      state.lastBotReplyAt = Date.now();
+    } catch (e) {
+      console.error('Error procesando comando de voz:', e.message);
     }
+  }
+}
 
-    await new Promise(resolve => {
-      let finished = false;
-      const done = () => {
-        if (finished) return;
-        finished = true;
-        clearTimeout(timer);
-        player.off(AudioPlayerStatus.Idle, onIdle);
-        player.off('error', onError);
-        resolve();
-      };
-      const onIdle = () => done();
-      const onError = () => done();
-      const timer = setTimeout(done, 16000);
+async function listenToUser(connection, userId, username) {
+  const receiver = connection.receiver;
+  if (receiver.speaking.users.has(userId)) return;
 
-      player.once(AudioPlayerStatus.Idle, onIdle);
-      player.once('error', onError);
+  console.log(`Escuchando a ${username}...`);
+
+  // Acquire concurrency slot
+  await concurrencySemaphore.acquire();
+
+  const tmpWav = path.join(TEMP_DIR, `nexo_voice_${userId}_${Date.now()}.wav`);
+  
+  try {
+    const opusStream = receiver.subscribe(userId, {
+      end: {
+        behavior: 'silence',
+        duration: 1000,
+      },
     });
-  }).catch(error => {
-    const detail = error?.message || String(error);
-    console.error(`speakInVoice error: ${detail}`);
-  });
 
-  return { ok: true, reason: 'queued' };
+    const decoder = new prism.opus.Decoder({ frameSize: 960, channels: 2, rate: 48000 });
+    const ffmpegProc = spawn('ffmpeg', [
+      '-f', 's16le', '-ar', '48000', '-ac', '2', '-i', 'pipe:0',
+      '-acodec', 'pcm_s16le', '-ar', '16000', '-ac', '1', '-f', 'wav', tmpWav
+    ], { stdio: ['pipe', 'ignore', 'inherit'] });
+
+    pipeline(opusStream, decoder, ffmpegProc.stdin, async (err) => {
+      if (err) {
+        console.error('Pipeline error:', err);
+        concurrencySemaphore.release();
+        if (fs.existsSync(tmpWav)) fs.unlinkSync(tmpWav);
+        return;
+      }
+
+      ffmpegProc.once('close', async (code) => {
+        try {
+          if (code === 0 && fs.existsSync(tmpWav)) {
+            const transcript = await transcribeFile(tmpWav);
+            if (transcript) {
+              await handleVoiceTranscript(userId, username, transcript);
+            }
+          }
+        } catch (e) {
+          console.error('STT Processing error:', e.message);
+        } finally {
+          concurrencySemaphore.release();
+          if (fs.existsSync(tmpWav)) fs.unlinkSync(tmpWav);
+        }
+      });
+    });
+
+  } catch (err) {
+    console.error('Error en listenToUser:', err);
+    concurrencySemaphore.release();
+  }
 }
 
 async function connectVoiceAlwaysOn(force = false) {
+  // ... (rest of the voice connection logic remains roughly the same, 
+  // ensuring the receiver is set up as before)
   if (!voiceConfigured()) return { ok: false, reason: 'VOICE not configured' };
 
   const guild = await client.guilds.fetch(VOICE_GUILD_ID);
@@ -278,6 +420,15 @@ async function connectVoiceAlwaysOn(force = false) {
   try {
     await entersState(connection, VoiceConnectionStatus.Ready, 30000);
     console.log(`Voice always-on conectado al canal ${VOICE_CHANNEL_ID}`);
+    
+    // Configurar el receiver para escuchar a todos los que hablen
+    connection.receiver.speaking.on('start', userId => {
+      const user = client.users.cache.get(userId);
+      if (user && !user.bot) {
+        listenToUser(connection, userId, user.username);
+      }
+    });
+
     return { ok: true, reason: 'connected', status: connection.state.status };
   } catch (err) {
     // If signalling, wait a bit more
@@ -450,6 +601,14 @@ async function registerCommands() {
 client.once('ready', async () => {
   console.log(`Bot conectado como ${client.user.tag}`);
   
+  await sendAlert({
+    type: 'lifecycle',
+    source: 'nexo-bot',
+    title: 'Bot Ready',
+    text: `NEXO se ha conectado como ${client.user.tag}`,
+    level: 'info'
+  });
+  
   // Voice dependency diagnostic
   try {
     const { generateDependencyReport } = require('@discordjs/voice');
@@ -553,7 +712,10 @@ client.on('interactionCreate', async interaction => {
         },
         {
           timeout: 45000,
-          headers: { 'Content-Type': 'application/json' }
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${NEXO_API_KEY}`
+          }
         }
       );
 
@@ -607,7 +769,10 @@ client.on('interactionCreate', async interaction => {
         },
         {
           timeout: 45000,
-          headers: { 'Content-Type': 'application/json' }
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${NEXO_API_KEY}`
+          }
         }
       );
 
@@ -618,6 +783,36 @@ client.on('interactionCreate', async interaction => {
       const detail = error?.response?.data?.detail || error?.message || 'Error desconocido';
       console.error('Error /aporte:', detail);
       await interaction.editReply(`Error al enviar aporte: ${detail}`);
+    }
+    return;
+  }
+
+  if (interaction.commandName === 'nexo') {
+    await interaction.deferReply();
+    try {
+      const res = await axios.get(`${FASTAPI_URL}/agente/health`, { 
+        timeout: 15000,
+        headers: { 'Authorization': `Bearer ${NEXO_API_KEY}` }
+      });
+      const stats = res?.data || {};
+      
+      const embed = new EmbedBuilder()
+        .setColor(stats.status === 'ok' ? 0x00FF00 : 0xFF0000)
+        .setTitle('Estado del Sistema NEXO SOBERANO')
+        .addFields(
+          { name: 'Core API', value: '🟢 Online', inline: true },
+          { name: 'Motor RAG', value: stats.rag_loaded ? '🟢 Sincronizado (Supabase Vector)' : '🔴 Desconectado', inline: true },
+          { name: 'Documentos en Bóveda', value: `${stats.total_documentos || 0} fragmentos de inteligencia`, inline: true },
+          { name: 'Tokens Gemini/Presupuesto', value: `${stats.presupuesto?.estado_presupuesto || 'Desconocido'}`, inline: true }
+        )
+        .setFooter({ text: 'Monitoreo de Infraestructura Híbrida' })
+        .setTimestamp();
+
+      await interaction.editReply({ embeds: [embed] });
+      await speakInVoice(`Infraestructura verificada. Bóveda vectorial cuenta con ${stats.total_documentos || 0} fragmentos.`);
+    } catch (error) {
+      console.error('Error /nexo health check:', error.message);
+      await interaction.editReply('Error al conectar con la API central de NEXO SOBERANO.');
     }
   }
 });
@@ -703,7 +898,10 @@ client.on('messageCreate', async message => {
       },
       {
         timeout: 45000,
-        headers: { 'Content-Type': 'application/json' }
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${NEXO_API_KEY}`
+        }
       }
     );
 
@@ -724,7 +922,14 @@ client.on('messageCreate', async message => {
 
 client.login(process.env.DISCORD_TOKEN);
 
-process.on('SIGINT', () => {
+process.on('SIGINT', async () => {
+  await sendAlert({
+    type: 'lifecycle',
+    source: 'nexo-bot',
+    title: 'Bot Stopping',
+    text: 'Recibida señal SIGINT. Apagando...',
+    level: 'warning'
+  });
   if (voiceCheckTimer) clearInterval(voiceCheckTimer);
   const existing = VOICE_GUILD_ID ? getVoiceConnection(VOICE_GUILD_ID) : null;
   if (existing) existing.destroy();

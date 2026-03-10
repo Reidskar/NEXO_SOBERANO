@@ -329,7 +329,8 @@ async def consultar(request: QueryRequest) -> QueryResponse:
 
         # Ejecutar consulta RAG
         rag = get_rag_service()
-        resultado = rag.consultar(request.query, request.categoria)
+        tenant_slug = getattr(request.state, "tenant_slug", "demo")
+        resultado = rag.consultar(request.query, tenant_slug=tenant_slug, categoria=request.categoria)
 
         # Mapear a respuesta unificada
         tokens_aproximado = (len(request.query) + len(resultado.get("respuesta", ""))) // 4
@@ -353,7 +354,7 @@ async def consultar(request: QueryRequest) -> QueryResponse:
 
 
 @router.post("/consultar-rag")
-async def consultar_rag(request: ConsultarRagRequest):
+async def consultar_rag(request: Request, body: ConsultarRagRequest):
     """Endpoint de compatibilidad para clientes externos (Discord/Web) con formato Tutor de Evidencia."""
     try:
         cost_mgr = get_cost_manager()
@@ -364,11 +365,12 @@ async def consultar_rag(request: ConsultarRagRequest):
             "Responde como Tutor de Evidencia de forma objetiva y verificable. "
             "Estructura obligatoria: Antecedentes, Situación actual, Evidencia directa (solo links y hechos). "
             "Si faltan datos, dilo explícitamente. "
-            f"Pregunta del usuario: {request.pregunta}"
+            f"Pregunta del usuario: {body.pregunta}"
         )
 
         rag = get_rag_service()
-        resultado = rag.consultar(prompt, request.categoria)
+        tenant_slug = getattr(request.state, "tenant_slug", "demo")
+        resultado = rag.consultar(prompt, tenant_slug=tenant_slug, categoria=body.categoria)
 
         return {
             "ok": not bool(resultado.get("error", False)),

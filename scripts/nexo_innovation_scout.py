@@ -201,7 +201,7 @@ def main() -> int:
     out.parent.mkdir(parents=True, exist_ok=True)
     payload = run_scan()
     out.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
-    print(json.dumps({"ok": True, "output": str(out), "innovation_score": payload.get("innovation_score")}, ensure_ascii=False))
+    log.info(json.dumps({"ok": True, "output": str(out), "innovation_score": payload.get("innovation_score")}, ensure_ascii=False))
     return 0
 
 

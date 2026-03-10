@@ -139,9 +139,9 @@ def validar_config():
         errores.append("SECRET_KEY usa valor por defecto inseguro")
 
     if errores:
-        print("\n⚠️  ADVERTENCIAS DE CONFIGURACIÓN:")
+        log.info("\n⚠️  ADVERTENCIAS DE CONFIGURACIÓN:")
         for e in errores:
-            print(f"   - {e}")
+            log.info(f"   - {e}")
         print()
 
     return len(errores) == 0

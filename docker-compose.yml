@@ -85,6 +85,42 @@ services:
       timeout: 5s
       retries: 5
 
+  discord-bot:
+    build:
+      context: ./discord_bot
+      dockerfile: Dockerfile.discord_bot
+    container_name: nexo-discord-bot
+    environment:
+      - DISCORD_TOKEN=${DISCORD_TOKEN}
+      - DISCORD_GUILD_ID=${DISCORD_GUILD_ID}
+      - FASTAPI_URL=http://backend:8000
+      - NEXO_API_KEY=${NEXO_API_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - ELEVENLABS_API_KEY=${ELEVENLABS_API_KEY}
+      - ELEVENLABS_VOICE_ID=${ELEVENLABS_VOICE_ID}
+      - VOICE_ALWAYS_ON=${VOICE_ALWAYS_ON:-true}
+      - VOICE_GUILD_ID=${VOICE_GUILD_ID}
+      - VOICE_CHANNEL_ID=${VOICE_CHANNEL_ID}
+    volumes:
+      - ./discord_bot:/app
+      - /app/node_modules
+    depends_on:
+      - backend
+    restart: always
+
+  webhook-relay:
+    build:
+      context: ./monitoring/webhook_relay
+    container_name: nexo-webhook-relay
+    environment:
+      - PORT=4000
+      - TARGET_SLACK_WEBHOOK=${TARGET_SLACK_WEBHOOK}
+      - TARGET_DISCORD_WEBHOOK=${TARGET_DISCORD_WEBHOOK}
+      - PAGERDUTY_KEY=${PAGERDUTY_KEY}
+      - ALERT_DEDUP_WINDOW=300
+      - MAX_RETRIES=5
+    restart: always
+
 volumes:
   nexo-data:
   nexo-logs:

@@ -158,7 +158,7 @@ def main() -> int:
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
 
-    print(json.dumps({"ok": True, "output": str(out), "actions": len(report["actions"])}, ensure_ascii=False))
+    log.info(json.dumps({"ok": True, "output": str(out), "actions": len(report["actions"])}, ensure_ascii=False))
     return 0
 
 

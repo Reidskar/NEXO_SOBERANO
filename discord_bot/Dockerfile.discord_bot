@@ -1,0 +1,18 @@
+FROM node:18-slim
+
+# Install ffmpeg
+RUN apt-get update && apt-get install -y ffmpeg python3 build-essential && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Copy package.json and install dependencies
+COPY package*.json ./
+RUN npm install
+
+# Copy source code
+COPY . .
+
+# Ensure temp_audio directory exists
+RUN mkdir -p temp_audio
+
+CMD ["npm", "start"]

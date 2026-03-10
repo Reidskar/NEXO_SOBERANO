@@ -141,7 +141,7 @@ class CostManagerMultiTenant:
             self._redis.delete(cache_key)
 
         except Exception as e:
-            print(f"⚠️  Error registrando costo: {e}")
+            log.info(f"⚠️  Error registrando costo: {e}")
 
     # ── CACHÉ SEMÁNTICO ────────────────────────────────────────
     # La idea: si la misma pregunta (o muy similar) ya fue respondida,

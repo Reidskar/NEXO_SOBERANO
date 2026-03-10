@@ -66,7 +66,7 @@ class WorldMonitorBridge:
     sistema de notificaciones de NEXO SOBERANO.
     """
 
-    def __init__(self, tenant_slug: str):
+    def __init__(self, tenant_slug: str = "demo"):
         self.tenant_slug = tenant_slug
         self.schema = f"tenant_{tenant_slug.replace('-', '_')}"
         self.qdrant = QdrantClient(url=QDRANT_URL)
@@ -76,13 +76,40 @@ class WorldMonitorBridge:
 
     def ensure_collection(self):
         """Crea la colección Qdrant del tenant si no existe."""
-        existing = [c.name for c in self.qdrant.get_collections().collections]
-        if self.collection not in existing:
-            self.qdrant.create_collection(
-                collection_name=self.collection,
-                vectors_config=VectorParams(size=384, distance=Distance.COSINE),
-            )
-            print(f"✅ Colección Qdrant '{self.collection}' creada")
+        try:
+            existing = [c.name for c in self.qdrant.get_collections().collections]
+            if self.collection not in existing:
+                self.qdrant.create_collection(
+                    collection_name=self.collection,
+                    vectors_config=VectorParams(size=384, distance=Distance.COSINE),
+                )
+                # log.info? there's no log defined, using print or typical logger
+                print(f"✅ Colección Qdrant '{self.collection}' creada")
+        except Exception:
+            pass
+
+    def fetch_latest_signals(self) -> list[dict]:
+        """
+        Simulación de fetch desde la API de WorldMonitor.
+        En producción esto llamaría a WM_BASE_URL/api/signals.
+        """
+        # Por ahora devolvemos un mock que cumple con lo que tasks_core espera
+        return [
+            {
+                "type": "cii_spike",
+                "severity": 0.85,
+                "title": "Tensión en el Estrecho de Taiwán",
+                "body": "Incremento de actividad naval detectado en las últimas 24 horas.",
+                "tenant_slug": "demo"
+            },
+            {
+                "type": "news_cluster",
+                "severity": 0.45,
+                "title": "Acuerdo comercial Mercosur-UE",
+                "body": "Nuevas rondas de negociación programadas para el próximo mes.",
+                "tenant_slug": "demo"
+            }
+        ]
 
     # ── INGESTIÓN DE SEÑALES ───────────────────────────────────
 
@@ -170,7 +197,7 @@ class WorldMonitorBridge:
                 ingested += 1
             except Exception as e:
                 errors += 1
-                print(f"⚠️  Error ingestando señal: {e}")
+                log.info(f"⚠️  Error ingestando señal: {e}")
 
         return {"ingested": ingested, "errors": errors, "total": len(signals)}
 

@@ -1,14 +1,18 @@
 from __future__ import annotations
 
 import logging
+import os # Added for os.getenv
 import uuid
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, Security # Added Security
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.security.api_key import APIKeyHeader # Added APIKeyHeader import
 from fastapi.responses import FileResponse
 from starlette.middleware.trustedhost import TrustedHostMiddleware
-from starlette.responses import JSONResponse
+from starlette.responses import JSONResponse, HTMLResponse
 
 from NEXO_CORE import config
 from NEXO_CORE.api.health import router as health_router
@@ -26,6 +30,8 @@ from NEXO_CORE.agents.discord_supervisor import discord_supervisor
 from NEXO_CORE.agents.web_ai_supervisor import web_ai_supervisor
 from backend.services.worldmonitor_bridge import router as worldmonitor_router
 from backend.middleware.tenant_middleware import TenantMiddleware
+from NEXO_CORE.api.dashboard import router as dashboard_router
+from NEXO_CORE.api.webhooks import router as webhook_router
 
 setup_logging()
 logger = logging.getLogger(__name__)
@@ -40,6 +46,27 @@ app = FastAPI(
 
 app.add_middleware(CORSMiddleware, **build_cors_options())
 app.add_middleware(TenantMiddleware)
+app.include_router(dashboard_router)
+app.include_router(webhook_router)
+
+# Archivos estáticos
+app.mount("/static", StaticFiles(directory="NEXO_CORE/static"), name="static")
+
+api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
+
+@app.get("/war-room")
+async def war_room(request: Request, api_key: str = Security(api_key_header)):
+    """Sirve la interfaz del War Room protegida por API Key en header o URL."""
+    actual_key = api_key or request.query_params.get("api_key")
+    if actual_key != os.getenv("NEXO_API_KEY", "nexo_dev_key_2025"):
+        # Devolver una página HTML indicando el error para que el usuario no vea una pantalla negra/JSON.
+        return HTMLResponse(
+            content="<html><body style='background:#0a0a0c;color:red;font-family:sans-serif;padding:50px;text-align:center;'>"
+                    "<h2>Acceso Denegado (403)</h2><p>Falta o es incorrecta la API Key. Añade ?api_key=TU_CLAVE a la URL.</p>"
+                    "</body></html>",
+            status_code=403
+        )
+    return FileResponse("NEXO_CORE/static/war_room.html")
 
 if config.ALLOWED_HOSTS:
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=config.ALLOWED_HOSTS)
@@ -99,7 +126,7 @@ async def request_context_middleware(request: Request, call_next):
             "style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com https://cdn.jsdelivr.net; "
             "font-src 'self' https://fonts.gstatic.com data:; "
             "img-src 'self' data: blob: https:; "
-            "connect-src 'self' http://localhost:8000 http://127.0.0.1:8000 https:; "
+            "connect-src 'self' http://localhost:8000 http://127.0.0.1:8000 https: ws: wss:; "
             "frame-ancestors 'none'; base-uri 'self'; object-src 'none'",
         )
         response.headers.setdefault("Cache-Control", "no-store")

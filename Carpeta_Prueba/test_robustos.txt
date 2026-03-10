@@ -1,0 +1,4 @@
+Este es un documento de prueba para validar el nuevo sistema de ingesta robusta del Nexo Soberano.
+El sistema debe ser capaz de analizar este texto, clasificarlo y enviarlo a Supabase Vector.
+Categoría esperada: Operaciones / Tecnología.
+Impacto esperado: Medio.

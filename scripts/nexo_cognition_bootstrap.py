@@ -203,12 +203,12 @@ def write_report(payload: Dict) -> Path:
 def main() -> None:
     payload = evaluate()
     out = write_report(payload)
-    print(f"[OK] Readiness generado: {out}")
-    print(f"[OK] Global score: {payload['global_score']}")
+    log.info(f"[OK] Readiness generado: {out}")
+    log.info(f"[OK] Global score: {payload['global_score']}")
     if payload["critical_blockers"]:
-        print("[BLOCKERS]")
+        log.info("[BLOCKERS]")
         for b in payload["critical_blockers"]:
-            print(f" - {b}")
+            log.info(f" - {b}")
 
 
 if __name__ == "__main__":

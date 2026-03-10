@@ -118,7 +118,7 @@ def main() -> int:
         "share_package": {},
     }
 
-    print("[1/6] health + analytics + warroom checks...", flush=True)
+    log.info("[1/6] health + analytics + warroom checks...", flush=True)
     report["checks"]["health"] = http_json(args.base_url, "/api/health/", args.api_key, "GET", timeout_seconds=args.timeout)
     report["checks"]["analytics"] = http_json(
         args.base_url,
@@ -148,7 +148,7 @@ def main() -> int:
         "incluir_alertas": True,
     }
     if not args.skip_foda:
-        print("[2/6] running FODA claude low-cost...", flush=True)
+        log.info("[2/6] running FODA claude low-cost...", flush=True)
         report["multi_ai"]["claude_low_cost"] = http_json(
             args.base_url,
             "/api/ai/foda-critical",
@@ -157,7 +157,7 @@ def main() -> int:
             {**base_payload, "decisor_final": "claude", "modo_ahorro": True},
             timeout_seconds=args.foda_timeout,
         )
-        print("[3/6] running FODA gemini low-cost...", flush=True)
+        log.info("[3/6] running FODA gemini low-cost...", flush=True)
         report["multi_ai"]["gemini_low_cost"] = http_json(
             args.base_url,
             "/api/ai/foda-critical",
@@ -166,7 +166,7 @@ def main() -> int:
             {**base_payload, "decisor_final": "gemini", "modo_ahorro": True},
             timeout_seconds=args.foda_timeout,
         )
-        print("[4/6] running FODA multi-review...", flush=True)
+        log.info("[4/6] running FODA multi-review...", flush=True)
         report["multi_ai"]["multi_review_claude_decider"] = http_json(
             args.base_url,
             "/api/ai/foda-critical",
@@ -177,7 +177,7 @@ def main() -> int:
         )
     else:
         report["multi_ai"]["skipped"] = {"ok": True, "reason": "--skip-foda"}
-    print("[5/6] refreshing FODA status...", flush=True)
+    log.info("[5/6] refreshing FODA status...", flush=True)
     report["checks"]["foda_status_after"] = http_json(
         args.base_url,
         "/api/ai/foda-status",
@@ -186,7 +186,7 @@ def main() -> int:
         timeout_seconds=args.timeout,
     )
 
-    print("[6/6] building share package...", flush=True)
+    log.info("[6/6] building share package...", flush=True)
     report["share_package"] = http_json(
         args.base_url,
         "/agente/control-center/extractor-prompt",
@@ -212,7 +212,7 @@ def main() -> int:
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
 
-    print(json.dumps({"ok": True, "output": str(output_path), "semaforo": report.get("semaforo", {}), "actions": recs}, ensure_ascii=False))
+    log.info(json.dumps({"ok": True, "output": str(output_path), "semaforo": report.get("semaforo", {}), "actions": recs}, ensure_ascii=False))
     return 0
 
 

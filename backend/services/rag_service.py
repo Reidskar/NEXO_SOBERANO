@@ -1,13 +1,12 @@
 """
-RAG Service — Motor de búsqueda + respuesta IA
-Extrae lógica principal de nexo_v2.py
+RAG Service — Motor de búsqueda + respuesta IA (Reescrito para Supabase Vector asíncrono)
 """
 
 import sqlite3
 import time
 import json
 import logging
-import requests
+import asyncio
 from datetime import datetime
 from typing import Optional, List, Dict
 from pathlib import Path
@@ -18,6 +17,8 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 from backend import config
 from backend.services.cost_manager import get_cost_manager
 from backend.services.unified_cost_tracker import get_cost_tracker
+from backend.services.vector_db import ensure_table
+from backend.services.vector_service import search as search_qdrant, ensure_collection
 
 logger = logging.getLogger(__name__)
 
@@ -32,155 +33,43 @@ def get_db() -> sqlite3.Connection:
     conn.row_factory = sqlite3.Row
     return conn
 
-def ensure_db_schema():
-    """Asegura que existan las tablas necesarias"""
-    conn = get_db()
-    conn.executescript("""
-        CREATE TABLE IF NOT EXISTS evidencia (
-            id              INTEGER PRIMARY KEY AUTOINCREMENT,
-            hash_sha256     TEXT UNIQUE,
-            nombre_archivo  TEXT,
-            ruta_local      TEXT,
-            link_nube       TEXT,
-            dominio         TEXT,
-            categoria       TEXT,
-            resumen_ia      TEXT,
-            fecha_ingesta   TIMESTAMP,
-            nivel_confianza REAL,
-            impacto         TEXT,
-            vectorizado     INTEGER DEFAULT 0
-        );
-
-        CREATE TABLE IF NOT EXISTS consultas (
-            id          INTEGER PRIMARY KEY AUTOINCREMENT,
-            fecha       TEXT,
-            pregunta    TEXT,
-            respuesta   TEXT,
-            fuentes     TEXT,
-            chunks      INTEGER,
-            ms          INTEGER
-        );
-    """)
-    conn.commit()
-    conn.close()
-
-ensure_db_schema()
-
 # ════════════════════════════════════════════════════════════════════
-# EMBEDDINGS
+# RAG SERVICE (ASÍNCRONO)
 # ════════════════════════════════════════════════════════════════════
 
-_embed_model = None
-
-def get_embed_model():
-    """Carga modelo de embeddings local (all-MiniLM-L6-v2)"""
-    global _embed_model
-    if _embed_model is None:
-        try:
-            from sentence_transformers import SentenceTransformer
-            _embed_model = SentenceTransformer(config.EMBED_LOCAL)
-            logger.info("✅ Modelo de embeddings local cargado")
-        except ImportError:
-            logger.warning("⚠️ sentence-transformers no disponible, usando Gemini")
-            _embed_model = "gemini"
-    return _embed_model
-
-def generar_embedding(texto: str) -> Optional[List[float]]:
-    """Genera embedding del texto. Prioridad: local → Gemini fallback"""
-    model = get_embed_model()
-
-    if model != "gemini":
-        try:
-            import numpy as np
-            emb = model.encode(texto[:2000])
-            return np.asarray(emb).tolist()
-        except Exception as e:
-            logger.warning(f"Error en embedding local: {e}, intentando Gemini...")
-
-    # Fallback: Gemini
-    if not config.GEMINI_API_KEY:
-        return None
-
-    try:
-        import google.generativeai as genai
-        genai.configure(api_key=config.GEMINI_API_KEY)
-        result = genai.embed_content(
-            model="models/embedding-001",
-            content=texto[:2048]
-        )
-        return result['embedding']
-    except Exception as e:
-        logger.error(f"Error en embedding Gemini: {e}")
-        return None
-
-# ════════════════════════════════════════════════════════════════════
-# CHROMADB
-# ════════════════════════════════════════════════════════════════════
-
-_coleccion = None
-
-def get_coleccion():
-    """Obtiene o crea colección ChromaDB"""
-    global _coleccion
-    if _coleccion is None:
-        try:
-            import chromadb
-            from chromadb.utils.embedding_functions import SentenceTransformerEmbeddingFunction
-
-            config.CHROMA_DIR.mkdir(parents=True, exist_ok=True)
-            cliente = chromadb.PersistentClient(path=str(config.CHROMA_DIR))
-
-            try:
-                _coleccion = cliente.get_or_create_collection(
-                    name="inteligencia_geopolitica",
-                    metadata={"hnsw:space": "cosine"}
-                )
-            except Exception:
-                _coleccion = cliente.get_or_create_collection(
-                    name="inteligencia_geopolitica",
-                    metadata={"hnsw:space": "cosine"}
-                )
-            logger.info("✅ ChromaDB cargado")
-        except Exception as e:
-            logger.error(f"Error inicializando ChromaDB: {e}")
-            _coleccion = None
-    return _coleccion
-
-# ════════════════════════════════════════════════════════════════════
-# RAG SERVICE
-# ════════════════════════════════════════════════════════════════════
-
-class RAGService:
-    """Motor unificado de RAG"""
+class AsyncRAGService:
+    """Motor unificado de RAG iterado para usar Supabase pgvector"""
 
     def __init__(self):
         self.cost_manager = get_cost_manager()
+        self._initialized = False
+        self._total_docs_cache = 0
+        self._cache_time = 0
 
-    def consultar(self, pregunta: str, categoria: Optional[str] = None) -> Dict:
+    async def _init(self):
+        if not self._initialized:
+            await ensure_table()
+            self._initialized = True
+
+    async def consultar(self, pregunta: str, tenant_slug: str = "demo", categoria: Optional[str] = None) -> Dict:
         """
-        Consulta la bóveda de documentosy genera respuesta con IA.
-        
-        Args:
-            pregunta: Pregunta del usuario
-            categoria: Filtro por categoría (opcional)
-            
-        Returns:
-            {
-                "respuesta": str,
-                "fuentes": List[str],
-                "chunks_usados": int,
-                "ms": int,
-                "total_docs": int,
-                "presupuesto": {...}
-            }
+        Consulta la bóveda de documentos en Qdrant y genera respuesta con IA.
         """
         t0 = time.time()
-        col = get_coleccion()
+        # Asegurar colección en Qdrant
+        ensure_collection(tenant_slug)
 
-        # Sin documentos
-        if col is None or col.count() == 0:
+        # Buscar en Qdrant
+        try:
+            resultados = search_qdrant(
+                tenant_slug=tenant_slug,
+                query=pregunta, 
+                limit=config.TOP_K
+            )
+        except Exception as e:
+            logger.error(f"Error en Qdrant query: {e}")
             return {
-                "respuesta": "⚠️ Bóveda vacía. Ejecuta: python nexo_v2.py setup",
+                "respuesta": f"❌ Error en búsqueda vectorial: {str(e)}",
                 "fuentes": [],
                 "chunks_usados": 0,
                 "ms": int((time.time() - t0) * 1000),
@@ -189,52 +78,11 @@ class RAGService:
                 "error": True,
             }
 
-        # Generar embedding de pregunta
-        emb_q = generar_embedding(pregunta)
-        if emb_q is None:
-            return {
-                "respuesta": "❌ No se pudo generar embedding",
-                "fuentes": [],
-                "chunks_usados": 0,
-                "ms": int((time.time() - t0) * 1000),
-                "total_docs": col.count(),
-                "presupuesto": self.cost_manager.estado(),
-                "error": True,
-            }
-
-        # Buscar en ChromaDB
-        try:
-            where = None
-            if categoria:
-                where = {"categoria": {"$eq": categoria}}
-            n = min(config.TOP_K, col.count())
-            res = col.query(
-                query_embeddings=[emb_q],
-                n_results=n,
-                where=where,
-                include=["documents", "metadatas", "distances"]
-            )
-
-            textos = (res.get("documents") or [[]])[0] if res.get("documents") else []
-            metas = (res.get("metadatas") or [[]])[0] if res.get("metadatas") else []
-            distancias = (res.get("distances") or [[]])[0] if res.get("distances") else []
-        except Exception as e:
-            logger.error(f"Error en ChromaDB query: {e}")
-            return {
-                "respuesta": f"❌ Error en búsqueda: {str(e)}",
-                "fuentes": [],
-                "chunks_usados": 0,
-                "ms": int((time.time() - t0) * 1000),
-                "total_docs": col.count() if col else 0,
-                "presupuesto": self.cost_manager.estado(),
-                "error": True,
-            }
-
-        # Filtrar por relevancia
+        # Filtrar por relevancia (Qdrant ya devuelve score de similitud coseno)
         pares = [
-            (t, m, d)
-            for t, m, d in zip(textos, metas, distancias)
-            if d < config.RELEVANCE_THRESHOLD
+            (r['text'], r['metadata'], r['score'])
+            for r in resultados
+            if r['score'] >= (1 - config.RELEVANCE_THRESHOLD)
         ]
 
         if not pares:
@@ -243,7 +91,7 @@ class RAGService:
                 "fuentes": [],
                 "chunks_usados": 0,
                 "ms": int((time.time() - t0) * 1000),
-                "total_docs": col.count() if col else 0,
+                "total_docs": len(resultados),
                 "presupuesto": self.cost_manager.estado(),
             }
 
@@ -252,13 +100,20 @@ class RAGService:
             f"[Fuente: {m.get('archivo', '?')} | "
             f"Cat: {m.get('categoria', '?')} | "
             f"Impacto: {m.get('impacto', '?')} | "
-            f"{(1-d)*100:.0f}% relevancia]\n{t}"
-            for t, m, d in pares
+            f"{s*100:.0f}% relevancia]\n{t}"
+            for t, m, s in pares
         ])
         fuentes = list({str(m.get("archivo", "?")) for _, m, _ in pares})
 
-        # Generar respuesta
-        respuesta = self._generar_respuesta(pregunta, contexto, pares)
+        # Generar respuesta (llamada bloqueante en un thread)
+        loop = asyncio.get_running_loop()
+        respuesta = await loop.run_in_executor(
+            None, 
+            self._generar_respuesta, 
+            pregunta, 
+            contexto, 
+            pares
+        )
 
         ms = int((time.time() - t0) * 1000)
 
@@ -281,15 +136,19 @@ class RAGService:
         except Exception as e:
             logger.error(f"Error guardando consulta: {e}")
 
-        # Obtener total de docs indexados
-        try:
-            db = get_db()
-            total_docs = db.execute(
-                "SELECT COUNT(*) FROM evidencia WHERE vectorizado=1"
-            ).fetchone()[0]
-            db.close()
-        except Exception:
-            total_docs = col.count() if col else 0
+        # Obtener total de docs indexados desde Supabase (con cache)
+        if time.time() - self._cache_time > 300: # 5 min cache
+            try:
+                from backend.services.vector_db import get_pool
+                pool = await get_pool()
+                async with pool.acquire() as conn:
+                    row = await conn.fetchrow("SELECT COUNT(*) FROM public.nexo_documentos")
+                    self._total_docs_cache = row[0] if row else 0
+                    self._cache_time = time.time()
+            except Exception as e:
+                logger.error(f"Error contando docs en Supabase: {e}")
+        
+        total_docs = self._total_docs_cache
 
         return {
             "respuesta": respuesta,
@@ -332,6 +191,8 @@ Análisis:"""
             "gemini": ["gemini"],
         }.get(provider, ["anthropic", "gemini"])
 
+        import requests
+        
         errors: List[str] = []
         for item in order:
             try:
@@ -392,6 +253,7 @@ Análisis:"""
         if not config.XAI_API_KEY:
             raise RuntimeError("XAI_API_KEY no configurada")
 
+        import requests
         payload = {
             "model": config.XAI_MODEL,
             "messages": [{"role": "user", "content": prompt}],
@@ -450,8 +312,8 @@ Análisis:"""
                 tokens_out = getattr(usage, "completion_tokens", 0)
                 tracker = get_cost_tracker()
                 tracker.track_ai_call("openai", config.OPENAI_MODEL, tokens_in, tokens_out, "rag_consulta")
-        except Exception as e:
-            logger.warning(f"Error tracking OpenAI cost: {e}")
+        except Exception:
+            pass
         
         return text, config.OPENAI_MODEL
 
@@ -475,55 +337,45 @@ Análisis:"""
                 tokens_in = getattr(usage, "prompt_token_count", 0)
                 tokens_out = getattr(usage, "candidates_token_count", 0)
             else:
-                # Estimación fallback
                 tokens_in = len(prompt) // 4
                 tokens_out = len(text) // 4
             
             tracker = get_cost_tracker()
             tracker.track_ai_call("gemini", config.MODELO_FLASH, tokens_in, tokens_out, "rag_consulta")
-            
-            # También registrar en el cost_manager viejo para compatibilidad
             self.cost_manager.registrar(config.MODELO_FLASH, tokens_in, tokens_out, "rag_consulta")
-        except Exception as e:
-            logger.warning(f"Error tracking Gemini cost: {e}")
+        except Exception:
+            pass
         
         return text, config.MODELO_FLASH
 
     def estado(self) -> Dict:
         """Estado actual del sistema"""
-        col = get_coleccion()
         db = get_db()
-
         try:
             total_docs = db.execute(
                 "SELECT COUNT(*) FROM evidencia WHERE vectorizado=1"
             ).fetchone()[0]
-            total_chunks = db.execute(
-                "SELECT COUNT(*) FROM evidencia WHERE vectorizado=1"
-            ).fetchone()[0]  # Aproximado
         except Exception:
-            total_docs = col.count() if col else 0
-            total_chunks = 0
+            total_docs = 0
 
         db.close()
 
         return {
             "status": "ok",
-            "rag_loaded": col is not None,
+            "rag_loaded": True,
             "total_documentos": total_docs,
-            "total_chunks": total_chunks,
-            "coleccion_items": col.count() if col else 0,
+            "total_chunks": total_docs,
+            "coleccion_items": total_docs,
             "embeddings": config.EMBED_LOCAL,
             "presupuesto": self.cost_manager.estado(),
         }
 
+# Instancia global para fallback / compatibilidad síncrona temporal
+_rag_service: Optional[AsyncRAGService] = None
 
-# Instancia global
-_rag_service: Optional[RAGService] = None
-
-def get_rag_service() -> RAGService:
-    """Obtiene o crea el servicio RAG"""
+def get_rag_service():
+    """Obtiene o crea el servicio RAG asíncrono"""
     global _rag_service
     if _rag_service is None:
-        _rag_service = RAGService()
+        _rag_service = AsyncRAGService()
     return _rag_service

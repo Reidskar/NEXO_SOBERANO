@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NEXO SOBERANO - War Room</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            background: #0a0a0c;
+            color: #e0e0e0;
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            margin: 0;
+            padding: 20px;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+        .card {
+            background: rgba(30, 30, 35, 0.8);
+            border: 1px solid #333;
+            border-radius: 12px;
+            padding: 20px;
+            backdrop-filter: blur(10px);
+        }
+        h2 { margin-top: 0; color: #4f46e5; }
+        .stat { font-size: 2rem; font-weight: bold; }
+        #alerts-container {
+            height: 400px;
+            overflow-y: auto;
+            border-left: 3px solid #4f46e5;
+            padding-left: 15px;
+        }
+        .alert-item {
+            background: #16161a;
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 6px;
+            animation: fadeIn 0.5s ease;
+        }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        .status-dot { height: 10px; width: 10px; border-radius: 50%; display: inline-block; margin-right: 5px; }
+        .online { background: #10b981; box-shadow: 0 0 10px #10b981; }
+        .offline { background: #ef4444; box-shadow: 0 0 10px #ef4444; }
+    </style>
+</head>
+<body>
+    <header style="margin-bottom: 30px; display: flex; justify-content: space-between; align-items: center;">
+        <h1>🛡️ WAR ROOM <small style="color: #666; font-size: 1rem;">Inteligencia Geopolítica</small></h1>
+        <div id="connection-status">
+            <span class="status-dot online"></span> WebSocket: <span id="ws-status">Conectando...</span>
+        </div>
+    </header>
+
+    <div class="grid">
+        <!-- Métricas -->
+        <div class="card">
+            <h2>Métricas Hoy</h2>
+            <div id="stats-data">
+                <p>Tokens: <span class="stat" id="stat-tokens">0</span></p>
+                <p>Alertas: <span class="stat" id="stat-alerts">0</span></p>
+            </div>
+        </div>
+
+        <!-- Salud Servicios -->
+        <div class="card">
+            <h2>Infraestructura</h2>
+            <div id="health-container">
+                Cargando...
+            </div>
+        </div>
+
+        <!-- Alertas en Tiempo Real -->
+        <div class="card" style="grid-column: span 2;">
+            <h2>Alertas en Vivo</h2>
+            <div id="alerts-container">
+                <!-- Se pobla vía WebSocket -->
+            </div>
+        </div>
+
+        <!-- Gráfico -->
+        <div class="card" style="grid-column: span 2;">
+            <h2>Consumo Operacional</h2>
+            <canvas id="tokensChart" height="100"></canvas>
+        </div>
+    </div>
+
+    <script>
+        const tenant = new URLSearchParams(window.location.search).get('tenant') || 'demo';
+        
+        // --- WebSocket ---
+        const ws = new WebSocket(`ws://${location.host}/ws/alerts/${tenant}`);
+        ws.onopen = () => {
+            document.getElementById('ws-status').innerText = 'Online';
+        };
+        ws.onmessage = (event) => {
+            const container = document.getElementById('alerts-container');
+            const div = document.createElement('div');
+            div.className = 'alert-item';
+            div.innerHTML = `<strong>${new Date().toLocaleTimeString()}</strong>: ${event.data}`;
+            container.prepend(div);
+        };
+        ws.onclose = () => {
+            document.getElementById('ws-status').innerText = 'Offline';
+            document.querySelector('.status-dot').className = 'status-dot offline';
+        };
+
+        // --- Stats ---
+        async function fetchStats() {
+            try {
+                const r = await fetch(`/api/dashboard/stats?tenant_slug=${tenant}`);
+                const data = await r.json();
+                document.getElementById('stat-tokens').innerText = data.tokens_usados_hoy || 0;
+                document.getElementById('stat-alerts').innerText = data.alertas_activas || 0;
+            } catch(e) {}
+        }
+
+        // --- Health ---
+        async function fetchHealth() {
+            try {
+                const r = await fetch('/api/dashboard/health');
+                const data = await r.json();
+                const container = document.getElementById('health-container');
+                container.innerHTML = Object.entries(data).map(([srv, status]) => `
+                    <div style="margin-bottom: 10px;">
+                        <span class="status-dot ${status === 'operative' || status === 'connected' ? 'online' : 'offline'}"></span>
+                        <strong>${srv.toUpperCase()}</strong>: ${status}
+                    </div>
+                `).join('');
+            } catch(e) {}
+        }
+
+        // --- Chart ---
+        const ctx = document.getElementById('tokensChart').getContext('2d');
+        const tokensChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [{
+                    label: 'Tokens Gemini/Flash',
+                    data: [],
+                    borderColor: '#4f46e5',
+                    backgroundColor: 'rgba(79, 70, 229, 0.1)',
+                    fill: true,
+                    tension: 0.4
+                }]
+            },
+            options: { 
+                responsive: true,
+                scales: {
+                    y: { beginAtZero: true, grid: { color: '#333' } },
+                    x: { grid: { display: false } }
+                },
+                plugins: {
+                    legend: { labels: { color: '#eee' } }
+                }
+            }
+        });
+
+        async function fetchTokenHistory() {
+            try {
+                const r = await fetch(`/api/dashboard/token-history?tenant_slug=${tenant}&days=1`);
+                const data = await r.json();
+                tokensChart.data.labels = data.labels;
+                tokensChart.data.datasets[0].data = data.values;
+                tokensChart.update();
+            } catch(e) {
+                console.error("Error fetching history:", e);
+            }
+        }
+
+        // Intervalos
+        setInterval(fetchStats, 5000);
+        setInterval(fetchHealth, 10000);
+        setInterval(fetchTokenHistory, 30000);
+        
+        fetchStats();
+        fetchHealth();
+        fetchTokenHistory();
+    </script>
+</body>
+</html>

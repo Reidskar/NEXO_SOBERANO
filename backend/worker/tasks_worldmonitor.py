@@ -39,7 +39,7 @@ def get_all_active_tenants() -> list[dict]:
                 """)
                 return [dict(r) for r in cur.fetchall()]
     except Exception as e:
-        print(f"⚠️  Error obteniendo tenants: {e}")
+        log.info(f"⚠️  Error obteniendo tenants: {e}")
         return []
 
 
@@ -81,7 +81,7 @@ def sync_worldmonitor_signals(self):
     Nota de costo: Esta tarea usa SOLO embeddings locales (sentence-transformers).
     No consume tokens de API de IA. Costo = $0.
     """
-    print(f"[{datetime.now().isoformat()}] 🌍 Iniciando sync WorldMonitor...")
+    log.info(f"[{datetime.now().isoformat()}] 🌍 Iniciando sync WorldMonitor...")
 
     tenants = get_all_active_tenants()
     r = redis.from_url(REDIS_URL, decode_responses=True)
@@ -127,10 +127,10 @@ def sync_worldmonitor_signals(self):
             r.set(last_sync_key, datetime.now(timezone.utc).isoformat())
 
         except Exception as e:
-            print(f"⚠️  Error sincronizando tenant {slug}: {e}")
+            log.info(f"⚠️  Error sincronizando tenant {slug}: {e}")
             continue
 
-    print(f"✅ WorldMonitor sync completado: {total_ingested} señales ingestionadas")
+    log.info(f"✅ WorldMonitor sync completado: {total_ingested} señales ingestionadas")
     return {"total_ingested": total_ingested, "tenants_processed": len(tenants)}
 
 
@@ -183,7 +183,7 @@ def fetch_wm_signals(since: str, severity_min: float = 0.4) -> list[dict]:
                 continue  # Endpoint no disponible, continuar
 
     except Exception as e:
-        print(f"⚠️  Error fetching WorldMonitor signals: {e}")
+        log.info(f"⚠️  Error fetching WorldMonitor signals: {e}")
 
     return signals
 
@@ -287,10 +287,10 @@ def send_wm_alerts(self, tenant_slug: str, signals: list[dict]):
                             ))
                         conn.commit()
                 except Exception as e:
-                    print(f"⚠️  Error encolando alerta: {e}")
+                    log.info(f"⚠️  Error encolando alerta: {e}")
 
     except Exception as e:
-        print(f"⚠️  Error enviando alertas WM: {e}")
+        log.info(f"⚠️  Error enviando alertas WM: {e}")
         raise self.retry(exc=e)
 
 
@@ -360,7 +360,7 @@ def generate_daily_intelligence_digest(self):
         try:
             cost_mgr = CostManagerMultiTenant(slug)
             if not cost_mgr.puede_operar(tokens_estimados=2000):
-                print(f"⚠️  Tenant {slug} sin presupuesto para digest")
+                log.info(f"⚠️  Tenant {slug} sin presupuesto para digest")
                 continue
 
             # Obtener señales de las últimas 24h
@@ -381,7 +381,7 @@ def generate_daily_intelligence_digest(self):
             send_digest_to_users.delay(slug, digest_text, top_signals)
 
         except Exception as e:
-            print(f"⚠️  Error generando digest para {slug}: {e}")
+            log.info(f"⚠️  Error generando digest para {slug}: {e}")
             continue
 
 
@@ -418,7 +418,7 @@ RESUMEN (en español, tono profesional):"""
         cost_mgr.registrar("gemini-1.5-flash", tokens_used // 2, tokens_used // 2, "wm_digest")
         return response.text
     except Exception as e:
-        print(f"⚠️  Error en síntesis IA: {e}")
+        log.info(f"⚠️  Error en síntesis IA: {e}")
         return build_text_digest(signals)
 
 
@@ -461,7 +461,7 @@ def send_digest_to_users(tenant_slug: str, digest_text: str, signals: list[dict]
                 conn.commit()
 
     except Exception as e:
-        print(f"⚠️  Error enviando digest: {e}")
+        log.info(f"⚠️  Error enviando digest: {e}")
 
 
 def build_digest_html(digest_text: str, signals: list[dict]) -> str:

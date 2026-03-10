@@ -260,7 +260,7 @@ def main() -> int:
     output_path = Path(args.output).resolve()
 
     out = run(source_root=source_root, output_path=output_path, min_confidence=max(0.0, min(1.0, args.min_confidence)))
-    print(json.dumps({"ok": True, "output": out.as_posix()}, ensure_ascii=False))
+    log.info(json.dumps({"ok": True, "output": out.as_posix()}, ensure_ascii=False))
     return 0
 
 

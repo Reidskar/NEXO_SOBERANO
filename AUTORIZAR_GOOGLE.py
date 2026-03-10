@@ -5,28 +5,28 @@ from services.connectors.google_connector import authorize_drive_interactive, au
 
 logging.basicConfig(level=logging.INFO, format="%(message)s")
 
-print("=====================================================")
-print("  INICIANDO AUTORIZACION DE GOOGLE PARA NEXO         ")
-print("=====================================================")
-print("Se va a abrir tu navegador web para que inicies sesion.")
-print("Por favor, acepta TODOS los permisos que solicite la app.")
+log.info("=====================================================")
+log.info("  INICIANDO AUTORIZACION DE GOOGLE PARA NEXO         ")
+log.info("=====================================================")
+log.info("Se va a abrir tu navegador web para que inicies sesion.")
+log.info("Por favor, acepta TODOS los permisos que solicite la app.")
 
 try:
-    print("\n1. Autorizando Google Drive...")
+    log.info("\n1. Autorizando Google Drive...")
     res_drive = authorize_drive_interactive(require_write=True)
     if res_drive.get("ok"):
-        print("✅ Google Drive Autorizado exitosamente.")
+        log.info("✅ Google Drive Autorizado exitosamente.")
         
-    print("\n2. Autorizando Google Photos...")
+    log.info("\n2. Autorizando Google Photos...")
     res_photos = authorize_photos_interactive(include_drive_write=True)
     if res_photos.get("ok"):
-        print("✅ Google Photos Autorizado exitosamente.")
+        log.info("✅ Google Photos Autorizado exitosamente.")
         
-    print("\n=====================================================")
-    print("  ¡TODO LISTO! Ya puedes volver a la consola de NEXO ")
-    print("=====================================================")
+    log.info("\n=====================================================")
+    log.info("  ¡TODO LISTO! Ya puedes volver a la consola de NEXO ")
+    log.info("=====================================================")
     
 except Exception as e:
-    print(f"\n❌ Error durante la autorización: {e}")
+    log.info(f"\n❌ Error durante la autorización: {e}")
 
 input("\nPresiona ENTER para salir...")

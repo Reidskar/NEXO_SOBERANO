@@ -222,7 +222,7 @@ def main() -> int:
     out = Path(args.output)
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
-    print(json.dumps({"ok": True, "output": str(out), "approvals_required": len(result["approvals_required"])}, ensure_ascii=False))
+    log.info(json.dumps({"ok": True, "output": str(out), "approvals_required": len(result["approvals_required"])}, ensure_ascii=False))
     return 0
 
 
