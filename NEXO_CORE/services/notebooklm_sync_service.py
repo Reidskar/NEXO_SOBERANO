@@ -10,6 +10,8 @@ EXPORT_DIR = Path("exports")
 NOTEBOOKLM_FILE = EXPORT_DIR / "nexo_master_context.txt"
 CAMILO_DIR = Path("camilo el bkn")
 CAMILO_FILE = CAMILO_DIR / "nexo_soberano_para_otra_ia.txt"
+OBSIDIAN_VAULT = Path(r"C:\Users\Admn\Documents\Obsidian Vault\NEXO SOBERANO")
+OBSIDIAN_FILE = OBSIDIAN_VAULT / "NEXO_MASTER_CONTEXT.md" # Cambiado a .md para Obsidian
 
 # Extensiones a incluir
 EXTENSIONES = {'.py', '.md', '.txt', '.js', '.ts', '.toml', '.yaml', '.yml'}
@@ -24,6 +26,7 @@ def exportar_contexto_maestro():
     # Asegurar directorios
     EXPORT_DIR.mkdir(exist_ok=True)
     CAMILO_DIR.mkdir(exist_ok=True)
+    OBSIDIAN_VAULT.mkdir(parents=True, exist_ok=True)
 
     repo_root = Path(".")
     archivos_procesados = 0
@@ -75,11 +78,15 @@ def exportar_contexto_maestro():
     
     # Sincronizar con "camilo el bkn"
     CAMILO_FILE.write_text(final_content, encoding='utf-8')
+    
+    # Sincronizar con Obsidian
+    OBSIDIAN_FILE.write_text(final_content, encoding='utf-8')
 
     print("Exportacion completada!")
     print(f"   Archivos incluidos: {archivos_procesados}")
     print(f"   Destino 1: {NOTEBOOKLM_FILE}")
     print(f"   Destino 2: {CAMILO_FILE}")
+    print(f"   Destino 3: {OBSIDIAN_FILE}")
     
     return {
         "ok": True,
