@@ -1,0 +1,18 @@
+Paquete: NEXO SOBERANO - GLOBAL MIND V1.0
+Fecha: 2026-03-10
+Archivos:
+- /functions/ingest_from_drive/index.ts
+- /functions/analyze_content/index.ts
+- /functions/daily_summarizer/index.ts
+- /functions/discord_bridge/index.ts
+- /functions/publish_queue/index.ts
+- /functions/_shared/supabaseClient.ts
+- /functions/_shared/utils.ts
+- /sql/migrations/001_create_global_mind.sql
+- /scripts/register_discord_commands.js
+- /README_es.md
+
+Supuestos:
+- Proyecto Supabase con pgvector habilitado.
+- Gemini API Key para análisis visionario.
+- Discord Application & Bot configurados.

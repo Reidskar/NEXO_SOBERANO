@@ -1,0 +1,15 @@
+=== INSTRUCCIONES PARA EL DELL LATITUDE ===
+Ejecutar en el Dell (una sola vez):
+
+1. Instalar Tailscale: https://tailscale.com/download/windows
+2. Autenticarse: tailscale up
+3. Verificar mesh: tailscale status
+4. Conectar al Torre via RDP:
+   Abrir Conexión a Escritorio Remoto (mstsc) e ingresar: 100.104.152.43
+5. Conectar al Torre via SSH (si tienes OpenSSH):
+   ssh Admn@100.104.152.43
+
+Para control remoto del PC desde el Xiaomi via Tailscale:
+- RustDesk: instalar en Torre y Xiaomi, usar IP Tailscale
+- SSH: ssh Admn@100.104.152.43 desde Termux
+============================================

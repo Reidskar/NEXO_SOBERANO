@@ -1,8 +1,8 @@
 [phases.setup]
-nixPkgs = ["python311", "python311Packages.pip", "deno"]
+nixPkgs = ["python311"]
 
 [phases.install]
-cmds = ["pip install --break-system-packages -r requirements_railway.txt"]
+cmds = ["pip install -r requirements_railway.txt"]
 
 [start]
-cmd = "python -m uvicorn backend.main:app --host 0.0.0.0 --port $PORT"
+cmd = "uvicorn backend.main:app --host 0.0.0.0 --port $PORT"

@@ -1,0 +1,12 @@
+fastapi
+uvicorn
+pydantic
+python-telegram-bot
+requests
+openai
+google-generativeai
+websockets
+pyjwt
+python-multipart
+python-dotenv
+psutil

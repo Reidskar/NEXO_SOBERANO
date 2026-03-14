@@ -1,0 +1,131 @@
+
+╔════════════════════════════════════════════════════════════════════════════════╗
+║                       NEXO SOBERANO - QUICK REFERENCE                         ║
+║                           Status: 70% COMPLETE ✅                             ║
+╚════════════════════════════════════════════════════════════════════════════════╝
+
+┌─ CURRENT SERVER STATUS ─────────────────────────────┐
+│ Backend API:  ✅ Running on http://127.0.0.1:8000  │
+│ Frontend UI:  ⏳ Ready (waiting for Node.js)       │
+│ Database:     ✅ ChromaDB + SQLite                 │
+│ Cloud Sync:   🟡 Configured (pending credentials)  │
+└─────────────────────────────────────────────────────┘
+
+┌─ IMMEDIATE ACTIONS ─────────────────────────────────┐
+│ 1. Install Node.js from nodejs.org                  │
+│ 2. cd frontend && npm install && npm run dev       │
+│ 3. Open http://localhost:3000 in browser            │
+│ 4. Verify green status indicator in Header          │
+└─────────────────────────────────────────────────────┘
+
+┌─ API ENDPOINTS ─────────────────────────────────────┐
+│ POST   /api/chat           → Chat with RAG         │
+│ GET    /api/health         → System status         │
+│ GET    /api/status         → Connector health      │
+│ GET    /api/chat/history   → Chat memory           │
+│ GET    /docs               → Swagger docs          │
+└─────────────────────────────────────────────────────┘
+
+┌─ PORTS ─────────────────────────────────────────────┐
+│ Backend:     127.0.0.1:8000   (uvicorn)           │
+│ Frontend:    localhost:3000    (Vite dev)          │
+│ Database:    In-memory ChromaDB                    │
+└─────────────────────────────────────────────────────┘
+
+┌─ KEY FILES ─────────────────────────────────────────┐
+│ Backend entry:     api/main.py                     │
+│ Frontend entry:    frontend/src/App.jsx            │
+│ Core logic:        core/orquestador.py             │
+│ Config:            .env                            │
+│ Setup guide:       LAUNCH_GUIDE.md                 │
+│ Status report:     STATUS.md                       │
+│ API docs:          http://127.0.0.1:8000/docs     │
+└─────────────────────────────────────────────────────┘
+
+┌─ TROUBLESHOOTING ───────────────────────────────────┐
+│ Port 8000 occupied?                                │
+│ > Get-Process python | Stop-Process -Force        │
+│                                                     │
+│ npm not found?                                     │
+│ > Restart PowerShell after installing Node.js     │
+│                                                     │
+│ Frontend won't connect to backend?                 │
+│ > Check http://127.0.0.1:8000/docs is accessible │
+│ > Check CORS enabled (already is in main.py)      │
+│                                                     │
+│ Chrome console shows errors?                       │
+│ > Clear cache (Ctrl+Shift+Del)                   │
+│ > Reload (F5 or Ctrl+R)                          │
+└─────────────────────────────────────────────────────┘
+
+┌─ DEVELOPMENT WORKFLOW ──────────────────────────────┐
+│ Terminal 1: Backend (running... idle state)        │
+│ Terminal 2: npm run dev (starts Vite)             │
+│ Terminal 3: python test_api.py (optional)         │
+│ Browser:    http://localhost:3000                  │
+│ API Docs:   http://127.0.0.1:8000/docs           │
+└─────────────────────────────────────────────────────┘
+
+┌─ STACK COMPONENTS ──────────────────────────────────┐
+│ Backend:      FastAPI + Python 3.13               │
+│ Frontend:     React 18 + Tailwind CSS             │
+│ Database:     ChromaDB (vectors) + SQLite         │
+│ LLM:          Google Gemini API                   │
+│ Embeddings:   sentence-transformers              │
+│ Dev Server:   Vite                                │
+│ Bundler:      uvicorn (Python) + Vite (Node)     │
+│ Auth:         OAuth2 (Google + Microsoft)        │
+└─────────────────────────────────────────────────────┘
+
+┌─ PROJECT STATS ─────────────────────────────────────┐
+│ Python code:       ~2,500 lines                    │
+│ React code:        ~400 lines                      │
+│ Total files:       50+                             │
+│ Python packages:   40+                             │
+│ Node packages:     ~150 (after npm install)        │
+│ Database:          SQLite + ChromaDB               │
+└─────────────────────────────────────────────────────┘
+
+┌─ COMPLIANCE CHECKLIST ──────────────────────────────┐
+│ ✅ Backend API working                             │
+│ ✅ All endpoints tested (200 OK)                   │
+│ ✅ RAG engine functional                           │
+│ ✅ Vector database initialized                     │
+│ ✅ Cost manager active                             │
+│ ✅ Frontend components created                     │
+│ ✅ CORS enabled                                    │
+│ ⏳ Node.js installed (BLOCKER)                     │
+│ ⏳ npm dependencies installed (BLOCKER)             │
+│ ⏳ Frontend dev server running (BLOCKER)           │
+│ ⏳ Cloud credentials configured (OPTIONAL)         │
+└─────────────────────────────────────────────────────┘
+
+┌─ NEXT STEPS ────────────────────────────────────────┐
+│ [ ] 1. Install Node.js v20+                       │
+│ [ ] 2. cd frontend && npm install                 │
+│ [ ] 3. npm run dev                                │
+│ [ ] 4. Open http://localhost:3000                 │
+│ [ ] 5. Verify integration                         │
+│ [ ] 6. (Optional) Setup Google Cloud OAuth       │
+└─────────────────────────────────────────────────────┘
+
+┌─ PRODUCTION CHECKLIST ──────────────────────────────┐
+│ ⏳ Frontend/Backend integration tested             │
+│ ⏳ All API tests passing                           │
+│ ⏳ Cloud connectors activated                      │
+│ ⏳ Environment variables set                       │
+│ ⏳ Database backup strategy                        │
+│ ⏳ Deployment to production ready                  │
+└─────────────────────────────────────────────────────┘
+
+╔════════════════════════════════════════════════════════════════════════════════╗
+║  📖 For detailed instructions, read: LAUNCH_GUIDE.md                          ║
+║  📊 For full status, read: EXECUTIVE_SUMMARY.md                               ║
+║  🔐 For API docs, visit: http://127.0.0.1:8000/docs                          ║
+║  💻 Now: Open new terminal and run: node --version && npm --version           ║
+╚════════════════════════════════════════════════════════════════════════════════╝
+
+Timestamp: 2026-02-24 01:15 UTC
+Version: v1.0.0 OPERATIONAL
+Director: Camilo
+Status: ✅ READY FOR PHASE 2
