@@ -1,6 +1,6 @@
 // Minimal webhook relay for alerts
 import http from 'node:http';
-import fetch from 'node-fetch';
+// Native fetch used
 import process from 'node:process';
 
 const PORT = process.env.PORT ? parseInt(process.env.PORT) : 4000;

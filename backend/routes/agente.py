@@ -6,7 +6,7 @@ from fastapi import APIRouter, HTTPException, UploadFile, File, Form, Request
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 from typing import Optional, List, Dict
-from collections import Counter
+from collections import Counter, defaultdict, deque
 import logging
 import base64
 import os
@@ -80,19 +80,26 @@ def _sanitize_warroom_payload(obj):
         return _mask_sensitive_text(obj)
     return obj
 
+# Historial de conversación por usuario Discord (en memoria)
+conversation_history: dict = defaultdict(lambda: deque(maxlen=10))
+
 # ════════════════════════════════════════════════════════════════════
 # MODELOS PYDANTIC — CONTRATO UNIFICADO
 # ════════════════════════════════════════════════════════════════════
 
 class QueryRequest(BaseModel):
     """Request unificado del agente"""
-    query: str = Field(..., description="Pregunta del usuario", min_length=1, max_length=2000)
+    query: Optional[str] = Field(default=None, description="Pregunta del usuario")
+    pregunta: Optional[str] = Field(default=None, description="Alia para query")
+    user_id: Optional[str] = Field(default=None, description="ID del usuario Discord")
+    canal: Optional[str] = Field(default=None, description="Canal de origen")
     mode: str = Field(default="normal", description="Modo: normal|high|fast")
     categoria: Optional[str] = Field(default=None, description="Filtro por categoría")
 
 class QueryResponse(BaseModel):
     """Response unificado del agente"""
-    answer: str = Field(..., description="Respuesta de la IA")
+    answer: Optional[str] = Field(default=None, description="Respuesta de la IA")
+    respuesta: Optional[str] = Field(default=None, description="Alias para answer")
     sources: Optional[List[str]] = Field(default=None, description="Fuentes utilizadas")
     tokens_used: Optional[int] = Field(default=None, description="Tokens consumidos (aproximado)")
     chunks_used: Optional[int] = Field(default=None, description="Chunks de documentos usados")
@@ -311,6 +318,43 @@ class MobilePackageEmailRequest(BaseModel):
 # ENDPOINTS
 # ════════════════════════════════════════════════════════════════════
 
+@router.post("/", response_model=QueryResponse)
+async def procesar_query(request: QueryRequest):
+    """
+    Endpoint principal del agente NEXO (Soporta historial).
+    Recibe query del bot Discord y devuelve respuesta de IA real.
+    """
+    q = request.query or request.pregunta
+    if not q or not q.strip():
+        raise HTTPException(status_code=400, detail="Query vacía")
+
+    try:
+        from NEXO_CORE.services.multi_ai_service import consultar_ia
+
+        # Construir contexto con historial si hay user_id
+        if request.user_id:
+            history = conversation_history[request.user_id]
+            contexto = "\n".join([f"{h['role']}: {h['text']}" for h in history])
+            query_con_contexto = f"{contexto}\nUsuario: {q}" if contexto else q
+            history.append({"role": "Usuario", "text": q})
+        else:
+            query_con_contexto = q
+
+        respuesta = consultar_ia(query_con_contexto)
+
+        if request.user_id:
+            conversation_history[request.user_id].append(
+                {"role": "NEXO", "text": respuesta[:200]}
+            )
+
+        return QueryResponse(answer=respuesta, respuesta=respuesta)
+
+    except ImportError as e:
+        raise HTTPException(status_code=503, detail=f"Servicio IA no disponible: {str(e)}")
+    except Exception as e:
+        logger.error(f"[AGENTE] Error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
+
 @router.post("/consultar", response_model=QueryResponse)
 async def consultar(request: QueryRequest) -> QueryResponse:
     """
@@ -329,8 +373,7 @@ async def consultar(request: QueryRequest) -> QueryResponse:
 
         # Ejecutar consulta RAG
         rag = get_rag_service()
-        tenant_slug = getattr(request.state, "tenant_slug", "demo")
-        resultado = rag.consultar(request.query, tenant_slug=tenant_slug, categoria=request.categoria)
+        resultado = rag.consultar(request.query, request.categoria)
 
         # Mapear a respuesta unificada
         tokens_aproximado = (len(request.query) + len(resultado.get("respuesta", ""))) // 4
@@ -354,7 +397,7 @@ async def consultar(request: QueryRequest) -> QueryResponse:
 
 
 @router.post("/consultar-rag")
-async def consultar_rag(request: Request, body: ConsultarRagRequest):
+async def consultar_rag(request: ConsultarRagRequest):
     """Endpoint de compatibilidad para clientes externos (Discord/Web) con formato Tutor de Evidencia."""
     try:
         cost_mgr = get_cost_manager()
@@ -365,12 +408,11 @@ async def consultar_rag(request: Request, body: ConsultarRagRequest):
             "Responde como Tutor de Evidencia de forma objetiva y verificable. "
             "Estructura obligatoria: Antecedentes, Situación actual, Evidencia directa (solo links y hechos). "
             "Si faltan datos, dilo explícitamente. "
-            f"Pregunta del usuario: {body.pregunta}"
+            f"Pregunta del usuario: {request.pregunta}"
         )
 
         rag = get_rag_service()
-        tenant_slug = getattr(request.state, "tenant_slug", "demo")
-        resultado = rag.consultar(prompt, tenant_slug=tenant_slug, categoria=body.categoria)
+        resultado = rag.consultar(prompt, request.categoria)
 
         return {
             "ok": not bool(resultado.get("error", False)),

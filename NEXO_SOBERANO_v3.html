@@ -492,21 +492,21 @@ async function sendChat(){
   CONFIG.backendUrl=base;
 
   try {
-    const response=await fetch(`${base}/agente/consultar`,{
+    const response=await fetch(`${base}/agente/consultar-rag`,{
       method:'POST',
       headers:getAuthHeaders({'Content-Type':'application/json'}),
-      body:JSON.stringify({query:msg, mode:'normal'})
+      body:JSON.stringify({pregunta:msg, usuario_id:'warroom_v3', categoria:state.currentTab})
     });
     if(!response.ok){
       const err=await response.text();
       throw new Error(err||`HTTP ${response.status}`);
     }
     const data=await response.json();
-    const reply=data.answer||'Sin respuesta del backend.';
+    const reply=data.respuesta||'Sin respuesta del backend.';
     thinking.remove();
     addChatMsg(reply,'ai');
     state.chatHistory.push({role:'assistant',content:reply});
-    chatTokensUsed += Number(data.chunks_used || Math.ceil((msg.length + reply.length) / 4));
+    chatTokensUsed += Number(data.chunks_usados || Math.ceil((msg.length + reply.length) / 4));
     document.getElementById('chat-tokens').textContent=chatTokensUsed;
     document.getElementById('chat-mode').textContent='Backend RAG';
   } catch(e) {
@@ -681,8 +681,8 @@ async function refreshCosts(){
   const base = (document.getElementById('backend-url')?.value?.trim() || CONFIG.backendUrl).replace(/\/$/, '');
   
   try {
-    const rCosts = await fetch(`${base}/agente/costs/report?period=${period}`, {cache:'no-store',headers:getAuthHeaders()});
-    const rBudget = await fetch(`${base}/agente/costs/budget`, {cache:'no-store',headers:getAuthHeaders()});
+    const rCosts = await fetch(`${base}/api/agente/costs/report?period=${period}`, {cache:'no-store',headers:getAuthHeaders()});
+    const rBudget = await fetch(`${base}/api/agente/costs/budget`, {cache:'no-store',headers:getAuthHeaders()});
     
     if (!rCosts.ok || !rBudget.ok) {
       console.warn('Error fetching costs:', rCosts.status, rBudget.status);
@@ -1010,7 +1010,7 @@ async function runSync(source){const term=document.getElementById('sync-terminal
     showError(`Sync falló: ${e?.message||'sin detalle'}`);
   }
 }
-function testConnection(){const base=(document.getElementById('backend-url')?.value?.trim()||CONFIG.backendUrl).replace(/\/$/, '');CONFIG.backendUrl=base;fetch(`${base}/health`).then(r=>r.json()).then(async d=>{notify('Backend online: '+(d.status||'ok'),'success');await refreshStreamPreflight();}).catch(()=>{notify('Backend offline','warning');document.getElementById('api-status').innerHTML='API: <span style="color:var(--amber)">OFFLINE</span>';showError('Backend sin respuesta en /health');});}
+function testConnection(){const base=(document.getElementById('backend-url')?.value?.trim()||CONFIG.backendUrl).replace(/\/$/, '');CONFIG.backendUrl=base;fetch(`${base}/api/health/`).then(r=>r.json()).then(async d=>{notify('Backend online: '+(d.status||'ok'),'success');await refreshStreamPreflight();}).catch(()=>{notify('Backend offline','warning');document.getElementById('api-status').innerHTML='API: <span style="color:var(--amber)">OFFLINE</span>';showError('Backend sin respuesta en /api/health/');});}
 async function saveSettings(){const base=(document.getElementById('backend-url')?.value?.trim()||CONFIG.backendUrl).replace(/\/$/, '');CONFIG.backendUrl=base;localStorage.setItem('nexo_v3_backend_url',base);localStorage.setItem('nexo_v3_model',document.getElementById('modelo-ia')?.value||'claude-sonnet-4-6');localStorage.setItem('nexo_v3_api_key',getNexoApiKey());notify('Configuración guardada','success');await refreshStreamPreflight();}
 function updateSystemStats(){const cpu=25+Math.floor(Math.random()*30),ram=55+Math.floor(Math.random()*20);document.getElementById('s-cpu').textContent=cpu+'%';document.getElementById('s-ram').textContent=ram+'%';document.getElementById('s-cpu-bar').style.width=cpu+'%';document.getElementById('s-ram-bar').style.width=ram+'%';}
 async function refreshAll(){notify('Actualizando todos los módulos...','info');updateSystemStats();addFeedItem();await refreshAutonomousIntelligence();await refreshStreamPreflight();}

@@ -18,18 +18,16 @@ celery_app = Celery("nexo")
 celery_app.conf.update(
     broker_url=BROKER_URL,
     result_backend=BROKER_URL,
-    broker_use_ssl=SSL_OPTS or None,
-    redis_backend_use_ssl=SSL_OPTS or None,
+    broker_use_ssl=SSL_OPTS if SSL_OPTS else None,
+    redis_backend_use_ssl=SSL_OPTS if SSL_OPTS else None,
     task_serializer="json",
     result_serializer="json",
     accept_content=["json"],
     timezone="America/Santiago",
     enable_utc=True,
-    include=["backend.worker.tasks_core"],
+    include=["backend.worker.tasks_core", "backend.worker.tasks_worldmonitor"],
     beat_schedule={
-        "email-queue": {"task": "tasks.process_email_queue", "schedule": 300.0},
-        "worldmonitor-sync": {"task": "tasks.sync_worldmonitor", "schedule": 900.0},
-        "daily-digest": {"task": "tasks.send_daily_digest", "schedule": crontab(hour=9, minute=0)},
-        "cleanup-sessions": {"task": "tasks.cleanup_old_sessions", "schedule": crontab(hour=3, minute=0)},
+        "email-queue": {"task": "backend.worker.tasks_core.process_email_queue", "schedule": 300.0},
+        "worldmonitor-sync": {"task": "backend.worker.tasks_worldmonitor.sync_worldmonitor", "schedule": 900.0},
     }
 )

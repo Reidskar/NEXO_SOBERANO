@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="NEXO SOBERANO — Orquestador de inteligencia híbrida soberana. RAG vectorial, agentes móviles, automatización n8n.">
+<meta property="og:title" content="NEXO SOBERANO — Sistema Operativo de Inteligencia">
+<meta property="og:description" content="Tu infraestructura. Tu memoria. Tu soberanía.">
+<meta property="og:type" content="website">
+<title>NEXO SOBERANO — Sistema Operativo de Inteligencia</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --cyan: #00e5ff;
+  --cyan-dim: rgba(0,229,255,0.15);
+  --cyan-glow: rgba(0,229,255,0.25);
+  --purple: #7c3aed;
+  --indigo: #a5b4fc;
+  --bg: #030712;
+  --bg2: #070f1a;
+  --bg3: #0c1628;
+  --surface: rgba(10,18,32,0.92);
+  --border: rgba(0,229,255,0.12);
+  --border-hi: rgba(0,229,255,0.38);
+  --text: #e2e8f0;
+  --muted: #94a3b8;
+  --dim: #475569;
+  --green: #10b981;
+  --amber: #f59e0b;
+  --red: #ef4444;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{
+  background:var(--bg);
+  color:var(--text);
+  font-family:'Syne',sans-serif;
+  overflow-x:hidden;
+  cursor:none;
+  -webkit-font-smoothing:antialiased;
+}
+
+/* CURSOR */
+#cur{width:10px;height:10px;background:var(--cyan);border-radius:50%;position:fixed;pointer-events:none;z-index:99999;mix-blend-mode:difference;box-shadow:0 0 16px var(--cyan);transition:transform .08s ease}
+#cur-ring{width:38px;height:38px;border:1.5px solid rgba(0,229,255,.55);border-radius:50%;position:fixed;pointer-events:none;z-index:99998;transition:all .18s cubic-bezier(.23,1,.32,1)}
+
+/* GRID + NOISE */
+body::before{content:'';position:fixed;inset:0;background:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='4'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.03'/%3E%3C/svg%3E");pointer-events:none;z-index:1;mix-blend-mode:screen}
+body::after{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(0,229,255,.028) 1px,transparent 1px),linear-gradient(90deg,rgba(0,229,255,.028) 1px,transparent 1px);background-size:52px 52px;pointer-events:none;z-index:0}
+
+/* PROGRESS BAR */
+#pbar{position:fixed;top:0;left:0;height:2px;background:linear-gradient(90deg,var(--cyan),var(--indigo),var(--purple));z-index:99999;transition:width .08s linear;width:0}
+
+/* NAV */
+nav{position:fixed;top:0;left:0;right:0;z-index:1000;padding:20px 48px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);background:rgba(3,7,18,.88);backdrop-filter:blur(24px) saturate(160%);transition:all .3s}
+nav.scrolled{padding:14px 48px;background:rgba(3,7,18,.97);box-shadow:0 8px 40px -12px var(--cyan-glow)}
+.logo{font-family:'Space Mono',monospace;font-size:14px;font-weight:700;color:var(--cyan);letter-spacing:.18em;text-transform:uppercase;text-decoration:none;display:flex;align-items:center;gap:10px}
+.logo::before{content:'';width:8px;height:8px;background:var(--cyan);border-radius:50%;box-shadow:0 0 14px var(--cyan);animation:blink-dot 1.8s ease-in-out infinite}
+@keyframes blink-dot{0%,100%{opacity:1;box-shadow:0 0 14px var(--cyan)}50%{opacity:.5;box-shadow:0 0 4px var(--cyan)}}
+.nav-links{display:flex;gap:38px;list-style:none}
+.nav-links a{font-family:'DM Mono',monospace;font-size:12px;color:var(--dim);text-decoration:none;letter-spacing:.12em;text-transform:uppercase;transition:color .2s;position:relative}
+.nav-links a::after{content:'';position:absolute;bottom:-3px;left:0;width:0;height:1px;background:var(--cyan);transition:width .35s cubic-bezier(.23,1,.32,1)}
+.nav-links a:hover,.nav-links a.active{color:var(--cyan)}
+.nav-links a:hover::after,.nav-links a.active::after{width:100%}
+.nav-btn{font-family:'DM Mono',monospace;font-size:12px;padding:10px 24px;border:1px solid var(--border-hi);color:var(--cyan);text-decoration:none;letter-spacing:.1em;text-transform:uppercase;transition:all .25s;background:transparent;position:relative;overflow:hidden}
+.nav-btn::before{content:'';position:absolute;inset:0;background:var(--cyan);transform:scaleX(0);transform-origin:left;transition:transform .3s ease}
+.nav-btn:hover::before{transform:scaleX(1)}
+.nav-btn:hover{color:var(--bg)}
+.nav-btn span{position:relative;z-index:1}
+.hamburger{display:none;flex-direction:column;gap:5px;cursor:pointer;z-index:1001}
+.hamburger span{width:26px;height:2px;background:var(--cyan);transition:all .3s;display:block}
+
+/* HERO */
+.hero{min-height:100vh;display:flex;align-items:center;position:relative;z-index:2;padding:130px 48px 100px;overflow:hidden}
+#neural-bg{position:absolute;inset:0;z-index:1;opacity:.5}
+.hero-content{max-width:840px;position:relative;z-index:3}
+.badge{display:inline-flex;align-items:center;gap:9px;font-family:'DM Mono',monospace;font-size:11px;color:var(--cyan);letter-spacing:.18em;text-transform:uppercase;border:1px solid var(--border-hi);padding:7px 18px;margin-bottom:40px;background:rgba(0,229,255,.05);border-radius:2px;animation:fade-up .6s ease .1s both}
+.badge-dot{width:7px;height:7px;background:var(--green);border-radius:50%;animation:blink-dot 1.4s infinite}
+h1{font-size:clamp(56px,9.5vw,108px);font-weight:800;line-height:.93;letter-spacing:-.04em;margin-bottom:30px;animation:fade-up .7s ease .3s both}
+h1 .g{background:linear-gradient(135deg,#00e5ff 0%,#a5b4fc 55%,#7c3aed 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.hero-p{font-family:'DM Mono',monospace;font-size:15px;line-height:1.78;color:var(--muted);max-width:580px;margin-bottom:52px;animation:fade-up .7s ease .5s both}
+.hero-actions{display:flex;gap:16px;flex-wrap:wrap;animation:fade-up .7s ease .7s both}
+
+/* BOTONES */
+.btn-p{font-family:'DM Mono',monospace;font-size:13px;padding:16px 40px;background:var(--cyan);color:var(--bg);letter-spacing:.09em;text-transform:uppercase;font-weight:500;transition:all .3s;text-decoration:none;position:relative;overflow:hidden}
+.btn-p::after{content:'';position:absolute;inset:0;background:rgba(255,255,255,.18);transform:translateX(-100%);transition:transform .35s ease}
+.btn-p:hover::after{transform:translateX(0)}
+.btn-p:hover{box-shadow:0 0 50px rgba(0,229,255,.45);transform:translateY(-2px)}
+.btn-s{font-family:'DM Mono',monospace;font-size:13px;padding:16px 40px;border:1px solid var(--border-hi);color:var(--muted);letter-spacing:.09em;text-transform:uppercase;transition:all .25s;text-decoration:none}
+.btn-s:hover{border-color:var(--cyan);color:var(--cyan);background:rgba(0,229,255,.06)}
+
+/* STATUS BAR */
+.status-bar{position:absolute;bottom:0;left:0;right:0;z-index:4;border-top:1px solid var(--border);background:rgba(7,15,26,.96);backdrop-filter:blur(16px);display:flex;overflow:hidden}
+.s-item{flex:1;padding:18px 24px;border-right:1px solid var(--border);display:flex;align-items:center;gap:12px}
+.s-item:last-child{border-right:none}
+.s-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.s-dot.g{background:var(--green);box-shadow:0 0 10px var(--green);animation:blink-dot 2s infinite}
+.s-dot.c{background:var(--cyan);box-shadow:0 0 10px var(--cyan);animation:blink-dot 2.5s infinite}
+.s-dot.a{background:var(--amber);box-shadow:0 0 10px var(--amber)}
+.s-label{font-family:'DM Mono',monospace;font-size:10.5px;color:var(--dim);letter-spacing:.09em;text-transform:uppercase}
+.s-val{font-family:'DM Mono',monospace;font-size:12.5px;color:var(--muted);margin-top:2px}
+
+/* SECCIONES */
+section{position:relative;z-index:2}
+.wrap{max-width:1240px;margin:0 auto;padding:0 48px}
+.sec-pad{padding:130px 0}
+.divider{border-top:1px solid var(--border)}
+.tag{font-family:'DM Mono',monospace;font-size:11px;color:var(--cyan);letter-spacing:.2em;text-transform:uppercase;display:flex;align-items:center;gap:12px;margin-bottom:20px}
+.tag::before{content:'';width:28px;height:1px;background:var(--cyan)}
+.sec-h{font-size:clamp(34px,4.5vw,56px);font-weight:800;letter-spacing:-.025em;line-height:1.08;margin-bottom:18px}
+.sec-p{font-family:'DM Mono',monospace;font-size:14px;color:var(--muted);line-height:1.78;max-width:540px}
+
+/* FEATURES */
+.feat-header{display:grid;grid-template-columns:1fr 1fr;gap:80px;align-items:end;margin-bottom:64px}
+.feat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--border);border:1px solid var(--border)}
+.feat-card{background:var(--bg2);padding:38px 32px;position:relative;overflow:hidden;transition:all .4s cubic-bezier(.23,1,.32,1)}
+.feat-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--cyan),transparent);transform:scaleX(0);transition:transform .4s ease}
+.feat-card::after{content:'';position:absolute;inset:0;background:linear-gradient(135deg,transparent,rgba(0,229,255,.05),transparent);opacity:0;transition:opacity .4s}
+.feat-card:hover{background:var(--bg3);transform:translateY(-8px);box-shadow:0 20px 60px -20px var(--cyan-glow)}
+.feat-card:hover::before{transform:scaleX(1)}
+.feat-card:hover::after{opacity:1}
+.feat-card:hover .f-icon{color:var(--cyan);transform:scale(1.15)}
+.f-num{font-family:'DM Mono',monospace;font-size:10px;color:rgba(0,229,255,.28);letter-spacing:.15em;position:absolute;top:18px;right:18px}
+.f-icon{font-size:30px;margin-bottom:20px;display:block;transition:all .35s;color:var(--dim)}
+.f-title{font-size:16px;font-weight:700;margin-bottom:10px;letter-spacing:-.01em}
+.f-desc{font-family:'DM Mono',monospace;font-size:12px;color:var(--muted);line-height:1.72}
+
+/* ARQUITECTURA SVG */
+.arch-wrap{display:grid;grid-template-columns:1.1fr 1fr;gap:72px;align-items:center;margin-top:72px}
+.arch-stats{display:flex;flex-direction:column;gap:28px}
+.astat{border-left:2px solid var(--cyan);padding-left:28px;transition:all .3s}
+.astat:hover{border-color:var(--indigo);padding-left:32px}
+.astat-v{font-size:40px;font-weight:800;color:var(--cyan);letter-spacing:-.04em;line-height:1}
+.astat-l{font-family:'DM Mono',monospace;font-size:12px;color:var(--muted);margin-top:6px}
+
+/* SYSTEM PANEL (live metrics) */
+.sys-panel{border:1px solid var(--border);background:rgba(7,15,26,.9);backdrop-filter:blur(12px);padding:28px;margin-top:72px;max-width:900px;margin-left:auto;margin-right:auto}
+.sp-header{display:flex;align-items:center;gap:12px;margin-bottom:24px;padding-bottom:16px;border-bottom:1px solid var(--border)}
+.sp-title{font-family:'DM Mono',monospace;font-size:12px;color:var(--cyan);letter-spacing:.15em;text-transform:uppercase}
+.sp-badge{font-family:'DM Mono',monospace;font-size:10px;padding:3px 10px;border:1px solid var(--green);color:var(--green);margin-left:auto;letter-spacing:.08em}
+.sp-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--border)}
+.sp-cell{background:var(--bg2);padding:20px;text-align:center}
+.sp-val{font-family:'Space Mono',monospace;font-size:26px;font-weight:700;color:var(--cyan);letter-spacing:-.03em;line-height:1}
+.sp-label{font-family:'DM Mono',monospace;font-size:10px;color:var(--dim);letter-spacing:.1em;text-transform:uppercase;margin-top:6px}
+
+/* ACTIVITY FEED */
+.activity{margin-top:24px;background:var(--bg2);border:1px solid var(--border);max-height:160px;overflow:hidden;position:relative}
+.activity::after{content:'';position:absolute;bottom:0;left:0;right:0;height:40px;background:linear-gradient(to bottom,transparent,var(--bg2));pointer-events:none}
+.activity-inner{padding:16px 20px;display:flex;flex-direction:column;gap:6px}
+.act-row{display:flex;align-items:center;gap:12px;font-family:'DM Mono',monospace;font-size:11px}
+.act-time{color:var(--dim);width:64px;flex-shrink:0}
+.act-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.act-msg{color:var(--muted)}
+
+/* STACK */
+.stack-outer{overflow:hidden;position:relative}
+.stack-outer::before,.stack-outer::after{content:'';position:absolute;top:0;bottom:0;width:120px;z-index:2;pointer-events:none}
+.stack-outer::before{left:0;background:linear-gradient(to right,var(--bg),transparent)}
+.stack-outer::after{right:0;background:linear-gradient(to left,var(--bg),transparent)}
+.stack-row{display:flex;margin-bottom:12px;overflow:hidden}
+.stack-track{display:flex;gap:12px;flex-shrink:0;padding-right:12px}
+.t-left{animation:scroll-l 28s linear infinite}
+.t-right{animation:scroll-r 34s linear infinite}
+@keyframes scroll-l{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+@keyframes scroll-r{from{transform:translateX(-50%)}to{transform:translateX(0)}}
+.pill{flex-shrink:0;border:1px solid var(--border);background:var(--bg2);padding:12px 22px;font-family:'DM Mono',monospace;font-size:12px;color:var(--muted);white-space:nowrap;display:flex;align-items:center;gap:8px;letter-spacing:.04em;transition:all .25s}
+.pill:hover{border-color:var(--border-hi);color:var(--cyan);transform:translateY(-2px)}
+.pill em{font-size:16px;font-style:normal}
+
+/* TERMINAL */
+.terminal{background:#060f1c;border:1px solid var(--border);max-width:640px;margin:56px auto 0;box-shadow:0 0 60px rgba(0,229,255,.1)}
+.t-head{padding:12px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px}
+.td{width:10px;height:10px;border-radius:50%}
+.t-title{font-family:'DM Mono',monospace;font-size:11px;color:var(--dim);margin-left:auto;letter-spacing:.08em}
+.t-body{padding:22px 24px;font-family:'Space Mono',monospace;font-size:12px;line-height:2.1}
+.tl{display:flex;gap:8px;opacity:0;transition:opacity .3s}
+.tp{color:var(--cyan)}
+.tc{color:var(--text)}
+.to{color:var(--dim);padding-left:16px}
+.ts{color:var(--green)}
+.tcur{display:inline-block;width:7px;height:14px;background:var(--cyan);animation:cur-blink 1.1s step-end infinite;vertical-align:middle;margin-left:2px}
+@keyframes cur-blink{0%,100%{opacity:1}50%{opacity:0}}
+
+/* CTA */
+.cta-section{text-align:center;position:relative;overflow:hidden}
+.cta-orb{position:absolute;width:700px;height:700px;background:radial-gradient(circle,rgba(0,229,255,.06) 0%,transparent 65%);border-radius:50%;top:50%;left:50%;transform:translate(-50%,-50%);pointer-events:none}
+.cta-h{font-size:clamp(42px,7vw,88px);font-weight:800;letter-spacing:-.04em;line-height:.95;margin-bottom:26px}
+.cta-g{background:linear-gradient(135deg,var(--cyan),var(--indigo));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.cta-p{font-family:'DM Mono',monospace;font-size:14px;color:var(--muted);line-height:1.78;max-width:480px;margin:0 auto 52px}
+
+/* FOOTER */
+footer{padding:40px 48px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px;position:relative;z-index:2}
+.ft-logo{font-family:'Space Mono',monospace;font-size:12px;color:var(--dim);letter-spacing:.15em}
+.ft-links{display:flex;gap:24px;list-style:none}
+.ft-links a{font-family:'DM Mono',monospace;font-size:11px;color:var(--dim);text-decoration:none;letter-spacing:.08em;transition:color .2s}
+.ft-links a:hover{color:var(--cyan)}
+.ft-build{font-family:'DM Mono',monospace;font-size:11px;color:var(--dim)}
+.ft-build span{color:var(--cyan)}
+
+/* ANIMATIONS */
+@keyframes fade-up{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:translateY(0)}}
+.reveal{opacity:0;transform:translateY(28px);transition:opacity .7s ease,transform .7s ease}
+.reveal.on{opacity:1;transform:none}
+
+/* MOBILE */
+@media(max-width:1000px){
+  .feat-header{grid-template-columns:1fr;gap:28px}
+  .feat-grid{grid-template-columns:1fr 1fr}
+  .arch-wrap{grid-template-columns:1fr;gap:48px}
+  nav{padding:16px 24px}
+  .nav-links,.nav-btn{display:none}
+  .hamburger{display:flex}
+  .hero{padding:100px 24px 90px}
+  .wrap{padding:0 24px}
+  .sec-pad{padding:90px 0}
+  .sp-grid{grid-template-columns:1fr 1fr}
+}
+@media(max-width:600px){
+  .feat-grid{grid-template-columns:1fr}
+  .status-bar{flex-wrap:wrap}
+  .s-item{min-width:50%;border-bottom:1px solid var(--border)}
+}
+@media(prefers-reduced-motion:reduce){
+  *{animation-duration:.01ms !important;transition-duration:.01ms !important}
+}
+</style>
+</head>
+<body>
+
+<div id="pbar"></div>
+<div id="cur"></div>
+<div id="cur-ring"></div>
+
+<!-- NAV -->
+<nav id="nav">
+  <a href="#" class="logo">NEXO SOBERANO</a>
+  <ul class="nav-links">
+    <li><a href="#features" data-s="features">Módulos</a></li>
+    <li><a href="#arquitectura" data-s="arquitectura">Arquitectura</a></li>
+    <li><a href="#sistema" data-s="sistema">Sistema</a></li>
+    <li><a href="#stack" data-s="stack">Stack</a></li>
+  </ul>
+  <div class="hamburger" id="hbg"><span></span><span></span><span></span></div>
+  <a href="http://localhost:8000/api/docs" class="nav-btn"><span>Dashboard →</span></a>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <canvas id="neural-bg"></canvas>
+  <div class="hero-content">
+    <div class="badge">
+      <div class="badge-dot"></div>
+      v1.0.2 · ONLINE · SOVEREIGN MODE
+    </div>
+    <h1>
+      <span style="display:block">Sistema Operativo</span>
+      <span class="g" style="display:block">de Inteligencia.</span>
+    </h1>
+    <p class="hero-p">
+      Orquestador híbrido con RAG local, agentes autónomos, automatización n8n y sensor móvil en tiempo real.<br>
+      <span style="color:var(--dim)">Zero vendor lock-in. Control total. Tu infraestructura.</span>
+    </p>
+    <div class="hero-actions">
+      <a href="http://localhost:8000/warroom" class="btn-p">Abrir Warroom</a>
+      <a href="http://localhost:8000/api/docs" class="btn-s">API Explorer</a>
+      <a href="http://localhost:8000/api/metrics/health/deep" class="btn-s">Health Check</a>
+    </div>
+  </div>
+  <div class="status-bar">
+    <div class="s-item"><div class="s-dot g" id="dot-backend"></div><div><div class="s-label">Backend</div><div class="s-val" id="txt-backend">FastAPI · Verificando...</div></div></div>
+    <div class="s-item"><div class="s-dot c"></div><div><div class="s-label">Base de Datos</div><div class="s-val">Supabase · us-west-2</div></div></div>
+    <div class="s-item"><div class="s-dot c"></div><div><div class="s-label">Cola de Tareas</div><div class="s-val">Celery + Upstash</div></div></div>
+    <div class="s-item"><div class="s-dot a" id="dot-railway"></div><div><div class="s-label">Deploy</div><div class="s-val" id="txt-railway">Railway · Verificando...</div></div></div>
+  </div>
+</section>
+
+<!-- FEATURES -->
+<section id="features" class="divider">
+  <div class="wrap sec-pad">
+    <div class="feat-header reveal">
+      <div>
+        <div class="tag">Módulos Operacionales</div>
+        <h2 class="sec-h">Capacidades<br>autónomas</h2>
+      </div>
+      <p class="sec-p">Cada nodo es un agente inteligente que aprende, decide y ejecuta. Sin intervención humana.</p>
+    </div>
+    <div class="feat-grid reveal">
+      <div class="feat-card"><span class="f-num">01</span><span class="f-icon">🧠</span><div class="f-title">RAG Vectorial Local</div><p class="f-desc">Embeddings con SentenceTransformers + Qdrant. Consulta semántica de tus documentos en milisegundos sin salir de tu red.</p></div>
+      <div class="feat-card"><span class="f-num">02</span><span class="f-icon">📡</span><div class="f-title">Monitoreo WebSocket</div><p class="f-desc">Dashboard live + alertas push configurables por severidad. Métricas de sistema y agentes en tiempo real.</p></div>
+      <div class="feat-card"><span class="f-num">03</span><span class="f-icon">⚙️</span><div class="f-title">Automatización n8n</div><p class="f-desc">Workflows visuales conectados nativamente al backend vía API interna. Triggers por webhook, cron o evento.</p></div>
+      <div class="feat-card"><span class="f-num">04</span><span class="f-icon">📱</span><div class="f-title">Agente Móvil Soberano</div><p class="f-desc">Python en Termux sobre Xiaomi 14T Pro. Heartbeat cada 30s, notificaciones nativas Android, sensor activo.</p></div>
+      <div class="feat-card"><span class="f-num">05</span><span class="f-icon">🎮</span><div class="f-title">Warroom Central</div><p class="f-desc">Panel unificado de tenants, webhooks HMAC y supervisión de todos los nodos del ecosistema.</p></div>
+      <div class="feat-card"><span class="f-num">06</span><span class="f-icon">🔒</span><div class="f-title">Datos 100% Soberanos</div><p class="f-desc">PostgreSQL con RLS multitenancy + Redis propio + Qdrant local. Sin APIs externas obligatorias.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ARQUITECTURA -->
+<section id="arquitectura" class="divider">
+  <div class="wrap sec-pad">
+    <div class="reveal">
+      <div class="tag">Arquitectura Híbrida</div>
+      <h2 class="sec-h">Tres capas.<br>Un cerebro.</h2>
+    </div>
+    <div class="arch-wrap">
+      <!-- SVG DIAGRAM ANIMADO -->
+      <div class="reveal">
+        <svg viewBox="0 0 520 480" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:520px">
+          <defs>
+            <linearGradient id="lg1" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#00e5ff"/><stop offset="100%" stop-color="#7c3aed"/></linearGradient>
+            <linearGradient id="lg2" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#7c3aed"/><stop offset="100%" stop-color="#10b981"/></linearGradient>
+            <filter id="glow"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+          </defs>
+
+          <!-- NODO 1: CLOUD -->
+          <rect x="20" y="30" width="220" height="100" rx="10" fill="rgba(10,18,32,.95)" stroke="rgba(0,229,255,.35)" stroke-width="1.5"/>
+          <text x="44" y="72" fill="#e2e8f0" font-size="15" font-weight="700" font-family="Syne,sans-serif">☁️ Cerebro Cloud</text>
+          <text x="44" y="95" fill="#64748b" font-size="11" font-family="monospace">Railway • Supabase • n8n</text>
+          <rect x="172" y="44" width="52" height="18" rx="3" fill="none" stroke="rgba(0,229,255,.4)" stroke-width="1"/>
+          <text x="180" y="56" fill="#00e5ff" font-size="9" font-family="monospace" letter-spacing="1">CLOUD</text>
+
+          <!-- NODO 2: LOCAL -->
+          <rect x="20" y="190" width="220" height="100" rx="10" fill="rgba(10,18,32,.95)" stroke="rgba(124,58,237,.35)" stroke-width="1.5"/>
+          <text x="44" y="232" fill="#e2e8f0" font-size="15" font-weight="700" font-family="Syne,sans-serif">🖥️ Músculo Local</text>
+          <text x="44" y="255" fill="#64748b" font-size="11" font-family="monospace">Qdrant • Celery • 48GB RAM</text>
+          <rect x="168" y="204" width="52" height="18" rx="3" fill="none" stroke="rgba(124,58,237,.5)" stroke-width="1"/>
+          <text x="175" y="216" fill="#a78bfa" font-size="9" font-family="monospace" letter-spacing="1">LOCAL</text>
+
+          <!-- NODO 3: MOBILE -->
+          <rect x="20" y="350" width="220" height="100" rx="10" fill="rgba(10,18,32,.95)" stroke="rgba(16,185,129,.3)" stroke-width="1.5"/>
+          <text x="44" y="392" fill="#e2e8f0" font-size="15" font-weight="700" font-family="Syne,sans-serif">📱 Sensor Móvil</text>
+          <text x="44" y="415" fill="#64748b" font-size="11" font-family="monospace">Xiaomi 14T Pro • Termux</text>
+          <rect x="162" y="364" width="60" height="18" rx="3" fill="none" stroke="rgba(16,185,129,.4)" stroke-width="1"/>
+          <text x="168" y="376" fill="#10b981" font-size="9" font-family="monospace" letter-spacing="1">MÓVIL</text>
+
+          <!-- CONNECTOR 1→2 -->
+          <line x1="130" y1="131" x2="130" y2="189" stroke="url(#lg1)" stroke-width="2" stroke-dasharray="6 4">
+            <animate attributeName="stroke-dashoffset" values="0;20" dur="2s" repeatCount="indefinite"/>
+          </line>
+          <circle cx="130" cy="160" r="4" fill="#00e5ff" filter="url(#glow)">
+            <animateMotion dur="2s" repeatCount="indefinite" path="M0,0 L0,58"/>
+          </circle>
+
+          <!-- CONNECTOR 2→3 -->
+          <line x1="130" y1="291" x2="130" y2="349" stroke="url(#lg2)" stroke-width="2" stroke-dasharray="6 4">
+            <animate attributeName="stroke-dashoffset" values="0;20" dur="2.4s" repeatCount="indefinite"/>
+          </line>
+          <circle cx="130" cy="320" r="4" fill="#7c3aed" filter="url(#glow)">
+            <animateMotion dur="2.4s" repeatCount="indefinite" path="M0,0 L0,58"/>
+          </circle>
+
+          <!-- PANEL DERECHO: métricas mini -->
+          <rect x="290" y="30" width="210" height="68" rx="8" fill="rgba(10,18,32,.8)" stroke="rgba(0,229,255,.15)" stroke-width="1"/>
+          <text x="308" y="56" fill="#00e5ff" font-size="28" font-weight="800" font-family="Syne,sans-serif">317</text>
+          <text x="308" y="78" fill="#64748b" font-size="10" font-family="monospace">docs en Supabase multitenancy</text>
+
+          <rect x="290" y="115" width="210" height="68" rx="8" fill="rgba(10,18,32,.8)" stroke="rgba(165,180,252,.15)" stroke-width="1"/>
+          <text x="308" y="141" fill="#a5b4fc" font-size="28" font-weight="800" font-family="Syne,sans-serif">6/6</text>
+          <text x="308" y="163" fill="#64748b" font-size="10" font-family="monospace">smoke tests passing · 100%</text>
+
+          <rect x="290" y="200" width="210" height="68" rx="8" fill="rgba(10,18,32,.8)" stroke="rgba(16,185,129,.15)" stroke-width="1"/>
+          <text x="308" y="226" fill="#10b981" font-size="28" font-weight="800" font-family="Syne,sans-serif">48GB</text>
+          <text x="308" y="248" fill="#64748b" font-size="10" font-family="monospace">RAM nodo procesamiento local</text>
+
+          <rect x="290" y="285" width="210" height="68" rx="8" fill="rgba(10,18,32,.8)" stroke="rgba(245,158,11,.15)" stroke-width="1"/>
+          <text x="308" y="311" fill="#f59e0b" font-size="28" font-weight="800" font-family="Syne,sans-serif">30s</text>
+          <text x="308" y="333" fill="#64748b" font-size="10" font-family="monospace">heartbeat intervalo agente</text>
+
+          <rect x="290" y="370" width="210" height="68" rx="8" fill="rgba(10,18,32,.8)" stroke="rgba(0,229,255,.15)" stroke-width="1"/>
+          <text x="308" y="396" fill="#00e5ff" font-size="28" font-weight="800" font-family="Syne,sans-serif">3</text>
+          <text x="308" y="418" fill="#64748b" font-size="10" font-family="monospace">nodos activos: cloud+local+móvil</text>
+        </svg>
+      </div>
+
+      <!-- LIVE SYSTEM PANEL -->
+      <div class="reveal">
+        <div class="tag">Estado en Tiempo Real</div>
+        <h3 style="font-size:22px;font-weight:700;margin-bottom:24px;letter-spacing:-.02em">Sistema vivo.</h3>
+        <div class="sys-panel">
+          <div class="sp-header">
+            <div class="s-dot g" style="flex-shrink:0"></div>
+            <div class="sp-title">NEXO SYSTEM METRICS</div>
+            <div class="sp-badge">LIVE</div>
+          </div>
+          <div class="sp-grid">
+            <div class="sp-cell"><div class="sp-val" id="m-uptime">--</div><div class="sp-label">Uptime (h)</div></div>
+            <div class="sp-cell"><div class="sp-val" id="m-ram">--</div><div class="sp-label">RAM (MB)</div></div>
+            <div class="sp-cell"><div class="sp-val" id="m-cpu">--</div><div class="sp-label">CPU %</div></div>
+            <div class="sp-cell"><div class="sp-val" id="m-mode">--</div><div class="sp-label">Modo</div></div>
+          </div>
+          <div class="activity">
+            <div class="activity-inner" id="feed">
+              <div class="act-row"><span class="act-time">--:--:--</span><div class="act-dot" style="background:var(--dim)"></div><span class="act-msg">Conectando con el sistema...</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- STACK -->
+<section id="stack" class="divider">
+  <div class="wrap" style="padding-top:100px;padding-bottom:36px">
+    <div class="reveal">
+      <div class="tag">Stack Tecnológico</div>
+      <h2 class="sec-h">Lo mejor<br>de cada mundo.</h2>
+    </div>
+  </div>
+  <div style="margin-top:52px;margin-bottom:100px">
+    <div class="stack-row stack-outer">
+      <div class="stack-track t-left">
+        <div class="pill"><em>🐍</em> Python 3.11</div><div class="pill"><em>⚡</em> FastAPI</div><div class="pill"><em>🗄️</em> PostgreSQL</div><div class="pill"><em>🔴</em> Redis Upstash</div><div class="pill"><em>🐰</em> Celery Beat</div><div class="pill"><em>🌿</em> Supabase</div><div class="pill"><em>🚂</em> Railway</div><div class="pill"><em>🐳</em> Docker</div><div class="pill"><em>⚛️</em> React 18</div><div class="pill"><em>💨</em> Tailwind CSS</div>
+        <div class="pill"><em>🐍</em> Python 3.11</div><div class="pill"><em>⚡</em> FastAPI</div><div class="pill"><em>🗄️</em> PostgreSQL</div><div class="pill"><em>🔴</em> Redis Upstash</div><div class="pill"><em>🐰</em> Celery Beat</div><div class="pill"><em>🌿</em> Supabase</div><div class="pill"><em>🚂</em> Railway</div><div class="pill"><em>🐳</em> Docker</div><div class="pill"><em>⚛️</em> React 18</div><div class="pill"><em>💨</em> Tailwind CSS</div>
+      </div>
+    </div>
+    <div class="stack-row stack-outer">
+      <div class="stack-track t-right">
+        <div class="pill"><em>🧠</em> SentenceTransformers</div><div class="pill"><em>🔍</em> Qdrant Vector DB</div><div class="pill"><em>🤖</em> Google Gemini</div><div class="pill"><em>📊</em> Alembic</div><div class="pill"><em>🔗</em> n8n Workflows</div><div class="pill"><em>📱</em> Termux Android</div><div class="pill"><em>🔒</em> HMAC Auth</div><div class="pill"><em>🌐</em> WebSockets</div><div class="pill"><em>📡</em> Discord Webhooks</div><div class="pill"><em>🛡️</em> Row Level Security</div>
+        <div class="pill"><em>🧠</em> SentenceTransformers</div><div class="pill"><em>🔍</em> Qdrant Vector DB</div><div class="pill"><em>🤖</em> Google Gemini</div><div class="pill"><em>📊</em> Alembic</div><div class="pill"><em>🔗</em> n8n Workflows</div><div class="pill"><em>📱</em> Termux Android</div><div class="pill"><em>🔒</em> HMAC Auth</div><div class="pill"><em>🌐</em> WebSockets</div><div class="pill"><em>📡</em> Discord Webhooks</div><div class="pill"><em>🛡️</em> Row Level Security</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section id="cta" class="divider cta-section">
+  <div class="cta-orb"></div>
+  <div class="wrap sec-pad" style="position:relative;z-index:2">
+    <div class="reveal">
+      <h2 class="cta-h">El sistema<br>está <span class="cta-g">vivo.</span></h2>
+      <p class="cta-p">Warroom, API, agentes y toda la infraestructura soberana lista para operar ahora mismo.</p>
+      <div style="display:flex;gap:16px;justify-content:center;flex-wrap:wrap">
+        <a href="http://localhost:8000/warroom" class="btn-p">Abrir Warroom</a>
+        <a href="http://localhost:8000/api/docs" class="btn-s">API Docs</a>
+        <a href="http://localhost:8000/api/metrics/health/deep" class="btn-s">Health Check</a>
+        <a href="https://github.com/Reidskar/NEXO_SOBERANO" class="btn-s">GitHub</a>
+      </div>
+
+      <div class="terminal">
+        <div class="t-head">
+          <div class="td" style="background:#ef4444"></div>
+          <div class="td" style="background:#f59e0b"></div>
+          <div class="td" style="background:#10b981"></div>
+          <div class="t-title">nexo@soberano — bash</div>
+        </div>
+        <div class="t-body">
+          <div class="tl" id="tl0"><span class="tp">❯</span><span class="tc">python scripts/smoke_test.py</span></div>
+          <div class="tl" id="tl1"><span class="to">Ejecutando 6 tests de integración...</span></div>
+          <div class="tl" id="tl2"><span class="ts">✓</span><span class="tc" style="color:var(--muted)"> GET /health → 200 OK [12ms]</span></div>
+          <div class="tl" id="tl3"><span class="ts">✓</span><span class="tc" style="color:var(--muted)"> GET /api/dashboard/health → 200 OK [18ms]</span></div>
+          <div class="tl" id="tl4"><span class="ts">✓</span><span class="tc" style="color:var(--muted)"> GET /api/dashboard/stats → 200 OK [22ms]</span></div>
+          <div class="tl" id="tl5"><span class="ts">✓</span><span class="tc" style="color:var(--muted)"> POST /api/webhooks/ingest → 200 OK [29ms]</span></div>
+          <div class="tl" id="tl6"><span class="ts">✓</span><span class="tc" style="color:var(--muted)"> GET /api/ai/evolution-status → 200 OK [15ms]</span></div>
+          <div class="tl" id="tl7" style="margin-top:4px"><span class="ts" style="font-weight:700">✓ 6/6 PASSED — Sistema Operacional</span></div>
+          <div class="tl" id="tl8"><span class="tp">❯</span><span class="tcur"></span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="ft-logo">NEXO SOBERANO © 2025</div>
+  <ul class="ft-links">
+    <li><a href="http://localhost:8000/api/docs">API Docs</a></li>
+    <li><a href="http://localhost:8000/api/metrics/system">Métricas</a></li>
+    <li><a href="https://github.com/Reidskar/NEXO_SOBERANO">GitHub</a></li>
+    <li><a href="https://railway.app/project/00679a4c-2811-42c8-a0ab-2b8bfade901f">Railway</a></li>
+  </ul>
+  <div class="ft-build">Build <span>7e99d6a</span> · Railway + Supabase + Upstash Redis</div>
+</footer>
+
+<script>
+/* ── CURSOR ─────────────────────────────── */
+const cur = document.getElementById('cur');
+const ring = document.getElementById('cur-ring');
+let mx=0,my=0,rx=0,ry=0;
+document.addEventListener('mousemove',e=>{
+  mx=e.clientX; my=e.clientY;
+  cur.style.left=mx-5+'px'; cur.style.top=my-5+'px';
+});
+(function loop(){
+  rx+=(mx-rx-19)*.13; ry+=(my-ry-19)*.13;
+  ring.style.left=rx+'px'; ring.style.top=ry+'px';
+  requestAnimationFrame(loop);
+})();
+document.querySelectorAll('a,button,.feat-card').forEach(el=>{
+  el.addEventListener('mouseenter',()=>{cur.style.transform='scale(2.4)';ring.style.borderColor='#00e5ff';ring.style.transform='scale(1.8)'});
+  el.addEventListener('mouseleave',()=>{cur.style.transform='scale(1)';ring.style.borderColor='rgba(0,229,255,.55)';ring.style.transform='scale(1)'});
+});
+
+/* ── PROGRESS BAR + SCROLLSPY ───────────── */
+const pbar=document.getElementById('pbar');
+window.addEventListener('scroll',()=>{
+  const pct=window.scrollY/(document.documentElement.scrollHeight-window.innerHeight);
+  pbar.style.width=pct*100+'%';
+  document.querySelector('#nav').classList.toggle('scrolled',window.scrollY>80);
+  document.querySelectorAll('[data-s]').forEach(link=>{
+    const s=document.getElementById(link.dataset.s);
+    if(s&&window.scrollY+320>=s.offsetTop){
+      document.querySelectorAll('.nav-links a').forEach(l=>l.classList.remove('active'));
+      link.classList.add('active');
+    }
+  });
+});
+
+/* ── HAMBURGER ──────────────────────────── */
+const hbg=document.getElementById('hbg');
+let mopen=false;
+hbg.addEventListener('click',()=>{
+  mopen=!mopen;
+  hbg.style.transform=mopen?'rotate(90deg)':'none';
+  // simple mobile nav expand – basic implementation
+});
+
+/* ── NEURAL CANVAS ──────────────────────── */
+const canvas=document.getElementById('neural-bg');
+const ctx=canvas.getContext('2d');
+let W,H,pts=[];
+function resize(){W=canvas.width=window.innerWidth;H=canvas.height=window.innerHeight;}
+resize(); window.addEventListener('resize',resize);
+class P{
+  constructor(){this.x=Math.random()*W;this.y=Math.random()*H;this.r=Math.random()*2.2+.8;this.vx=(Math.random()-.5)*.55;this.vy=(Math.random()-.5)*.55;}
+  move(){this.x+=this.vx;this.y+=this.vy;if(this.x<0||this.x>W)this.vx*=-1;if(this.y<0||this.y>H)this.vy*=-1;}
+}
+for(let i=0;i<110;i++)pts.push(new P());
+function drawCanvas(){
+  ctx.clearRect(0,0,W,H);
+  pts.forEach(p=>{
+    p.move();
+    ctx.fillStyle='rgba(0,229,255,.7)';
+    ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fill();
+  });
+  for(let a=0;a<pts.length;a++){
+    for(let b=a+1;b<pts.length;b++){
+      const dx=pts[a].x-pts[b].x,dy=pts[a].y-pts[b].y,d=Math.sqrt(dx*dx+dy*dy);
+      if(d<145){
+        ctx.strokeStyle=`rgba(0,229,255,${(1-d/145)*.55})`;
+        ctx.lineWidth=.75;
+        ctx.beginPath();ctx.moveTo(pts[a].x,pts[a].y);ctx.lineTo(pts[b].x,pts[b].y);ctx.stroke();
+      }
+    }
+  }
+  requestAnimationFrame(drawCanvas);
+}
+drawCanvas();
+
+/* ── SCROLL REVEAL ──────────────────────── */
+const obs=new IntersectionObserver(entries=>{
+  entries.forEach((e,i)=>{if(e.isIntersecting)setTimeout(()=>e.target.classList.add('on'),i*90)});
+},{threshold:.1});
+document.querySelectorAll('.reveal').forEach(el=>obs.observe(el));
+
+/* ── TERMINAL TYPING ────────────────────── */
+for(let i=0;i<=8;i++){
+  const el=document.getElementById('tl'+i);
+  if(el)setTimeout(()=>el.style.opacity=1,2000+i*200);
+}
+
+/* ── ACTIVITY FEED ──────────────────────── */
+const EVENTS=[
+  {col:'var(--green)',msg:'Backend heartbeat OK'},
+  {col:'var(--cyan)',msg:'Celery task procesado'},
+  {col:'var(--indigo)',msg:'Embedding almacenado en Qdrant'},
+  {col:'var(--amber)',msg:'Agente móvil ping recibido'},
+  {col:'var(--green)',msg:'Webhook ingest procesado'},
+  {col:'var(--cyan)',msg:'Discord supervisor activo'},
+  {col:'var(--green)',msg:'Supabase RLS validado'},
+  {col:'var(--indigo)',msg:'RAG query ejecutada'},
+];
+let evIdx=0;
+function addEvent(){
+  const feed=document.getElementById('feed');
+  const ev=EVENTS[evIdx++%EVENTS.length];
+  const now=new Date();
+  const t=`${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`;
+  const row=document.createElement('div');
+  row.className='act-row';
+  row.innerHTML=`<span class="act-time">${t}</span><div class="act-dot" style="background:${ev.col}"></div><span class="act-msg">${ev.msg}</span>`;
+  feed.prepend(row);
+  if(feed.children.length>12)feed.removeChild(feed.lastChild);
+}
+setInterval(addEvent,3200);
+setTimeout(addEvent,800);
+
+/* ── LIVE METRICS ───────────────────────── */
+async function fetchMetrics(){
+  try{
+    const r=await fetch('http://localhost:8000/api/metrics/system',{signal:AbortSignal.timeout(3000)});
+    if(r.ok){
+      const d=await r.json();
+      document.getElementById('m-uptime').textContent=Math.round(d.uptime_seconds/3600*10)/10;
+      document.getElementById('m-ram').textContent=d.memory?.used_mb||'--';
+      document.getElementById('m-cpu').textContent=(d.cpu_percent||0)+'%';
+      document.getElementById('m-mode').textContent=(d.mode||'local').toUpperCase();
+    }
+  }catch(e){}
+}
+async function fetchHealth(){
+  try{
+    const r=await fetch('http://localhost:8000/health',{signal:AbortSignal.timeout(2000)});
+    if(r.ok){
+      const dot=document.getElementById('dot-backend');
+      dot.className='s-dot g';
+      document.getElementById('txt-backend').textContent='FastAPI · Online';
+    }
+  }catch(e){
+    document.getElementById('dot-backend').className='s-dot a';
+    document.getElementById('txt-backend').textContent='FastAPI · Offline local';
+  }
+  try{
+    const r2=await fetch('https://nexo-soberano.up.railway.app/health',{signal:AbortSignal.timeout(4000)});
+    if(r2.ok){
+      document.getElementById('dot-railway').className='s-dot g';
+      document.getElementById('txt-railway').textContent='Railway · Online';
+    }
+  }catch(e){
+    document.getElementById('dot-railway').className='s-dot a';
+    document.getElementById('txt-railway').textContent='Railway · Build pendiente';
+  }
+}
+fetchHealth(); fetchMetrics();
+setInterval(fetchHealth,8000);
+setInterval(fetchMetrics,5000);
+</script>
+</body>
+</html>

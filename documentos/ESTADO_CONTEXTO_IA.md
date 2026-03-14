@@ -1,6 +1,6 @@
 # Estado de contexto IA (auto-actualizado)
 
-Fecha: 2026-03-06T21:46:16.533530+00:00
+Fecha: 2026-03-13T02:42:38.536820+00:00
 
 ## Resumen operativo
 - RAG backend: OK
@@ -9,7 +9,7 @@ Fecha: 2026-03-06T21:46:16.533530+00:00
 - SQLite evidencia: total=5 vectorizados=5
 
 ## Fuentes
-- Google Drive: analyzed=5 classified=0 errors=0
+- Google Drive: analyzed=80 classified=8 errors=0
 - OneDrive local: root='C:\Users\Admn\OneDrive' visibles=10 error=none
 - Google Photos: imported=0 skipped=0 errors=0
 

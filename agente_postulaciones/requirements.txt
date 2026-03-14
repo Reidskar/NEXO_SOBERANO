@@ -1,8 +1,0 @@
-requests
-beautifulsoup4
-playwright
-anthropic
-openai
-gspread
-google-auth
-python-dotenv

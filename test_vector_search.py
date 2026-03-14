@@ -5,7 +5,7 @@ from backend.services.vector_db import ensure_table, asimilar_documento, buscar_
 logging.basicConfig(level=logging.INFO)
 
 async def test_search():
-    print("🚀 Iniciando test de pgvector...")
+    log.info("🚀 Iniciando test de pgvector...")
     await ensure_table()
     
     docs = [
@@ -14,22 +14,22 @@ async def test_search():
         ("hash_test_3", "La economía austríaca defiende el libre mercado y critica la inflación estatal.", {"categoria": "Economia_Austriaca", "archivo": "test_austria.txt"}),
     ]
 
-    print("\n📥 Insertando documentos de prueba...")
+    log.info("\n📥 Insertando documentos de prueba...")
     for hash_val, content, meta in docs:
         await asimilar_documento(hash_val, content, meta)
 
     try:
         query = "¿Qué dijo la OTAN sobre Europa?"
-        print(f"\n🔍 Buscando: '{query}'")
+        log.info(f"\n🔍 Buscando: '{query}'")
         resultados = await buscar_similares(query, k=2)
         
         for idx, res in enumerate(resultados):
-            print(f"  {idx + 1}. {(res['similarity']*100):.1f}% -> {res['content']}")
-            print(f"     Meta: {res['metadata']}")
+            log.info(f"  {idx + 1}. {(res['similarity']*100):.1f}% -> {res['content']}")
+            log.info(f"     Meta: {res['metadata']}")
             
     finally:
         await close_pool()
-        print("\n✅ Test finalizado.")
+        log.info("\n✅ Test finalizado.")
 
 if __name__ == "__main__":
     import sys

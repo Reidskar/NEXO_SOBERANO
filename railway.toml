@@ -1,13 +1,9 @@
 [build]
-builder = "dockerfile"
-dockerfilePath = "Dockerfile.nexo_core"
+builder = "nixpacks"
 
 [deploy]
-startCommand = "uvicorn backend.main:app --host 0.0.0.0 --port $PORT"
+startCommand = "/opt/venv/bin/uvicorn backend.main:app --host 0.0.0.0 --port $PORT"
 healthcheckPath = "/health"
-healthcheckTimeout = 300
+healthcheckTimeout = 60
 restartPolicyType = "on_failure"
 restartPolicyMaxRetries = 3
-
-[deploy.variables]
-NEXO_MODE = "cloud"

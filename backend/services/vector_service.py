@@ -4,22 +4,28 @@ import logging
 from typing import List, Dict, Any
 from qdrant_client import QdrantClient
 from qdrant_client.models import Distance, VectorParams, PointStruct
-from sentence_transformers import SentenceTransformer
 
 logger = logging.getLogger(__name__)
 
 from backend import config
 
 # Cargar modelo localmente (instancia compartida) solo si estamos en modo local
-model = None
-if config.NEXO_MODE == "local":
-    try:
-        logger.info("Cargando SentenceTransformer (Modo LOCAL)...")
-        model = SentenceTransformer("all-MiniLM-L6-v2")
-    except Exception as e:
-        logger.error(f"Error cargando modelo de embeddings: {e}")
-else:
-    logger.info("SentenceTransformer no cargado (Modo CLOUD)")
+_model = None
+
+def get_model():
+    """Retorna la instancia del modelo con lazy loading."""
+    global _model
+    if _model is None:
+        if config.NEXO_MODE != "local":
+            logger.info("SentenceTransformer no se carga en modo CLOUD")
+            return None
+        try:
+            from sentence_transformers import SentenceTransformer
+            logger.info("Cargando SentenceTransformer (Modo LOCAL)...")
+            _model = SentenceTransformer("all-MiniLM-L6-v2")
+        except Exception as e:
+            logger.error(f"Error cargando modelo de embeddings: {e}")
+    return _model
 
 # Cliente Qdrant
 QDRANT_URL = os.getenv("QDRANT_URL", "http://localhost:6333")
@@ -48,6 +54,7 @@ def ensure_collection(tenant_slug: str) -> str:
 
 def upsert_document(tenant_slug: str, doc_id: str, text: str, metadata: dict):
     """Indexa un documento en Qdrant para un tenant específico."""
+    model = get_model()
     if not client or not model:
         logger.error("Servicio de vectores no inicializado")
         return
@@ -77,6 +84,7 @@ def upsert_document(tenant_slug: str, doc_id: str, text: str, metadata: dict):
 
 def search(tenant_slug: str, query: str, limit: int = 5) -> List[Dict[str, Any]]:
     """Busca documentos similares en Qdrant para un tenant."""
+    model = get_model()
     if not client or not model:
         logger.error("Servicio de vectores no inicializado")
         return []

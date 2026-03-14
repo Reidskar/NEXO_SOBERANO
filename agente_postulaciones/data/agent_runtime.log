@@ -1,6 +1,0 @@
-2026-03-02 18:47:36,912 | INFO | {'device_id': 'DESKTOP-1', 'jobs_scraped': 20, 'jobs_filtered': 3, 'jobs_processed': 3, 'jobs_applied': 3, 'dry_run': True}
-2026-03-02 18:49:21,556 | INFO | {'device_id': 'DESKTOP-1', 'jobs_scraped': 20, 'jobs_filtered': 3, 'jobs_processed': 3, 'jobs_applied': 3, 'dry_run': True}
-2026-03-02 18:50:19,029 | INFO | {'device_id': 'DESKTOP-1', 'jobs_scraped': 20, 'jobs_filtered': 3, 'jobs_processed': 3, 'jobs_applied': 3, 'max_applications_per_cycle': 1, 'dry_run': True}
-2026-03-02 18:55:13,835 | INFO | {'device_id': 'DESKTOP-1', 'jobs_scraped': 20, 'jobs_filtered': 3, 'jobs_processed': 3, 'jobs_applied': 3, 'max_applications_per_cycle': 1, 'dry_run': True}
-2026-03-02 18:56:03,037 | INFO | {'device_id': 'DESKTOP-1', 'jobs_scraped': 20, 'jobs_filtered': 3, 'jobs_processed': 3, 'jobs_applied': 3, 'max_applications_per_cycle': 1, 'dry_run': True}
-2026-03-02 19:03:57,105 | INFO | {'device_id': 'DESKTOP-1', 'jobs_scraped': 20, 'jobs_filtered': 3, 'jobs_processed': 3, 'jobs_applied': 3, 'max_applications_per_cycle': 1, 'dry_run': True}

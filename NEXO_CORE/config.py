@@ -90,9 +90,3 @@ PROTECTED_PATH_PREFIXES: List[str] = [item.strip() for item in _protected_paths_
 
 RATE_LIMIT_READ_PER_MIN = int(os.getenv("NEXO_RATE_LIMIT_READ_PER_MIN", "240"))
 RATE_LIMIT_WRITE_PER_MIN = int(os.getenv("NEXO_RATE_LIMIT_WRITE_PER_MIN", "60"))
-
-# Supabase
-SUPABASE_URL = os.getenv("SUPABASE_URL", "")
-SUPABASE_ANON_KEY = os.getenv("SUPABASE_ANON_KEY", "")
-SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY", "")
-PGBOUNCER_MODE = os.getenv("PGBOUNCER_MODE", "transaction")

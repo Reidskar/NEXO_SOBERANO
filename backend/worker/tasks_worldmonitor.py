@@ -388,7 +388,7 @@ def generate_daily_intelligence_digest(self):
 def synthesize_digest_with_ai(signals: list[dict], tenant_slug: str,
                                 cost_mgr) -> str:
     """Sintetiza señales en un resumen coherente usando Gemini Flash."""
-    import google.generativeai as genai
+    from google import genai
 
     api_key = os.getenv("GEMINI_API_KEY", "")
     if not api_key:

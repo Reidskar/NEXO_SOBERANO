@@ -32,10 +32,16 @@ from services.comunidad.youtube_reader import (
 )
 from backend import config
 
+from backend.services.intelligence.media_processor import media_processor
+import asyncio
+
 logger = logging.getLogger(__name__)
 
 
 ROOT_DRIVE_FOLDER = (os.getenv("NEXO_DRIVE_ROOT_FOLDER", "NEXO_SOBERANO_CLASIFICADO") or "NEXO_SOBERANO_CLASIFICADO").strip()
+LIMBO_FOLDER_NAME = "00_ANALISIS_24H"
+MANUAL_REVIEW_FOLDER_NAME = "01_REVISION_MANUAL"
+
 SOURCE_FOLDERS = {
     "google_photos": (os.getenv("NEXO_DRIVE_FOLDER_GOOGLE_PHOTOS", "GooglePhotos") or "GooglePhotos").strip(),
     "google_drive": (os.getenv("NEXO_DRIVE_FOLDER_GOOGLE_DRIVE", "GoogleDrive") or "GoogleDrive").strip(),
@@ -173,13 +179,18 @@ def _classify_category(name: str, mime_type: str) -> str:
     return "OTROS"
 
 
-def _classify_geopolitica_bucket(name: str, extra_text: str = "") -> str:
-    normalized = f"{name or ''}\n{extra_text or ''}".lower()
-    if any(token in normalized for token in KEYWORDS_ISRAEL):
-        return GEOPOLITICA_BUCKETS["israel"]
-    if any(token in normalized for token in KEYWORDS_ARGENTINA):
-        return GEOPOLITICA_BUCKETS["argentina"]
     return GEOPOLITICA_BUCKETS["otros_conflictos"]
+
+
+async def _apply_intelligent_analysis(file_path: str, name: str, mime_type: str) -> Optional[Dict]:
+    """Llama al MediaProcessor para obtener análisis profundo y ruta inteligente."""
+    try:
+        result = await media_processor.analyze_and_route(file_path, name, mime_type)
+        if result.get("ok"):
+            return result["data"]
+    except Exception as e:
+        logger.error(f"Error en análisis inteligente post-sync: {e}")
+    return None
 
 
 def _extract_text_preview(payload: bytes, name: str, mime_type: str, limit: int = 10000) -> str:
@@ -493,55 +504,37 @@ class UnifiedSyncService:
                 continue
 
             try:
-                folder_id = self._ensure_target_folder(
-                    "google_photos",
-                    category,
-                    name,
-                    extra_text=semantic_context,
-                    conflict_bucket=conflict_bucket,
-                )
-                if dry_run:
-                    result["google_photos"]["imported"] += 1
-                    item = {
-                        "id": source_id,
-                        "name": name,
-                        "category": category,
-                        "conflict_bucket": conflict_bucket,
-                        "conflict_score": conflict_inference["score"],
-                        "conflict_terms": conflict_inference["matched_terms"],
-                        "target_path": target_path,
-                        "status": "dry_run_import",
-                    }
-                    if renamed_from:
-                        item["renamed_from"] = renamed_from
-                    result["google_photos"]["items"].append(item)
-                    continue
+                # 1. Analisis Inteligente Pre-ingesta
+                intelligent_data = None
+                # Guardar temporalmente para que Gemini pueda leerlo
+                temp_path = Path(f"temp_ingest_{name}")
+                temp_path.write_bytes(payload)
+                try:
+                    intelligent_data = asyncio.run(_apply_intelligent_analysis(str(temp_path), name, mime_type))
+                finally:
+                    if temp_path.exists(): temp_path.unlink()
 
-                payload = self._with_retries(
-                    "google_photos.download",
-                    self.gc.download_photo_bytes,
-                    photo,
-                    attempts=limits.retry_attempts,
-                    backoff_seconds=limits.retry_backoff_seconds,
-                )
-                content_sha1 = hashlib.sha1(payload).hexdigest()
-                duplicate = self._find_duplicate_by_hash(content_sha1)
-                if duplicate:
-                    result["google_photos"]["skipped"] += 1
-                    item = {
-                        "id": source_id,
-                        "name": name,
-                        "status": "duplicate_skipped",
-                        "duplicate_of": duplicate.get("id"),
-                        "conflict_bucket": conflict_bucket,
-                        "conflict_score": conflict_inference["score"],
-                        "conflict_terms": conflict_inference["matched_terms"],
-                        "target_path": target_path,
-                    }
-                    if renamed_from:
-                        item["renamed_from"] = renamed_from
-                    result["google_photos"]["items"].append(item)
-                    continue
+                # 2. Lógica de Ruteo de Agente Soberano
+                is_duplicate = self._find_duplicate_by_hash(content_sha1)
+                
+                if not intelligent_data or is_duplicate or intelligent_data.get("resolucion", "Dudoso").upper() != "CERTEZA":
+                    # Flujo DUDOSO o DUPLICADO -> 01_REVISION_MANUAL
+                    folder_id = self.gc.ensure_folder_path([ROOT_DRIVE_FOLDER, MANUAL_REVIEW_FOLDER_NAME])
+                    if intelligent_data:
+                        name = intelligent_data.get("nombre_inteligente", name)
+                    target_path = [ROOT_DRIVE_FOLDER, MANUAL_REVIEW_FOLDER_NAME]
+                    if is_duplicate:
+                        name = f"DUP_{name}"
+                else:
+                    # Flujo CERTEZA -> 00_ANALISIS_24H y luego copiar a Geopolítica
+                    name = intelligent_data.get("nombre_inteligente", name)
+                    category = intelligent_data.get("etiqueta", category)
+                    
+                    # Upload_bytes inicial a Limbo
+                    folder_id = self.gc.ensure_folder_path([ROOT_DRIVE_FOLDER, LIMBO_FOLDER_NAME])
+                    target_path = [ROOT_DRIVE_FOLDER, LIMBO_FOLDER_NAME]
+
+                # 4. Upload con Propiedades Inteligentes
                 uploaded = self._with_retries(
                     "google_photos.upload",
                     self.gc.upload_bytes,
@@ -553,33 +546,44 @@ class UnifiedSyncService:
                         "nexo_source": "google_photos",
                         "nexo_source_id": source_id,
                         "nexo_category": category,
-                        "nexo_conflict_bucket": conflict_bucket,
-                        "nexo_conflict_score": str(conflict_inference["score"]),
+                        "nexo_intelligent_name": name if intelligent_data else "no",
                         "nexo_content_sha1": content_sha1,
+                        "nexo_daily_magazine": "true" if intelligent_data else "false"
                     },
                     attempts=limits.retry_attempts,
                     backoff_seconds=limits.retry_backoff_seconds,
                 )
+                
+                # Si fue CERTEZA, copiar también a carpeta definitiva
+                if intelligent_data and not is_duplicate and intelligent_data.get("resolucion", "Dudoso").upper() == "CERTEZA":
+                    final_folder_id = self.gc.ensure_folder_path([
+                        ROOT_DRIVE_FOLDER, 
+                        GEOPOLITICA_FOLDER,
+                        *intelligent_data.get("categoria_jerarquica", [])
+                    ])
+                    # Mover una copia
+                    try:
+                        # Asumiendo que gc.copy_file existe, sino lo forzamos con upload de nuevo
+                        if hasattr(self.gc, "copy_file"):
+                           self.gc.copy_file(uploaded["id"], final_folder_id, new_name=name)
+                        else:
+                           self.gc.upload_bytes(payload, filename=name, mime_type=mime_type, parent_id=final_folder_id)
+                    except Exception as copy_exc:
+                        logger.error(f"Falla copiando archivo a definitiva: {copy_exc}")
+
                 result["google_photos"]["imported"] += 1
-                item = {
+                result["google_photos"]["items"].append({
                     "id": source_id,
                     "name": name,
-                    "category": category,
-                    "conflict_bucket": conflict_bucket,
-                    "conflict_score": conflict_inference["score"],
-                    "conflict_terms": conflict_inference["matched_terms"],
-                    "target_path": target_path,
-                    "drive_file_id": uploaded.get("id"),
-                    "status": "imported",
-                }
-                if renamed_from:
-                    item["renamed_from"] = renamed_from
-                result["google_photos"]["items"].append(item)
+                    "status": "imported_limbo" if intelligent_data else "imported",
+                    "target_path": target_path
+                })
+
+
             except Exception as exc:
                 logger.error("Error importando foto %s: %s", name, exc)
                 result["google_photos"]["errors"] += 1
                 result["google_photos"]["items"].append({"id": source_id, "name": name, "status": "error", "error": str(exc)})
-                self._track_alert("error", "google_photos", "import_failed", {"id": source_id, "name": name, "error": str(exc)})
 
     def _classify_google_drive(self, result: Dict, limits: SyncLimits, dry_run: bool):
         if limits.drive <= 0:

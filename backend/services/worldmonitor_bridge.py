@@ -23,9 +23,7 @@ import asyncio
 import httpx
 from datetime import datetime, timezone
 from typing import Optional
-from qdrant_client import QdrantClient
-from qdrant_client.models import PointStruct, VectorParams, Distance
-from sentence_transformers import SentenceTransformer
+from backend.services.vector_db import ensure_table, asimilar_documento, buscar_similares
 
 QDRANT_URL    = os.getenv("QDRANT_URL", "http://localhost:6333")
 DATABASE_URL  = os.getenv("DATABASE_URL", "")
@@ -34,6 +32,8 @@ REDIS_URL     = os.getenv("REDIS_URL", "redis://localhost:6379/0")
 # URL base de WorldMonitor (su API de Edge Functions en Vercel)
 WM_BASE_URL   = os.getenv("WORLDMONITOR_API_URL", "https://worldmonitor.app")
 WM_API_KEY    = os.getenv("WORLDMONITOR_API_KEY", "")  # Si tienen auth
+
+from sentence_transformers import SentenceTransformer
 
 # Modelo local de embedding (costo $0)
 _embed_model: Optional[SentenceTransformer] = None
@@ -69,24 +69,14 @@ class WorldMonitorBridge:
     def __init__(self, tenant_slug: str = "demo"):
         self.tenant_slug = tenant_slug
         self.schema = f"tenant_{tenant_slug.replace('-', '_')}"
-        self.qdrant = QdrantClient(url=QDRANT_URL)
-        self.collection = f"wm_{tenant_slug}"  # Colección Qdrant aislada por tenant
+        self.tenant_slug = tenant_slug
+        self.schema = f"tenant_{tenant_slug.replace('-', '_')}"
 
     # ── INICIALIZACIÓN ─────────────────────────────────────────
 
-    def ensure_collection(self):
-        """Crea la colección Qdrant del tenant si no existe."""
-        try:
-            existing = [c.name for c in self.qdrant.get_collections().collections]
-            if self.collection not in existing:
-                self.qdrant.create_collection(
-                    collection_name=self.collection,
-                    vectors_config=VectorParams(size=384, distance=Distance.COSINE),
-                )
-                # log.info? there's no log defined, using print or typical logger
-                print(f"✅ Colección Qdrant '{self.collection}' creada")
-        except Exception:
-            pass
+    async def ensure_collection(self):
+        """Asegura tabla en Supabase."""
+        await ensure_table()
 
     def fetch_latest_signals(self) -> list[dict]:
         """
@@ -113,77 +103,37 @@ class WorldMonitorBridge:
 
     # ── INGESTIÓN DE SEÑALES ───────────────────────────────────
 
-    def ingest_signal(self, signal: dict) -> str:
+    async def ingest_signal(self, signal: dict) -> str:
         """
-        Ingesta una señal de WorldMonitor al RAG del tenant.
-
-        signal: {
-            "type": "cii_spike" | "geo_convergence" | "military_surge" | ...,
-            "severity": 0.0 - 1.0,
-            "country": "Chile" | None,
-            "region": "South America" | None,
-            "theater": "Southern Cone" | None,
-            "title": str,
-            "summary": str,
-            "source_articles": [{"title": str, "url": str}],
-            "coordinates": {"lat": float, "lon": float} | None,
-            "timestamp": ISO8601,
-            "raw_data": dict  # Datos originales de WorldMonitor
-        }
+        Ingesta una señal de WorldMonitor al RAG del tenant (Supabase).
         """
-        self.ensure_collection()
+        await self.ensure_collection()
 
-        # Construir texto para embedding
         text_parts = [
             f"[{signal.get('type', 'evento').upper()}]",
             signal.get("title", ""),
             signal.get("summary", ""),
         ]
-        if signal.get("country"):
-            text_parts.append(f"País: {signal['country']}")
-        if signal.get("region"):
-            text_parts.append(f"Región: {signal['region']}")
-        if signal.get("theater"):
-            text_parts.append(f"Teatro operacional: {signal['theater']}")
-
-        # Añadir titulares de artículos fuente
-        for art in signal.get("source_articles", [])[:5]:
-            if art.get("title"):
-                text_parts.append(f"Fuente: {art['title']}")
-
         full_text = " | ".join(filter(None, text_parts))
 
-        # Generar embedding local
-        model = get_embed_model()
-        vector = model.encode(full_text).tolist()
-
-        # ID único basado en tipo + timestamp + país
         import hashlib
         point_id_str = f"{signal.get('type')}:{signal.get('country', '')}:{signal.get('timestamp', '')}"
-        point_id = int(hashlib.md5(point_id_str.encode()).hexdigest()[:8], 16)
+        signal_id = hashlib.sha256(point_id_str.encode()).hexdigest()
 
-        # Payload almacenado en Qdrant (recuperable en búsqueda RAG)
         payload = {
             "type": signal.get("type"),
             "severity": signal.get("severity", 0.5),
-            "country": signal.get("country"),
-            "region": signal.get("region"),
-            "theater": signal.get("theater"),
-            "title": signal.get("title"),
-            "summary": signal.get("summary"),
-            "coordinates": signal.get("coordinates"),
             "timestamp": signal.get("timestamp", datetime.now(timezone.utc).isoformat()),
             "source": "worldmonitor",
             "tenant": self.tenant_slug,
-            "text": full_text,  # Para recuperación en RAG
         }
 
-        self.qdrant.upsert(
-            collection_name=self.collection,
-            points=[PointStruct(id=point_id, vector=vector, payload=payload)]
+        await asimilar_documento(
+            hash_sha256=signal_id, 
+            contenido=full_text, 
+            metadata={**payload, "archivo": f"wm_{signal_id}"}
         )
-
-        return f"signal:{point_id}"
+        return f"signal:{signal_id}"
 
     def ingest_batch(self, signals: list[dict]) -> dict:
         """Ingesta múltiples señales en batch."""
@@ -203,67 +153,24 @@ class WorldMonitorBridge:
 
     # ── CONSULTA RAG ENRIQUECIDA ───────────────────────────────
 
-    def query_intelligence(self, query: str, top_k: int = 8,
-                            filter_country: Optional[str] = None,
-                            filter_severity_min: float = 0.0) -> list[dict]:
-        """
-        Búsqueda semántica en las señales de WorldMonitor
-        almacenadas en Qdrant para este tenant.
-
-        Usado por:
-        - El chat de NEXO cuando el usuario pregunta sobre eventos mundiales
-        - El enriquecimiento de contexto para emails de digest
-        - El endpoint /nexo/enrich que llama WorldMonitor frontend
-        """
-        self.ensure_collection()
-
-        model = get_embed_model()
-        query_vec = model.encode(query).tolist()
-
-        # Filtros opcionales
-        qdrant_filter = None
-        conditions = []
-
-        if filter_country:
-            from qdrant_client.models import Filter, FieldCondition, MatchValue
-            conditions.append(FieldCondition(
-                key="country",
-                match=MatchValue(value=filter_country)
-            ))
-
-        if filter_severity_min > 0:
-            from qdrant_client.models import Filter, FieldCondition, Range
-            conditions.append(FieldCondition(
-                key="severity",
-                range=Range(gte=filter_severity_min)
-            ))
-
-        if conditions:
-            from qdrant_client.models import Filter
-            qdrant_filter = Filter(must=conditions)
-
-        results = self.qdrant.search(
-            collection_name=self.collection,
-            query_vector=query_vec,
-            limit=top_k,
-            query_filter=qdrant_filter,
-            with_payload=True,
-            score_threshold=0.55,
-        )
-
+    async def query_intelligence(self, query: str, top_k: int = 8,
+                               categoria: Optional[str] = None,
+                               filter_severity_min: float = 0.0) -> list[dict]:
+        """Búsqueda semántica en Supabase."""
+        await self.ensure_collection()
+        resultados = await buscar_similares(query, k=top_k, categoria=categoria)
+        
         return [
             {
-                "score": r.score,
-                "type": r.payload.get("type"),
-                "severity": r.payload.get("severity"),
-                "country": r.payload.get("country"),
-                "title": r.payload.get("title"),
-                "summary": r.payload.get("summary"),
-                "timestamp": r.payload.get("timestamp"),
-                "theater": r.payload.get("theater"),
-                "coordinates": r.payload.get("coordinates"),
+                "score": r['similarity'],
+                "type": r['metadata'].get("type"),
+                "severity": r['metadata'].get("severity"),
+                "title": r['metadata'].get("title"),
+                "summary": r['content'],
+                "timestamp": r['metadata'].get("timestamp"),
             }
-            for r in results
+            for r in resultados
+            if r['similarity'] >= filter_severity_min
         ]
 
     # ── ROUTER DE ALERTAS ─────────────────────────────────────
@@ -409,46 +316,36 @@ async def enrich_context(body: EnrichRequest, request: Request):
 
 @router.get("/signals/latest")
 async def get_latest_signals(request: Request, limit: int = 20):
-    """
-    Retorna las señales más recientes ingestionadas para este tenant.
-    WorldMonitor puede usarlo para mostrar historial personalizado.
-    """
-    tenant_slug = getattr(request.state, "tenant_slug", None)
-    if not tenant_slug:
-        raise HTTPException(status_code=401, detail="Tenant no identificado")
-
-    bridge = WorldMonitorBridge(tenant_slug)
-    bridge.ensure_collection()
-
-    # Scroll de los puntos más recientes
-    results, _ = bridge.qdrant.scroll(
-        collection_name=bridge.collection,
-        limit=limit,
-        with_payload=True,
-        order_by="timestamp",
-    )
-
-    signals = [r.payload for r in results]
-    signals.sort(key=lambda x: x.get("timestamp", ""), reverse=True)
-
+    """Retorna las señales más recientes desde Supabase."""
+    from backend.services.vector_db import get_pool
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch("""
+            SELECT content, metadata FROM public.nexo_documentos
+            WHERE metadata->>'source' = 'worldmonitor'
+            ORDER BY created_at DESC
+            LIMIT $1
+        """, limit)
+    
+    signals = [r['metadata'] for r in rows]
     return {"signals": signals, "count": len(signals)}
 
 
 @router.get("/stats")
 async def get_intelligence_stats(request: Request):
-    """Dashboard de estadísticas de inteligencia para el tenant."""
-    tenant_slug = getattr(request.state, "tenant_slug", None)
-    if not tenant_slug:
-        raise HTTPException(status_code=401, detail="Tenant no identificado")
-
-    bridge = WorldMonitorBridge(tenant_slug)
-    bridge.ensure_collection()
-
-    info = bridge.qdrant.get_collection(bridge.collection)
+    """Dashboard de estadísticas de inteligencia para el tenant (Supabase)."""
+    from backend.services.vector_db import get_pool
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow("""
+            SELECT COUNT(*) FROM public.nexo_documentos
+            WHERE metadata->>'source' = 'worldmonitor'
+        """)
+    total = row[0] if row else 0
 
     return {
-        "tenant": tenant_slug,
-        "total_signals": info.points_count,
-        "collection": bridge.collection,
+        "status": "ok",
+        "total_signals": total,
+        "engine": "supabase_pgvector",
         "signal_types": list(SIGNAL_TYPES.keys()),
     }

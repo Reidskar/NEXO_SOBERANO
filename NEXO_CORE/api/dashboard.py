@@ -7,11 +7,14 @@ from typing import Dict, Any
 import httpx
 import redis
 import os
+import logging
 from dotenv import load_dotenv
 from backend.services.supabase_client import get_supabase
 
 # Carga explícita de variables para las métricas
 load_dotenv()
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/dashboard", tags=["Dashboard"])
 
@@ -44,7 +47,8 @@ async def get_health(db: Session = Depends(get_db)):
     try:
         db.execute(text("SELECT 1"))
         health["database"] = "operative"
-    except: pass
+    except Exception as e:
+        logger.error(f"Healthcheck Database error: {e}")
 
     # Check Supabase API
     try:
@@ -52,7 +56,8 @@ async def get_health(db: Session = Depends(get_db)):
         # Simple test query to public schema
         sb.table("tenants").select("count", count="exact").limit(1).execute()
         health["supabase"] = "connected"
-    except: pass
+    except Exception as e:
+        logger.error(f"Healthcheck Supabase API error: {e}")
 
     # Check Qdrant
     try:
@@ -61,7 +66,8 @@ async def get_health(db: Session = Depends(get_db)):
             resp = await client.get(f"{qdrant_url}/healthz", timeout=2.0)
             if resp.status_code == 200:
                 health["qdrant"] = "operative"
-    except: pass
+    except Exception as e:
+        logger.error(f"Healthcheck Qdrant error: {e}")
 
     # Check Redis
     try:
@@ -69,7 +75,8 @@ async def get_health(db: Session = Depends(get_db)):
         r = redis.from_url(redis_url, socket_timeout=2.0)
         if r.ping():
             health["redis"] = "operative"
-    except: pass
+    except Exception as e:
+        logger.error(f"Healthcheck Redis error: {e}")
 
     return health
 

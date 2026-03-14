@@ -11,22 +11,24 @@ if (!fs.existsSync(TEMP_DIR)) fs.mkdirSync(TEMP_DIR);
  * Unified TTS player that supports streaming and fallbacks
  */
 async function playTTS(connection, text, opts = {}) {
+    // Regla 2: Streaming en TTS (No disco)
     const player = createAudioPlayer();
     connection.subscribe(player);
 
     let resource;
-    let isStream = false;
 
     // Try ElevenLabs if key exists
     if (process.env.ELEVENLABS_API_KEY && !opts.forceFallback) {
         try {
-            console.log(`[TTS] Generando con ElevenLabs... (Voice: ${opts.voiceId || 'Default'})`);
+            console.log(`[TTS] Generando STREAM con ElevenLabs...`);
             const audioStream = await streamElevenLabs(text, opts.voiceId);
+            
+            // Pasamos el stream directamente a createAudioResource
             resource = createAudioResource(audioStream, {
-                inputType: StreamType.Arbitrary
+                inputType: StreamType.Arbitrary,
+                inlineVolume: true
             });
-            isStream = true;
-            console.log('[TTS] Stream ElevenLabs establecido con éxito.');
+            console.log('[TTS] Stream ElevenLabs establecido. Reproduciendo...');
         } catch (err) {
             console.warn('[TTS] ElevenLabs falló, intentando fallback a Google TTS:', err.message);
         }
@@ -34,39 +36,35 @@ async function playTTS(connection, text, opts = {}) {
 
     // Fallback to discord-tts (Google TTS)
     if (!resource) {
-        console.log('Using discord-tts for fallback...');
-        const stream = discordTTS.getVoiceStream(text, { lang: 'es' });
+        console.log('[TTS] Usando Google TTS (Stream)...');
+        // Parche 5: google-tts-api tiene límite de 200 chars. 
+        // Si es largo, truncamos para voz (la voz debe ser breve) o podríamos splitear.
+        // Por ahora, truncamos a un nivel razonable para evitar crashes y saturación.
+        const safeText = text.substring(0, 200); 
+        const stream = discordTTS.getVoiceStream(safeText, { lang: 'es' });
         resource = createAudioResource(stream, {
-            inputType: StreamType.Arbitrary
+            inputType: StreamType.Arbitrary,
+            inlineVolume: true
         });
     }
 
     player.play(resource);
 
-    try {
-        // Wait for it to start playing
-        await entersState(player, AudioPlayerStatus.Playing, 5000);
-    } catch (e) {
-        // Audio might be very short or there was a delay
-    }
-
     return new Promise((resolve) => {
-        let finished = false;
-        const done = () => {
-            if (finished) return;
-            finished = true;
+        player.once(AudioPlayerStatus.Idle, () => {
             player.stop();
             resolve();
-        };
-
-        player.once(AudioPlayerStatus.Idle, done);
-        player.once('error', (err) => {
-            console.error('Playback error:', err);
-            done();
         });
-
-        // Safety timeout for long responses (60s)
-        setTimeout(done, 60000);
+        player.once('error', (err) => {
+            console.error('[TTS] Error en el reproductor:', err);
+            player.stop();
+            resolve();
+        });
+        // Safety timeout (90s for long responses)
+        setTimeout(() => {
+            player.stop();
+            resolve();
+        }, 90000);
     });
 }
 
