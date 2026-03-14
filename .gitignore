@@ -73,3 +73,8 @@ camilo_el_bkn/
 logs/ 
 # *.txt removed to allow requirements_railway.txt
 backend/auth/drive_client_secrets.json 
+
+# Sprint 0.9 Exports
+exports/
+camilo el bkn/
+nexo_soberano_para_notebooklm.txt

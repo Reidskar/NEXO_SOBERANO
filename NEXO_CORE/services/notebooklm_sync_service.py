@@ -1,74 +1,91 @@
-"""
-NEXO SOBERANO — NotebookLM Sync Service
-Mantiene actualizado el export del código para análisis en NotebookLM/Gemini.
-Se ejecuta automáticamente cuando hay cambios en el repo.
-"""
 import os
-import subprocess
 import logging
 from pathlib import Path
 from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
-EXPORT_PATH = Path("nexo_soberano_para_notebooklm.txt")
-EXTENSIONES = {'.py', '.js', '.ts', '.md', '.toml', '.yaml'}
-EXCLUIR = {'node_modules', '__pycache__', '.git', 'venv', 'dist', 'build', 'logs'}
+# Configuración
+EXPORT_DIR = Path("exports")
+NOTEBOOKLM_FILE = EXPORT_DIR / "nexo_master_context.txt"
+CAMILO_DIR = Path("camilo el bkn")
+CAMILO_FILE = CAMILO_DIR / "nexo_soberano_para_otra_ia.txt"
 
+# Extensiones a incluir
+EXTENSIONES = {'.py', '.md', '.txt', '.js', '.ts', '.toml', '.yaml', '.yml'}
 
-def exportar_repo() -> dict:
-    """Exporta el repositorio completo en formato legible para NotebookLM."""
-    repo_root = Path('.')
-    archivos = []
+# Directorios a ignorar
+EXCLUIR_DIRS = {'.git', '__pycache__', '.venv', 'venv', 'node_modules', 'exports', 'camilo el bkn', '.pytest_cache'}
+
+def exportar_contexto_maestro():
+    """Recorre el proyecto y genera un archivo consolidado para NotebookLM."""
+    print("Iniciando exportacion de contexto maestro...")
     
-    for ext in EXTENSIONES:
-        for f in repo_root.rglob(f'*{ext}'):
-            if any(ex in f.parts for ex in EXCLUIR):
-                continue
-            if f.stat().st_size > 80_000:
-                continue
-            try:
-                content = f.read_text(encoding='utf-8', errors='ignore')
-                archivos.append((str(f), content))
-            except Exception:
-                pass
+    # Asegurar directorios
+    EXPORT_DIR.mkdir(exist_ok=True)
+    CAMILO_DIR.mkdir(exist_ok=True)
 
-    output = f'NEXO SOBERANO — Snapshot de código\n'
-    output += f'Repo: https://github.com/Reidskar/NEXO_SOBERANO\n'
-    output += f'Generado: {datetime.now().isoformat()}\n'
-    output += f'Archivos: {len(archivos)}\n'
-    output += '=' * 60 + '\n\n'
+    repo_root = Path(".")
+    archivos_procesados = 0
+    buffer = []
 
-    for ruta, content in sorted(archivos):
-        output += f'\n### {ruta} ###\n{content}\n{"-"*40}\n'
+    # Cabecera del documento
+    buffer.append(f"NEXO SOBERANO — CONTEXTO MAESTRO PARA ANÁLISIS")
+    buffer.append(f"Generado: {datetime.now().isoformat()}")
+    buffer.append(f"Repositorio: https://github.com/Reidskar/NEXO_SOBERANO")
+    buffer.append("=" * 60 + "\n")
 
-    EXPORT_PATH.write_text(output, encoding='utf-8')
-    size_kb = len(output) // 1024
-    logger.info(f"[NOTEBOOKLM] Export actualizado: {size_kb}KB, {len(archivos)} archivos")
+    # Recorrido recursivo usando Path.rglob
+    print("Escaneando archivos...")
+    for file_path in repo_root.rglob("*"):
+        # Ignorar directorios excluidos
+        if any(part in EXCLUIR_DIRS for part in file_path.parts):
+            continue
+        
+        # Ignorar si es un directorio
+        if file_path.is_dir():
+            continue
+
+        # Filtrar por extensión
+        if file_path.suffix.lower() not in EXTENSIONES:
+            continue
+        
+        # Ignorar archivos demasiado grandes (> 100KB) para evitar ruido
+        if file_path.stat().st_size > 100000:
+            continue
+
+        try:
+            content = file_path.read_text(encoding='utf-8', errors='ignore')
+            
+            # Formato de cabecera por archivo
+            buffer.append(f"=== Archivo: {file_path} ===")
+            buffer.append(content)
+            buffer.append("-" * 40 + "\n")
+            
+            archivos_procesados += 1
+            if archivos_procesados % 10 == 0:
+                print(f"   Processed {archivos_procesados} files...")
+        except Exception as e:
+            logger.error(f"Error leyendo {file_path}: {e}")
+
+    final_content = "\n".join(buffer)
+
+    # Guardar en destino principal
+    NOTEBOOKLM_FILE.write_text(final_content, encoding='utf-8')
+    
+    # Sincronizar con "camilo el bkn"
+    CAMILO_FILE.write_text(final_content, encoding='utf-8')
+
+    print("Exportacion completada!")
+    print(f"   Archivos incluidos: {archivos_procesados}")
+    print(f"   Destino 1: {NOTEBOOKLM_FILE}")
+    print(f"   Destino 2: {CAMILO_FILE}")
     
     return {
-        'ok': True,
-        'archivos': len(archivos),
-        'tamaño_kb': size_kb,
-        'ruta': str(EXPORT_PATH)
+        "ok": True,
+        "archivos": archivos_procesados,
+        "tamaño_kb": len(final_content) // 1024
     }
 
-
-def get_ultimo_commit() -> str:
-    """Obtiene el hash del último commit."""
-    try:
-        r = subprocess.run(
-            ['git', 'rev-parse', '--short', 'HEAD'],
-            capture_output=True, text=True
-        )
-        return r.stdout.strip()
-    except Exception:
-        return 'unknown'
-
-
-if __name__ == '__main__':
-    resultado = exportar_repo()
-    print(f"Export listo: {resultado['ruta']} ({resultado['tamaño_kb']}KB)")
-    print(f"Commit: {get_ultimo_commit()}")
-    print("\nSUBE ESTOS ARCHIVOS A NOTEBOOKLM:")
-    print(f"  1. {EXPORT_PATH}")
+if __name__ == "__main__":
+    exportar_contexto_maestro()

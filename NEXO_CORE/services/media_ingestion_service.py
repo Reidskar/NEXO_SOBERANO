@@ -17,9 +17,8 @@ class MediaIngestionService:
     @property
     def model(self):
         if self._model is None:
-            # Lazy import to avoid loading at module level (important for Slim Deploy)
             try:
-# LAZY_IMPORT (moved inside function):                 from faster_whisper import WhisperModel
+                from faster_whisper import WhisperModel
                 logger.info(f"Cargando modelo Whisper ({self.model_size})...")
                 # Usar CPU por defecto si no hay GPU configurada o disponible de forma sencilla
                 self._model = WhisperModel(self.model_size, device="cpu", compute_type="int8")
