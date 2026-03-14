@@ -5,4 +5,4 @@ nixPkgs = ["python311", "python311Packages.pip", "deno"]
 cmds = ["pip install --break-system-packages -r requirements_railway.txt"]
 
 [start]
-cmd = "uvicorn backend.main:app --host 0.0.0.0 --port $PORT"
+cmd = "python -m uvicorn backend.main:app --host 0.0.0.0 --port $PORT"
