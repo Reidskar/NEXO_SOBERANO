@@ -1,0 +1,17 @@
+fastapi
+uvicorn[standard]
+python-dotenv
+supabase
+psutil
+requests
+httpx
+pydantic
+google-genai
+anthropic
+python-multipart
+google-auth
+google-auth-oauthlib
+google-api-python-client
+pillow
+celery
+redis
