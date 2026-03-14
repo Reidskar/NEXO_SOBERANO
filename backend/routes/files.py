@@ -53,3 +53,19 @@ async def kindle_catalog():
     except Exception as e:
         logger.error(f"Error leyendo catalogo: {e}")
         return {"libros": [], "total": 0, "error": str(e)}
+
+@router.post("/notebooklm/export")
+async def exportar_para_notebooklm():
+    """Genera el export del código para subir a NotebookLM."""
+    try:
+        from NEXO_CORE.services.notebooklm_sync_service import exportar_repo
+        resultado = exportar_repo()
+        return {
+            "ok": True,
+            "mensaje": f"Export generado: {resultado['archivos']} archivos, {resultado['tamaño_kb']}KB",
+            "instruccion": "Sube nexo_soberano_para_notebooklm.txt a https://notebooklm.google.com/",
+            **resultado
+        }
+    except Exception as e:
+        logger.error(f"Error en exportación NotebookLM: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
