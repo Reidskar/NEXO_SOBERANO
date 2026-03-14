@@ -71,5 +71,5 @@ nexo_soberano_package.zip
 camilo_extract/ 
 camilo_el_bkn/ 
 logs/ 
-*.txt 
+# *.txt removed to allow requirements_railway.txt
 backend/auth/drive_client_secrets.json 
