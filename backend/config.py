@@ -24,6 +24,8 @@ ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
 MODELO_FLASH = os.getenv("GEMINI_MODEL_FLASH", "gemini-2.5-flash-lite")
 MODELO_PRO = os.getenv("GEMINI_MODEL_PRO", "gemini-2.5-pro")
 
+OWNER_DISPLAY_NAME = os.getenv("NEXO_OWNER_NAME", "Soberano")
+
 UPSTASH_REDIS_URL = os.getenv("UPSTASH_REDIS_URL", "")
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN", "")
 

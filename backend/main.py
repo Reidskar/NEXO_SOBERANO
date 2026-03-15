@@ -176,6 +176,9 @@ async def request_context_middleware(request: Request, call_next):
 
     return response
 
+from backend.middleware.auth_guard import verify_ui_access
+app.middleware("http")(verify_ui_access)
+
 register_exception_handlers(app)
 
 # ════════════════════════════════════════════════════════════════════

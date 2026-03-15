@@ -20,7 +20,7 @@ function Mapa() {
         <div className="grid grid-cols-2 gap-3">
           <div className="bg-nexo-dark rounded-lg p-4 border border-nexo-border/50">
             <div className="flex items-center gap-2 mb-2">
-              <span className="text-xs text-blue-400">◈</span>
+              <span className="text-xs text-[#00d4ff]">◈</span>
               <h4 className="text-sm font-semibold text-nexo-text">Zonas activas</h4>
             </div>
             <p className="text-xs text-nexo-muted leading-relaxed">
