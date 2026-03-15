@@ -370,21 +370,38 @@ async function loadStats() {
       populateUsersTable(data.users);
     }
   } catch (err) {
-    console.log("Endpoint admin no disponible aún");
+    // Fallback silencioso mientras el endpoint admin no exista en todos los entornos.
   }
 }
 
 function populateUsersTable(users) {
   const tbody = document.querySelector("#users-table tbody");
-  tbody.innerHTML = users.map(u => `
-    <tr>
-      <td>${u.username}</td>
-      <td>${u.email}</td>
-      <td>${u.role}</td>
-      <td><span class="status-badge ${u.is_active ? 'status-active' : 'status-inactive'}">${u.is_active ? 'Activo' : 'Inactivo'}</span></td>
-      <td>${new Date(u.created_at).toLocaleDateString()}</td>
-    </tr>
-  `).join("");
+  tbody.replaceChildren();
+
+  for (const u of users) {
+    const tr = document.createElement("tr");
+
+    const tdUsername = document.createElement("td");
+    tdUsername.textContent = u.username || "";
+
+    const tdEmail = document.createElement("td");
+    tdEmail.textContent = u.email || "";
+
+    const tdRole = document.createElement("td");
+    tdRole.textContent = u.role || "";
+
+    const tdStatus = document.createElement("td");
+    const statusBadge = document.createElement("span");
+    statusBadge.className = `status-badge ${u.is_active ? "status-active" : "status-inactive"}`;
+    statusBadge.textContent = u.is_active ? "Activo" : "Inactivo";
+    tdStatus.appendChild(statusBadge);
+
+    const tdCreated = document.createElement("td");
+    tdCreated.textContent = new Date(u.created_at).toLocaleDateString();
+
+    tr.append(tdUsername, tdEmail, tdRole, tdStatus, tdCreated);
+    tbody.appendChild(tr);
+  }
 }
 
 function closeModal() {

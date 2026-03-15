@@ -18,9 +18,12 @@ Uso en un endpoint FastAPI:
         ...
 """
 
+import logging
 import os
 from contextlib import contextmanager
 from typing import Generator
+
+logger = logging.getLogger(__name__)
 
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker, Session, DeclarativeBase
@@ -170,8 +173,8 @@ def verify_connection() -> bool:
         with engine.connect() as conn:
             conn.execute(text("SELECT 1"))
         host_info = DATABASE_URL.split("@")[-1] if "@" in DATABASE_URL else DATABASE_URL
-        log.info(f"✅ PostgreSQL conectado: {host_info}")
+        logger.info("✅ PostgreSQL conectado: %s", host_info)
         return True
     except Exception as e:
-        log.info(f"❌ Error conectando a PostgreSQL: {e}")
+        logger.warning("❌ Error conectando a PostgreSQL: %s", e)
         return False

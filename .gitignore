@@ -61,20 +61,8 @@ documentos/media_intake_test/
 scripts/install_x_monitor_task.ps1
 scripts/install_x_monitor_task_fixed.ps1
 scripts/setup_x_monitor_task.ps1
-logs/ 
-camilo_el_bkn/scripts/test_key.py 
-node_modules/ 
-dist/ 
-.env 
-*.log 
-nexo_soberano_package.zip 
-camilo_extract/ 
-camilo_el_bkn/ 
-logs/ 
-# *.txt removed to allow requirements_railway.txt
-backend/auth/drive_client_secrets.json 
 
-# Sprint 0.9 Exports
-exports/
-camilo el bkn/
-nexo_soberano_para_notebooklm.txt
+# Google OAuth client secrets
+/backend/auth/drive_client_secrets.json
+nexo_soberano_package.zip
+*.zip

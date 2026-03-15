@@ -1,7 +1,9 @@
+from __future__ import annotations
+
 from fastapi import APIRouter
+
+from backend.routes import agente, eventos
+
 router = APIRouter()
-try:
-    from backend.routes.agente import router as _agente_router
-    router.include_router(_agente_router)
-except ImportError:
-    pass  # modo degradado sin legacy
+router.include_router(agente.router)
+router.include_router(eventos.router)
