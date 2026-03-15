@@ -26,7 +26,7 @@ function Documentos() {
       {/* Métricas principales */}
       <div className="grid grid-cols-3 gap-3">
         <div className="nexo-card p-4 text-center">
-          <p className="text-2xl font-bold text-blue-400">{status?.total_documentos ?? "—"}</p>
+          <p className="text-2xl font-bold text-[#00d4ff]">{status?.total_documentos ?? "—"}</p>
           <p className="text-[11px] text-nexo-muted mt-1">Documentos</p>
         </div>
         <div className="nexo-card p-4 text-center">

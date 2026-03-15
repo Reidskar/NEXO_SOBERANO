@@ -22,7 +22,34 @@
     a { color:#93c5fd; }
     pre { white-space: pre-wrap; font-size:.9rem; }
   </style>
+
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=JetBrains+Mono&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-main: #0a0a0f !important;
+    --bg-sec: #111118 !important;
+    --accent: #6c63ff !important;
+    --accent-2: #00d4ff !important;
+  }
+  body, .dashboard, .main-content {
+    background-color: var(--bg-main) !important;
+    font-family: 'Inter', sans-serif !important;
+  }
+  .card, .feat-card, .sys-panel {
+    background: rgba(255, 255, 255, 0.05) !important;
+    backdrop-filter: blur(10px) !important;
+    -webkit-backdrop-filter: blur(10px) !important;
+    border: 1px solid rgba(0,212,255,0.1) !important;
+  }
+  h1, h2, h3, .brand {
+    font-family: 'Inter', sans-serif !important;
+  }
+  pre, code, .terminal {
+    font-family: 'JetBrains Mono', monospace !important;
+  }
+</style>
 </head>
+
 <body>
   <div class="wrap">
     <div class="title">📱 NEXO Usuario</div>

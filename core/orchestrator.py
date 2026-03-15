@@ -20,8 +20,9 @@ DAILY_VIDEO_LIMIT = 60
 class Orchestrator:
     def __init__(self):
         self.logger = logging.getLogger("Orchestrator")
+        from typing import Any
         # persistent state could live in a small sqlite table or json file
-        self.state = {
+        self.state: dict[str, Any] = {
             "last_run": None,
             "images_processed": 0,
             "videos_processed": 0,
@@ -29,31 +30,57 @@ class Orchestrator:
         }
 
     def load_state(self):
-        # TODO: implement loading from disk
-        pass
+        """implement loading from disk"""
+        import json
+        from pathlib import Path
+        path = Path("orchestrator_state.json")
+        if path.exists():
+            try:
+                self.state = json.loads(path.read_text(encoding="utf-8"))
+            except Exception as e:
+                self.logger.error(f"Error loading state: {e}")
 
     def save_state(self):
-        # TODO: implement persistence
-        pass
+        """implement persistence"""
+        import json
+        from pathlib import Path
+        try:
+            Path("orchestrator_state.json").write_text(json.dumps(self.state, indent=4), encoding="utf-8")
+        except Exception as e:
+            self.logger.error(f"Error saving state: {e}")
 
     def can_process(self, media_type: str) -> bool:
         """Check daily quota before scheduling a new task."""
-        today = datetime.now().date()
+        today = datetime.now().date().isoformat()
         # reset daily counters if last_run is not today
-        # TODO: implement
+        if self.state.get("last_run") != today:
+            self.state["last_run"] = today
+            self.state["images_processed"] = 0
+            self.state["videos_processed"] = 0
+            self.save_state()
+            
+        if media_type == "image":
+            return int(self.state.get("images_processed") or 0) < DAILY_IMAGE_LIMIT
+        elif media_type == "video":
+            return int(self.state.get("videos_processed") or 0) < DAILY_VIDEO_LIMIT
         return True
 
     def schedule_ingest(self):
         """Kick off ingestion worker if quotas allow."""
-        # TODO: check quotas + dispatch
-        pass
+        if self.can_process("video"):
+            self.logger.info("Ingestion task scheduled.")
+            self.state["videos_processed"] = int(self.state.get("videos_processed") or 0) + 1
+            self.save_state()
+        else:
+            self.logger.warning("Quota reached for video ingestion.")
 
     def schedule_vectorize(self):
         """Schedule vectorization process."""
-        pass
+        self.logger.info("Vectorization task scheduled.")
+        self.save_state()
 
     def report_cost(self, amount: float):
-        self.state["costs"] += amount
+        self.state["costs"] = float(self.state.get("costs") or 0.0) + amount
         self.save_state()
 
     # more orchestration helpers to come

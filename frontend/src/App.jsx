@@ -7,7 +7,7 @@ function App() {
   const [currentPage, setCurrentPage] = useState("dashboard");
 
   return (
-    <div className="flex h-screen bg-gray-900 text-white">
+    <div className="flex h-screen bg-[#0a0a0f] text-white">
       <Sidebar currentPage={currentPage} setCurrentPage={setCurrentPage} />
       <div className="flex-1 flex flex-col">
         <Header />

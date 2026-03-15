@@ -9,7 +9,7 @@ function Sidebar({ currentPage, setCurrentPage }) {
   ];
 
   return (
-    <div className="w-64 bg-gray-800 border-r border-gray-700 flex flex-col">
+    <div className="w-64 bg-[#111118]/80 backdrop-blur-md border border-[#00d4ff]/10 border-r border-gray-700 flex flex-col">
       <div className="p-6 border-b border-gray-700">
         <h2 className="text-sm font-bold text-gray-400">MENÚ</h2>
       </div>
