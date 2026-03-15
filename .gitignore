@@ -66,3 +66,8 @@ scripts/setup_x_monitor_task.ps1
 /backend/auth/drive_client_secrets.json
 nexo_soberano_package.zip
 *.zip
+
+backend/auth/*.json
+NEXO_TRANSFER_NOTEBOOK.zip
+camilo*/
+exports/
