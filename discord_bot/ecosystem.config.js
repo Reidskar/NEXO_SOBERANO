@@ -2,7 +2,8 @@ module.exports = {
   apps: [
     {
       name: "nexo-discord-bot",
-      script: "bot.js",
+      script: "discord_bot/bot.js",
+      cwd: "C:\\Users\\Admn\\Desktop\\NEXO_SOBERANO",
       instances: 1,
       autorestart: true,
       watch: false,

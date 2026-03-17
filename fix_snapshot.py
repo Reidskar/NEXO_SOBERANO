@@ -20,4 +20,4 @@ method = '''
 content = content.rstrip() + '\n' + method
 
 open(path, 'w', encoding='utf-8').write(content)
-print('DONE')
+log.info('DONE')

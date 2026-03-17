@@ -27,9 +27,9 @@ def load_env() -> None:
 
 load_env()
 
-APP_TITLE = "NEXO CORE API"
+APP_TITLE = "El Anarcocapital API"
 APP_VERSION = "3.0.0"
-APP_DESCRIPTION = "Backend consolidado para NEXO Soberano"
+APP_DESCRIPTION = "Backend consolidado para El Anarcocapital"
 MAX_TOKENS_DIA = int(os.getenv("NEXO_MAX_TOKENS_DIA", "900000"))
 
 HOST = os.getenv("NEXO_HOST", "0.0.0.0")

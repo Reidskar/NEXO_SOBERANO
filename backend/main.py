@@ -50,6 +50,7 @@ from backend.routes import media as media_router
 from backend.routes import mobile as mobile_router
 from backend.routes import files as files_router
 from backend.middleware.monitoring import PerformanceMiddleware
+from backend.core import heartbeat as heartbeat_service
 
 # ════════════════════════════════════════════════════════════════════
 # SETUP & LOGGING
@@ -81,6 +82,9 @@ async def lifespan(app: FastAPI):
     # Iniciar loop del Kindle
     t = threading.Thread(target=kindle_refresh_loop, daemon=True)
     t.start()
+
+    # Heartbeat 24/7
+    heartbeat_service.start(interval=60)
     
     yield
     

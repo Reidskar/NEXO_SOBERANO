@@ -1,22 +1,139 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>NEXO Control Center</title>
+  <link rel="stylesheet" href="/static/nexo_theme.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link
+    href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&family=Syne:wght@600;700;800&display=swap"
+    rel="stylesheet">
   <style>
-    :root { color-scheme: dark; }
-    body {
-      margin: 0;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      background: #0f1115;
-      color: #e8edf2;
+    :root {
+      color-scheme: dark;
+      --nexo-bg-deep: #080B12;
+      --nexo-bg-surface: #0D1117;
+      --nexo-bg-elevated: #131A24;
+      --nexo-bg-glass: rgba(13, 17, 23, 0.85);
+      --nexo-accent-blue: #1E6FFF;
+      --nexo-accent-cyan: #00D4FF;
+      --nexo-text-primary: #E8EDF5;
+      --nexo-text-muted: #6B7A9A;
+      --nexo-text-dim: #3A4258;
+      --nexo-success: #00C27A;
+      --nexo-warning: #F5A623;
+      --nexo-danger: #E03A4A;
+      --nexo-border: rgba(30, 111, 255, 0.12);
+      --nexo-border-glow: rgba(30, 111, 255, 0.35);
+      --font-display: 'Syne', sans-serif;
+      --font-body: 'DM Sans', sans-serif;
+      --font-mono: 'Space Mono', monospace;
     }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: var(--font-body);
+      background: var(--nexo-bg-deep);
+      color: var(--nexo-text-primary);
+      padding-top: 52px;
+    }
+
+    /* HEADER */
+    .nexo-header {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 52px;
+      z-index: 9999;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 24px;
+      background: var(--nexo-bg-surface);
+      border-bottom: 1px solid var(--nexo-border);
+      backdrop-filter: blur(12px);
+    }
+
+    .nexo-logo {
+      font-family: var(--font-display);
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--nexo-text-primary);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .status-pulse {
+      width: 8px;
+      height: 8px;
+      background: var(--nexo-success);
+      border-radius: 50%;
+      animation: pulse-dot 2s ease-in-out infinite;
+    }
+
+    .system-vitals {
+      display: flex;
+      gap: 16px;
+      align-items: center;
+    }
+
+    .vital {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--nexo-text-muted);
+      letter-spacing: 0.05em;
+    }
+
+    .system-clock {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--nexo-accent-cyan);
+      letter-spacing: 0.1em;
+    }
+
+    @keyframes pulse-dot {
+
+      0%,
+      100% {
+        opacity: 1;
+        box-shadow: 0 0 10px var(--nexo-success);
+      }
+
+      50% {
+        opacity: .5;
+        box-shadow: 0 0 3px var(--nexo-success);
+      }
+    }
+
+    /* FOOTER */
+    .nexo-footer {
+      padding: 16px 24px;
+      border-top: 1px solid var(--nexo-border);
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--nexo-text-dim);
+      letter-spacing: 0.05em;
+      text-align: center;
+      background: var(--nexo-bg-surface);
+    }
+
     .container {
       max-width: 1200px;
       margin: 0 auto;
       padding: 20px;
     }
+
     .topbar {
       display: flex;
       justify-content: space-between;
@@ -24,23 +141,52 @@
       gap: 12px;
       margin-bottom: 16px;
     }
+
     .title {
+      font-family: var(--font-display);
       font-size: 1.4rem;
       font-weight: 700;
-      color: #00a8e8;
+      color: var(--nexo-accent-cyan);
     }
-    .actions { display: flex; gap: 8px; }
+
+    .actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
     button {
       border: none;
       border-radius: 8px;
       padding: 10px 14px;
       font-weight: 600;
       cursor: pointer;
-      background: #00a8e8;
+      background: var(--nexo-accent-blue);
       color: #fff;
+      font-family: var(--font-body);
+      font-size: 0.85rem;
+      transition: all 0.2s ease;
     }
-    button.secondary { background: #2a3240; }
-    button:disabled { opacity: 0.55; cursor: wait; }
+
+    button:hover {
+      opacity: 0.85;
+    }
+
+    button.secondary {
+      background: var(--nexo-bg-elevated);
+      border: 1px solid var(--nexo-border);
+      color: var(--nexo-text-muted);
+    }
+
+    button.secondary:hover {
+      border-color: var(--nexo-border-glow);
+      color: var(--nexo-text-primary);
+    }
+
+    button:disabled {
+      opacity: 0.55;
+      cursor: wait;
+    }
 
     .grid {
       display: grid;
@@ -48,39 +194,69 @@
       gap: 12px;
       margin-bottom: 16px;
     }
+
     .card {
-      background: #171b23;
-      border: 1px solid #263042;
+      background: var(--nexo-bg-glass);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--nexo-border);
       border-radius: 12px;
       padding: 14px;
+      position: relative;
+      overflow: hidden;
+      transition: border-color .25s ease, transform .25s ease;
     }
+
+    .card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--nexo-accent-blue), transparent);
+    }
+
+    .card:hover {
+      border-color: var(--nexo-border-glow);
+      transform: translateY(-2px);
+    }
+
     .card h3 {
       margin: 0 0 8px;
-      font-size: 0.95rem;
-      color: #9cc8d8;
+      font-size: 0.85rem;
+      font-family: var(--font-body);
+      color: var(--nexo-text-muted);
       font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
     }
+
     .value {
       font-size: 1.3rem;
       font-weight: 700;
       margin-bottom: 6px;
+      font-family: var(--font-display);
     }
+
     .meta {
-      color: #9aa8b7;
+      color: var(--nexo-text-muted);
       font-size: 0.85rem;
       line-height: 1.35;
     }
 
     .panel {
-      background: #171b23;
-      border: 1px solid #263042;
+      background: var(--nexo-bg-glass);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--nexo-border);
       border-radius: 12px;
       padding: 14px;
       margin-bottom: 12px;
     }
+
     .panel h4 {
       margin: 0 0 10px;
-      color: #9cc8d8;
+      color: var(--nexo-accent-cyan);
+      font-family: var(--font-display);
     }
 
     .line {
@@ -88,10 +264,13 @@
       justify-content: space-between;
       gap: 12px;
       padding: 8px 0;
-      border-bottom: 1px solid #222a36;
+      border-bottom: 1px solid var(--nexo-border);
       font-size: 0.92rem;
     }
-    .line:last-child { border-bottom: none; }
+
+    .line:last-child {
+      border-bottom: none;
+    }
 
     .badge {
       padding: 2px 8px;
@@ -99,51 +278,63 @@
       font-size: 0.78rem;
       font-weight: 700;
     }
-    .ok { background: #225e35; color: #b2f0c4; }
-    .warn { background: #6b4a18; color: #ffdca0; }
-    .err { background: #67242b; color: #ffb5bf; }
+
+    .ok {
+      background: rgba(0, 194, 122, 0.15);
+      color: var(--nexo-success);
+      border: 1px solid rgba(0, 194, 122, 0.3);
+    }
+
+    .warn {
+      background: rgba(245, 166, 35, 0.15);
+      color: var(--nexo-warning);
+      border: 1px solid rgba(245, 166, 35, 0.3);
+    }
+
+    .err {
+      background: rgba(224, 58, 74, 0.15);
+      color: var(--nexo-danger);
+      border: 1px solid rgba(224, 58, 74, 0.3);
+    }
 
     pre {
-      background: #0f131a;
-      border: 1px solid #263042;
+      background: var(--nexo-bg-deep);
+      border: 1px solid var(--nexo-border);
       border-radius: 8px;
       padding: 10px;
       overflow: auto;
       max-height: 360px;
       font-size: 0.82rem;
       margin: 0;
+      font-family: var(--font-mono);
     }
-    .small { font-size: 0.8rem; color: #8ea0b2; }
-  </style>
 
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=JetBrains+Mono&display=swap" rel="stylesheet">
-<style>
-  :root {
-    --bg-main: #0a0a0f !important;
-    --bg-sec: #111118 !important;
-    --accent: #6c63ff !important;
-    --accent-2: #00d4ff !important;
-  }
-  body, .dashboard, .main-content {
-    background-color: var(--bg-main) !important;
-    font-family: 'Inter', sans-serif !important;
-  }
-  .card, .feat-card, .sys-panel {
-    background: rgba(255, 255, 255, 0.05) !important;
-    backdrop-filter: blur(10px) !important;
-    -webkit-backdrop-filter: blur(10px) !important;
-    border: 1px solid rgba(0,212,255,0.1) !important;
-  }
-  h1, h2, h3, .brand {
-    font-family: 'Inter', sans-serif !important;
-  }
-  pre, code, .terminal {
-    font-family: 'JetBrains Mono', monospace !important;
-  }
-</style>
+    .small {
+      font-size: 0.8rem;
+      color: var(--nexo-text-muted);
+    }
+
+    a {
+      color: var(--nexo-accent-cyan);
+    }
+  </style>
 </head>
 
 <body>
+
+  <header class="nexo-header">
+    <div class="nexo-logo">
+      <span class="status-pulse"></span>
+      NEXO <strong>SOBERANO</strong>
+    </div>
+    <div class="system-vitals">
+      <span class="vital" id="backend-status">Backend ●</span>
+      <span class="vital" id="discord-status">Discord ●</span>
+      <span class="vital" id="docker-status">Docker ●</span>
+    </div>
+    <div class="system-clock" id="clock"></div>
+  </header>
+
   <div class="container">
     <div class="topbar">
       <div>
@@ -260,7 +451,37 @@
     </div>
   </div>
 
+  <footer class="nexo-footer">
+    El Anarcocapital v3.0.0 · Sistema Operativo · © 2026 Camilo Estefano
+  </footer>
+
   <script>
+    function startNexoClock() {
+      const el = document.getElementById('clock');
+      if (!el) return;
+      const tick = () => el.textContent = new Date()
+        .toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+      tick(); setInterval(tick, 1000);
+    }
+    function setStatus(name, state) {
+      const el = document.getElementById(name + '-status');
+      if (!el) return;
+      el.style.color = ({ ok: '#00C27A', warn: '#F5A623', error: '#E03A4A', loading: '#6B7A9A' })[state] || '#6B7A9A';
+    }
+    function startHealthPolling() {
+      const poll = async () => {
+        try {
+          const r = await fetch('http://localhost:8000/api/health', { signal: AbortSignal.timeout(4000) });
+          const d = await r.json();
+          setStatus('backend', d.status === 'ok' ? 'ok' : 'warn');
+          setStatus('discord', d.discord ? 'ok' : 'warn');
+          setStatus('docker', d.docker ? 'ok' : 'warn');
+        } catch { setStatus('backend', 'error'); }
+      };
+      poll(); setInterval(poll, 15000);
+    }
+    startNexoClock(); startHealthPolling();
+
     const qs = (id) => document.getElementById(id);
     const LOCAL_DEV_DEFAULT_API_KEY = 'NEXO_LOCAL_2026_OK';
 
@@ -294,7 +515,7 @@
       const rows = (labels || []).map((label, idx) => {
         const value = Number(values[idx] || 0);
         const width = Math.max(2, Math.round((value / total) * 100));
-        return `<div class="line"><div style="width:210px">${label}</div><div style="flex:1;background:#101620;border-radius:6px;overflow:hidden;height:12px"><div style="height:12px;width:${width}%;background:#00a8e8"></div></div><div style="width:56px;text-align:right">${value}</div></div>`;
+        return `<div class="line"><div style="width:210px">${label}</div><div style="flex:1;background:#101620;border-radius:6px;overflow:hidden;height:12px"><div style="height:12px;width:${width}%;background:#1E6FFF"></div></div><div style="width:56px;text-align:right">${value}</div></div>`;
       }).join("");
       qs(containerId).innerHTML = `<div class="small" style="margin-bottom:6px">${title}</div>${rows || '<span class="small">Sin datos</span>'}`;
     }
@@ -579,4 +800,5 @@
     setInterval(refreshAll, 10000);
   </script>
 </body>
+
 </html>

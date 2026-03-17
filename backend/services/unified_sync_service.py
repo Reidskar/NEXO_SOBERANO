@@ -13,6 +13,7 @@ import os
 import re
 import time
 import hashlib
+import json
 from pathlib import Path
 from dataclasses import dataclass
 from typing import Dict, List, Optional
@@ -395,7 +396,54 @@ class UnifiedSyncService:
         self._sync_youtube(result, limits, dry_run, youtube_channels=youtube_channels or [])
         result["learning"] = self._build_learning_snapshot(result)
         result["alerts"] = list(self._alerts)
+
+        # Notificación Discord si lote > 5 archivos
+        if not dry_run:
+            self._notify_discord_batch(result)
+
         return result
+
+    def _notify_discord_batch(self, result: Dict) -> None:
+        """Envía reporte a Discord si el lote procesó ≥5 archivos."""
+        try:
+            total = (
+                result.get("google_photos", {}).get("imported", 0)
+                + result.get("google_drive", {}).get("classified", 0)
+                + result.get("onedrive", {}).get("imported", 0)
+                + result.get("youtube", {}).get("processed", 0)
+            )
+            if total < 5:
+                return
+
+            # Contar por categoría semántica
+            from backend.services.semantic_classifier import CATEGORIES
+            categorias: Dict[str, int] = {k: 0 for k in CATEGORIES}
+            for source in ("google_drive", "google_photos", "onedrive"):
+                for item in result.get(source, {}).get("items", []):
+                    cat = item.get("categoria") or item.get("category") or "Archivo_Personal"
+                    if cat in categorias:
+                        categorias[cat] += 1
+
+            cat_lines = "\n".join(
+                f"  • **{k.replace('_', ' ')}**: {v}" for k, v in categorias.items() if v > 0
+            )
+            msg = (
+                f"🗂️ **Refinería procesó {total} archivos**\n"
+                f"{cat_lines or '  • Sin clasificación semántica'}\n\n"
+                f"📦 OneDrive: {result.get('onedrive',{}).get('imported',0)} | "
+                f"Drive: {result.get('google_drive',{}).get('classified',0)} | "
+                f"Photos: {result.get('google_photos',{}).get('imported',0)}"
+            )
+
+            import asyncio
+            from NEXO_CORE.services.discord_manager import discord_manager
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                asyncio.ensure_future(discord_manager.send_message(msg))
+            else:
+                loop.run_until_complete(discord_manager.send_message(msg))
+        except Exception as exc:
+            logger.warning("Discord batch notify falló: %s", exc)
 
     def _sync_youtube(self, result: Dict, limits: SyncLimits, dry_run: bool, youtube_channels: List[str]):
         if not youtube_channels or limits.youtube_per_channel <= 0:
@@ -978,3 +1026,23 @@ def run_unified_sync(*, dry_run: bool = False, photos_limit: int = 20, drive_lim
         retry_backoff_seconds=max(0.1, float(retry_backoff_seconds)),
     )
     return service.sync(limits=limits, dry_run=dry_run, youtube_channels=youtube_channels or [])
+
+
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO, format="%(message)s")
+    result = run_unified_sync()
+    summary = {
+        "google_photos_imported": result.get("google_photos", {}).get("imported", 0),
+        "google_photos_skipped": result.get("google_photos", {}).get("skipped", 0),
+        "google_photos_errors": result.get("google_photos", {}).get("errors", 0),
+        "google_drive_classified": result.get("google_drive", {}).get("classified", 0),
+        "google_drive_skipped": result.get("google_drive", {}).get("skipped", 0),
+        "google_drive_errors": result.get("google_drive", {}).get("errors", 0),
+        "onedrive_imported": result.get("onedrive", {}).get("imported", 0),
+        "onedrive_skipped": result.get("onedrive", {}).get("skipped", 0),
+        "onedrive_errors": result.get("onedrive", {}).get("errors", 0),
+        "youtube_processed": result.get("youtube", {}).get("processed", 0),
+        "youtube_skipped": result.get("youtube", {}).get("skipped", 0),
+        "youtube_errors": result.get("youtube", {}).get("errors", 0),
+    }
+    log.info(json.dumps(summary, ensure_ascii=False))

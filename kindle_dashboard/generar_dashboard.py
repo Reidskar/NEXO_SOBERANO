@@ -94,17 +94,17 @@ def generar_imagen(metricas: dict, agentes: dict) -> Image:
     return img
 
 def main():
-    print("[KINDLE] Obteniendo métricas...")
+    log.info("[KINDLE] Obteniendo métricas...")
     metricas = obtener_metricas()
     agentes  = obtener_agentes()
     
-    print("[KINDLE] Generando imagen...")
+    log.info("[KINDLE] Generando imagen...")
     img = generar_imagen(metricas, agentes)
     
-    print(f"[KINDLE] Guardando en {OUTPUT_PATH}...")
+    log.info(f"[KINDLE] Guardando en {OUTPUT_PATH}...")
     os.makedirs(os.path.dirname(OUTPUT_PATH), exist_ok=True)
     img.save(OUTPUT_PATH, "PNG")
-    print(f"[KINDLE] OK — {WIDTH}x{HEIGHT}px guardado")
+    log.info(f"[KINDLE] OK — {WIDTH}x{HEIGHT}px guardado")
 
 if __name__ == "__main__":
     main()

@@ -1,9 +1,11 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Nexo - Admin Dashboard</title>
+    <link rel="stylesheet" href="/static/nexo_theme.css">
     <style>
         * {
             margin: 0;
@@ -339,8 +341,15 @@
         }
 
         @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.5;
+            }
         }
 
         /* Responsive */
@@ -348,41 +357,57 @@
             .sidebar {
                 display: none;
             }
+
             .main {
                 margin-left: 0;
                 padding: 15px;
             }
+
             .grid {
                 grid-template-columns: 1fr;
             }
         }
     </style>
 
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=JetBrains+Mono&display=swap" rel="stylesheet">
-<style>
-  :root {
-    --bg-main: #0a0a0f !important;
-    --bg-sec: #111118 !important;
-    --accent: #6c63ff !important;
-    --accent-2: #00d4ff !important;
-  }
-  body, .dashboard, .main-content {
-    background-color: var(--bg-main) !important;
-    font-family: 'Inter', sans-serif !important;
-  }
-  .card, .feat-card, .sys-panel {
-    background: rgba(255, 255, 255, 0.05) !important;
-    backdrop-filter: blur(10px) !important;
-    -webkit-backdrop-filter: blur(10px) !important;
-    border: 1px solid rgba(0,212,255,0.1) !important;
-  }
-  h1, h2, h3, .brand {
-    font-family: 'Inter', sans-serif !important;
-  }
-  pre, code, .terminal {
-    font-family: 'JetBrains Mono', monospace !important;
-  }
-</style>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=JetBrains+Mono&display=swap"
+        rel="stylesheet">
+    <style>
+        :root {
+            --bg-main: #0a0a0f !important;
+            --bg-sec: #111118 !important;
+            --accent: #6c63ff !important;
+            --accent-2: #00d4ff !important;
+        }
+
+        body,
+        .dashboard,
+        .main-content {
+            background-color: var(--bg-main) !important;
+            font-family: 'Inter', sans-serif !important;
+        }
+
+        .card,
+        .feat-card,
+        .sys-panel {
+            background: rgba(255, 255, 255, 0.05) !important;
+            backdrop-filter: blur(10px) !important;
+            -webkit-backdrop-filter: blur(10px) !important;
+            border: 1px solid rgba(0, 212, 255, 0.1) !important;
+        }
+
+        h1,
+        h2,
+        h3,
+        .brand {
+            font-family: 'Inter', sans-serif !important;
+        }
+
+        pre,
+        code,
+        .terminal {
+            font-family: 'JetBrains Mono', monospace !important;
+        }
+    </style>
 </head>
 
 <body>
@@ -445,17 +470,23 @@
                     <div class="chart-title">📋 Estado de Queue de Emails</div>
                     <div class="bar">
                         <div class="bar-label">Enviados</div>
-                        <div class="bar-fill"><div class="bar-progress" style="width: 85%;"></div></div>
+                        <div class="bar-fill">
+                            <div class="bar-progress" style="width: 85%;"></div>
+                        </div>
                         <div class="bar-value" id="chartSent">2,134</div>
                     </div>
                     <div class="bar">
                         <div class="bar-label">Pendientes</div>
-                        <div class="bar-fill"><div class="bar-progress" style="width: 12%; background: #f59916;"></div></div>
+                        <div class="bar-fill">
+                            <div class="bar-progress" style="width: 12%; background: #f59916;"></div>
+                        </div>
                         <div class="bar-value" id="chartPending">245</div>
                     </div>
                     <div class="bar">
                         <div class="bar-label">Fallidos</div>
-                        <div class="bar-fill"><div class="bar-progress" style="width: 3%; background: #ef4444;"></div></div>
+                        <div class="bar-fill">
+                            <div class="bar-progress" style="width: 3%; background: #ef4444;"></div>
+                        </div>
                         <div class="bar-value" id="chartFailed">52</div>
                     </div>
                 </div>
@@ -550,22 +581,30 @@
                     <div class="chart-title">📊 Distribución de Estilos de Aprendizaje</div>
                     <div class="bar">
                         <div class="bar-label">Visual</div>
-                        <div class="bar-fill"><div class="bar-progress" style="width: 45%;"></div></div>
+                        <div class="bar-fill">
+                            <div class="bar-progress" style="width: 45%;"></div>
+                        </div>
                         <div class="bar-value">45%</div>
                     </div>
                     <div class="bar">
                         <div class="bar-label">Reading</div>
-                        <div class="bar-fill"><div class="bar-progress" style="width: 30%; background: #10b981;"></div></div>
+                        <div class="bar-fill">
+                            <div class="bar-progress" style="width: 30%; background: #10b981;"></div>
+                        </div>
                         <div class="bar-value">30%</div>
                     </div>
                     <div class="bar">
                         <div class="bar-label">Auditory</div>
-                        <div class="bar-fill"><div class="bar-progress" style="width: 15%; background: #f59916;"></div></div>
+                        <div class="bar-fill">
+                            <div class="bar-progress" style="width: 15%; background: #f59916;"></div>
+                        </div>
                         <div class="bar-value">15%</div>
                     </div>
                     <div class="bar">
                         <div class="bar-label">Kinesthetic</div>
-                        <div class="bar-fill"><div class="bar-progress" style="width: 10%; background: #00a8e8;"></div></div>
+                        <div class="bar-fill">
+                            <div class="bar-progress" style="width: 10%; background: #00a8e8;"></div>
+                        </div>
                         <div class="bar-value">10%</div>
                     </div>
                 </div>
@@ -626,11 +665,13 @@
                 <div class="card" style="max-width: 500px;">
                     <div style="margin-bottom: 20px;">
                         <label style="display: block; margin-bottom: 8px;">SMTP Host</label>
-                        <input type="text" value="smtp.gmail.com" style="width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #334155; background: #0f172a; color: white;">
+                        <input type="text" value="smtp.gmail.com"
+                            style="width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #334155; background: #0f172a; color: white;">
                     </div>
                     <div style="margin-bottom: 20px;">
                         <label style="display: block; margin-bottom: 8px;">SMTP Port</label>
-                        <input type="text" value="587" style="width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #334155; background: #0f172a; color: white;">
+                        <input type="text" value="587"
+                            style="width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #334155; background: #0f172a; color: white;">
                     </div>
                     <button style="width: 100%;">Guardar Configuración</button>
                 </div>
@@ -642,13 +683,13 @@
         function showSection(section) {
             // Hide all sections
             document.querySelectorAll('.section').forEach(s => s.style.display = 'none');
-            
+
             // Hide nav items
             document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-            
+
             // Show selected section
             document.getElementById(section).style.display = 'block';
-            
+
             // Highlight nav
             event.target.classList.add('active');
         }
@@ -692,4 +733,5 @@
         loadStats();
     </script>
 </body>
+
 </html>

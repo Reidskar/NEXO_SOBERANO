@@ -1,5 +1,7 @@
 {
     "recommendations": [
-        "anthropic.claude-code"
+        "anthropic.claude-code",
+        "github.copilot-chat",
+        "ivanarjona.cloudflaretunnel"
     ]
 }

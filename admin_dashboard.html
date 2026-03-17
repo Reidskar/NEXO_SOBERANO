@@ -4,188 +4,265 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Nexo Admin Dashboard</title>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=JetBrains+Mono&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&family=Syne:wght@600;700;800&display=swap" rel="stylesheet">
 <style>
 :root {
-  --bg-main: #0a0a0f;
-  --bg-sec: #111118;
-  --accent: #6c63ff;
-  --accent-2: #00d4ff;
-  --text-main: #e8e8f0;
-  --text-sec: #8888aa;
-  --success: #00ff88;
-  --alert: #ff6b35;
-  --border: #2a2a3e;
+  --nexo-bg-deep:      #080B12;
+  --nexo-bg-surface:   #0D1117;
+  --nexo-bg-elevated:  #131A24;
+  --nexo-bg-glass:     rgba(13, 17, 23, 0.85);
+  --nexo-accent-blue:  #1E6FFF;
+  --nexo-accent-cyan:  #00D4FF;
+  --nexo-accent-gold:  #C9A84C;
+  --nexo-text-primary: #E8EDF5;
+  --nexo-text-muted:   #6B7A9A;
+  --nexo-text-dim:     #3A4258;
+  --nexo-success:      #00C27A;
+  --nexo-warning:      #F5A623;
+  --nexo-danger:       #E03A4A;
+  --nexo-border:       rgba(30, 111, 255, 0.12);
+  --nexo-border-glow:  rgba(30, 111, 255, 0.35);
+  --font-display:      'Syne', sans-serif;
+  --font-body:         'DM Sans', sans-serif;
+  --font-mono:         'Space Mono', monospace;
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
 body {
-  font-family: 'Inter', sans-serif;
+  font-family: var(--font-body);
   font-weight: 400;
   line-height: 1.6;
-  background: var(--bg-main);
-  color: var(--text-main);
+  background: var(--nexo-bg-deep);
+  color: var(--nexo-text-primary);
   overflow-x: hidden;
+  padding-top: 52px;
 }
 
 h1, h2, h3, h4 {
+  font-family: var(--font-display);
   font-weight: 700;
   letter-spacing: -0.02em;
 }
 
-code {
-  font-family: 'JetBrains Mono', monospace;
+code { font-family: var(--font-mono); }
+
+/* HEADER */
+.nexo-header {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: 52px;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+  background: var(--nexo-bg-surface);
+  border-bottom: 1px solid var(--nexo-border);
+  backdrop-filter: blur(12px);
+}
+.nexo-logo {
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--nexo-text-primary);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.status-pulse {
+  width: 8px; height: 8px;
+  background: var(--nexo-success);
+  border-radius: 50%;
+  animation: pulse-dot 2s ease-in-out infinite;
+}
+.system-vitals { display: flex; gap: 16px; align-items: center; }
+.vital {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--nexo-text-muted);
+  letter-spacing: 0.05em;
+}
+.system-clock {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--nexo-accent-cyan);
+  letter-spacing: 0.1em;
 }
 
+/* FOOTER */
+.nexo-footer {
+  padding: 16px 24px;
+  border-top: 1px solid var(--nexo-border);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--nexo-text-dim);
+  letter-spacing: 0.05em;
+  text-align: center;
+  background: var(--nexo-bg-surface);
+}
+
+/* ANIMATIONS */
+@keyframes pulse-dot {
+  0%,100% { opacity:1; box-shadow:0 0 10px var(--nexo-success); }
+  50%      { opacity:.5; box-shadow:0 0 3px var(--nexo-success); }
+}
+@keyframes slide-up {
+  from { opacity:0; transform:translateY(20px); }
+  to   { opacity:1; transform:translateY(0); }
+}
+@keyframes scan {
+  from { transform:translateY(-100%); }
+  to   { transform:translateY(100vh); }
+}
+@keyframes scaleIn {
+  from { transform: scale(0.95); opacity: 0; }
+  to   { transform: scale(1); opacity: 1; }
+}
+
+/* LOGIN */
 .login-container {
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 100vh;
+  min-height: calc(100vh - 52px);
 }
 
 .login-box {
-  background: var(--bg-sec);
+  background: var(--nexo-bg-glass);
+  backdrop-filter: blur(12px);
   padding: 40px;
   border-radius: 12px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--nexo-border);
   box-shadow: 0 10px 40px rgba(0,0,0,0.5);
   width: 100%;
   max-width: 400px;
-  backdrop-filter: blur(10px);
+  position: relative;
+  overflow: hidden;
 }
-
+.login-box::before {
+  content:''; position:absolute; top:0; left:0; right:0; height:1px;
+  background: linear-gradient(90deg, transparent, var(--nexo-accent-blue), transparent);
+}
 .login-box h1 {
   margin-bottom: 30px;
   font-size: 2rem;
-  color: var(--accent);
+  color: var(--nexo-accent-blue);
   text-align: center;
 }
 
-.form-group {
-  margin-bottom: 24px;
-}
-
+.form-group { margin-bottom: 24px; }
 .form-group label {
   display: block;
   margin-bottom: 8px;
-  color: var(--text-sec);
+  color: var(--nexo-text-muted);
   font-size: 0.9rem;
   font-weight: 500;
 }
-
 .form-group input {
   width: 100%;
   padding: 12px;
   background: rgba(255,255,255,0.02);
-  border: 1px solid var(--border);
-  color: var(--text-main);
+  border: 1px solid var(--nexo-border);
+  color: var(--nexo-text-primary);
   border-radius: 8px;
   font-size: 1rem;
+  font-family: var(--font-body);
   transition: all 0.2s ease;
 }
-
 .form-group input:focus {
   outline: none;
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(108, 99, 255, 0.2);
+  border-color: var(--nexo-accent-blue);
+  box-shadow: 0 0 0 3px rgba(30, 111, 255, 0.2);
 }
 
 .btn {
   width: 100%;
   padding: 14px;
-  background: linear-gradient(135deg, var(--accent) 0%, #5149df 100%);
+  background: linear-gradient(135deg, var(--nexo-accent-blue), #1558d6);
   color: #fff;
   border: none;
   border-radius: 8px;
   font-size: 1rem;
   font-weight: 700;
+  font-family: var(--font-body);
   cursor: pointer;
   transition: all 0.2s ease;
-  box-shadow: 0 4px 15px rgba(108, 99, 255, 0.3);
+  box-shadow: 0 4px 15px rgba(30, 111, 255, 0.3);
 }
-
 .btn:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(108, 99, 255, 0.4);
+  box-shadow: 0 6px 20px rgba(30, 111, 255, 0.4);
 }
 
 .error {
-  background: rgba(255, 107, 53, 0.1);
-  color: var(--alert);
+  background: rgba(224, 58, 74, 0.1);
+  color: var(--nexo-danger);
   padding: 12px;
   border-radius: 8px;
   margin-bottom: 20px;
-  border: 1px solid var(--alert);
+  border: 1px solid var(--nexo-danger);
   display: none;
   font-weight: 500;
 }
 
 /* DASHBOARD LAYOUT */
-.dashboard {
-  display: none;
-  min-height: 100vh;
-}
+.dashboard { display: none; min-height: calc(100vh - 52px); }
 
 .layout-wrapper {
   display: flex;
-  min-height: 100vh;
+  min-height: calc(100vh - 52px);
 }
 
 .sidebar {
   width: 250px;
-  background: var(--bg-sec);
-  border-right: 1px solid var(--border);
+  background: var(--nexo-bg-surface);
+  border-right: 1px solid var(--nexo-border);
   padding: 24px;
   display: flex;
   flex-direction: column;
 }
-
 .sidebar .brand {
+  font-family: var(--font-display);
   font-size: 1.5rem;
   font-weight: 700;
-  color: var(--accent);
+  color: var(--nexo-accent-blue);
   margin-bottom: 40px;
   display: flex;
   align-items: center;
   gap: 10px;
 }
-
 .sidebar nav a {
   display: block;
   padding: 12px 16px;
-  color: var(--text-sec);
+  color: var(--nexo-text-muted);
   text-decoration: none;
   border-radius: 8px;
   margin-bottom: 8px;
   transition: all 0.2s ease;
   font-weight: 500;
 }
-
 .sidebar nav a:hover, .sidebar nav a.active {
-  background: rgba(108, 99, 255, 0.1);
-  color: var(--accent);
+  background: rgba(30, 111, 255, 0.1);
+  color: var(--nexo-accent-blue);
 }
 
-.main-content {
-  flex: 1;
-  padding: 32px;
-  overflow-y: auto;
-}
+.main-content { flex: 1; padding: 32px; overflow-y: auto; }
 
 .navbar {
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-bottom: 32px;
-  background: rgba(255,255,255,0.02);
+  background: var(--nexo-bg-glass);
   padding: 16px 24px;
   border-radius: 12px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--nexo-border);
   backdrop-filter: blur(10px);
 }
-
 .navbar .status-indicator {
   display: flex;
   align-items: center;
@@ -193,28 +270,26 @@ code {
   font-size: 0.9rem;
   font-weight: 500;
 }
-
 .navbar .status-dot {
-  width: 10px;
-  height: 10px;
-  background: var(--success);
+  width: 10px; height: 10px;
+  background: var(--nexo-success);
   border-radius: 50%;
-  box-shadow: 0 0 10px var(--success);
+  box-shadow: 0 0 10px var(--nexo-success);
+  animation: pulse-dot 2s ease-in-out infinite;
 }
-
 .navbar button {
   background: rgba(255,255,255,0.05);
-  border: 1px solid var(--border);
-  color: var(--text-main);
+  border: 1px solid var(--nexo-border);
+  color: var(--nexo-text-primary);
   padding: 8px 16px;
   border-radius: 6px;
   cursor: pointer;
   transition: all 0.2s ease;
+  font-family: var(--font-body);
 }
-
 .navbar button:hover {
   background: rgba(255,255,255,0.1);
-  border-color: var(--text-sec);
+  border-color: var(--nexo-text-muted);
 }
 
 .grid {
@@ -225,79 +300,71 @@ code {
 }
 
 .card {
-  background: rgba(255, 255, 255, 0.05);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  background: var(--nexo-bg-glass);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   padding: 24px;
-  border-radius: 16px;
-  border: 1px solid var(--border);
-  border-left: 4px solid var(--accent);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  border-radius: 12px;
+  border: 1px solid var(--nexo-border);
+  border-left: 4px solid var(--nexo-accent-blue);
+  position: relative;
+  overflow: hidden;
+  transition: transform .25s ease, border-color .25s ease;
 }
-
-.card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(0,0,0,0.2);
+.card::before {
+  content:''; position:absolute; top:0; left:0; right:0; height:1px;
+  background: linear-gradient(90deg, transparent, var(--nexo-accent-blue), transparent);
 }
+.card:hover { transform: translateY(-2px); border-color: var(--nexo-border-glow); }
 
-.card h3 { 
-  color: var(--text-sec); 
+.card h3 {
+  color: var(--nexo-text-muted);
   font-size: 0.9rem;
+  font-family: var(--font-body);
   font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  margin-bottom: 8px; 
+  margin-bottom: 8px;
 }
-.card-value { 
-  font-size: 2.5rem; 
-  font-weight: 700; 
-  color: var(--text-main);
-  margin: 10px 0; 
+.card-value {
+  font-size: 2.5rem;
+  font-weight: 700;
+  font-family: var(--font-display);
+  color: var(--nexo-text-primary);
+  margin: 10px 0;
   animation: scaleIn 0.3s ease-out;
 }
-.card-meta { color: var(--accent-2); font-size: 0.9rem; font-weight: 500; }
+.card-meta { color: var(--nexo-accent-cyan); font-size: 0.9rem; font-weight: 500; }
 
 .table-container {
-  background: rgba(255, 255, 255, 0.02);
-  border-radius: 16px;
+  background: var(--nexo-bg-glass);
+  backdrop-filter: blur(12px);
+  border-radius: 12px;
   padding: 24px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--nexo-border);
   overflow-x: auto;
 }
-
 .table-container h3 {
   font-size: 1.25rem;
-  color: var(--text-main);
+  font-family: var(--font-display);
+  color: var(--nexo-text-primary);
   margin-bottom: 20px;
 }
-
-.table-container table {
-  width: 100%;
-  border-collapse: separate;
-  border-spacing: 0;
-}
-
+.table-container table { width: 100%; border-collapse: separate; border-spacing: 0; }
 .table-container th, .table-container td {
   padding: 16px;
   text-align: left;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--nexo-border);
 }
-
 .table-container th {
-  color: var(--text-sec);
+  color: var(--nexo-text-muted);
   font-weight: 500;
   font-size: 0.85rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
-
-.table-container tr {
-  transition: background 0.2s ease;
-}
-
-.table-container tbody tr:hover {
-  background: rgba(255, 255, 255, 0.03);
-}
+.table-container tr { transition: background 0.2s ease; }
+.table-container tbody tr:hover { background: rgba(30, 111, 255, 0.04); }
 
 .status-badge {
   display: inline-block;
@@ -307,31 +374,74 @@ code {
   font-weight: 600;
   letter-spacing: 0.02em;
 }
+.status-active {
+  background: rgba(0, 194, 122, 0.1);
+  color: var(--nexo-success);
+  border: 1px solid rgba(0, 194, 122, 0.2);
+}
+.status-inactive {
+  background: rgba(224, 58, 74, 0.1);
+  color: var(--nexo-danger);
+  border: 1px solid rgba(224, 58, 74, 0.2);
+}
 
-.status-active { 
-  background: rgba(0, 255, 136, 0.1); 
-  color: var(--success);
-  border: 1px solid rgba(0, 255, 136, 0.2);
+/* MODAL */
+.modal {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.7);
+  z-index: 10000;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(4px);
 }
-.status-inactive { 
-  background: rgba(255, 107, 53, 0.1); 
-  color: var(--alert); 
-  border: 1px solid rgba(255, 107, 53, 0.2);
+.modal.show { display: flex; }
+.modal-content {
+  background: var(--nexo-bg-elevated);
+  border: 1px solid var(--nexo-border-glow);
+  border-radius: 12px;
+  padding: 32px;
+  width: 100%;
+  max-width: 440px;
+  position: relative;
 }
-
-@keyframes scaleIn {
-  from { transform: scale(0.95); opacity: 0; }
-  to { transform: scale(1); opacity: 1; }
+.modal-content h2 {
+  font-family: var(--font-display);
+  color: var(--nexo-text-primary);
+  margin-bottom: 24px;
 }
+.close-modal {
+  position: absolute;
+  top: 16px; right: 20px;
+  font-size: 1.5rem;
+  cursor: pointer;
+  color: var(--nexo-text-muted);
+  line-height: 1;
+}
+.close-modal:hover { color: var(--nexo-text-primary); }
 
 @media (max-width: 768px) {
   .layout-wrapper { flex-direction: column; }
-  .sidebar { width: 100%; border-right: none; border-bottom: 1px solid var(--border); padding: 16px; }
+  .sidebar { width: 100%; border-right: none; border-bottom: 1px solid var(--nexo-border); padding: 16px; }
   .main-content { padding: 16px; }
 }
 </style>
 </head>
 <body>
+
+<header class="nexo-header">
+  <div class="nexo-logo">
+    <span class="status-pulse"></span>
+    NEXO <strong>SOBERANO</strong>
+  </div>
+  <div class="system-vitals">
+    <span class="vital" id="backend-status">Backend ●</span>
+    <span class="vital" id="discord-status">Discord ●</span>
+    <span class="vital" id="docker-status">Docker ●</span>
+  </div>
+  <div class="system-clock" id="clock"></div>
+</header>
 
 <!-- LOGIN -->
 <div class="login-container" id="login-view">
@@ -460,7 +570,37 @@ code {
   </div>
 </div>
 
+<footer class="nexo-footer">
+  NEXO SOBERANO v3.0.0 · Sistema Operativo · © 2026 Camilo Estefano
+</footer>
+
 <script>
+function startNexoClock() {
+  const el = document.getElementById('clock');
+  if (!el) return;
+  const tick = () => el.textContent = new Date()
+    .toLocaleTimeString('es-CL', {hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false});
+  tick(); setInterval(tick, 1000);
+}
+function setStatus(name, state) {
+  const el = document.getElementById(name+'-status');
+  if (!el) return;
+  el.style.color = ({ok:'#00C27A',warn:'#F5A623',error:'#E03A4A',loading:'#6B7A9A'})[state]||'#6B7A9A';
+}
+function startHealthPolling() {
+  const poll = async () => {
+    try {
+      const r = await fetch('http://localhost:8000/api/health', {signal:AbortSignal.timeout(4000)});
+      const d = await r.json();
+      setStatus('backend', d.status==='ok'?'ok':'warn');
+      setStatus('discord', d.discord?'ok':'warn');
+      setStatus('docker',  d.docker ?'ok':'warn');
+    } catch { setStatus('backend','error'); }
+  };
+  poll(); setInterval(poll, 15000);
+}
+startNexoClock(); startHealthPolling();
+
 const API_URL = window.location.origin;
 let token = localStorage.getItem("auth_token");
 

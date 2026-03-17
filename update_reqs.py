@@ -51,4 +51,4 @@ for p_key, p_val in pin_packages.items():
 with open('requirements.txt', 'w') as f:
     f.writelines(new_lines)
 
-print("requirements.txt updated successfully")
+log.info("requirements.txt updated successfully")

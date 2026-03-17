@@ -3,13 +3,14 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="description" content="NEXO SOBERANO — Orquestador de inteligencia híbrida soberana. RAG vectorial, agentes móviles, automatización n8n.">
-<meta property="og:title" content="NEXO SOBERANO — Sistema Operativo de Inteligencia">
+<meta name="description" content="El Anarcocapital — Orquestador de inteligencia híbrida soberana. RAG vectorial, agentes móviles, automatización n8n.">
+<meta property="og:title" content="El Anarcocapital — Sistema Operativo de Inteligencia">
 <meta property="og:description" content="Tu infraestructura. Tu memoria. Tu soberanía.">
 <meta property="og:type" content="website">
-<title>NEXO SOBERANO — Sistema Operativo de Inteligencia</title>
+<title>El Anarcocapital — Sistema Operativo de Inteligencia</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&family=Syne:wght@600;700;800&display=swap" rel="stylesheet">
 <style>
 :root {
   --cyan: #00e5ff;
@@ -226,34 +227,76 @@ footer{padding:40px 48px;border-top:1px solid var(--border);display:flex;align-i
 }
 </style>
 
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=JetBrains+Mono&display=swap" rel="stylesheet">
 <style>
+  /* ── NEXO SOVEREIGN INTELLIGENCE — COLOR BRIDGE ── */
   :root {
-    --bg-main: #0a0a0f !important;
-    --bg-sec: #111118 !important;
-    --accent: #6c63ff !important;
-    --accent-2: #00d4ff !important;
+    --cyan: #00D4FF; --purple: #1E6FFF; --bg: #080B12; --bg2: #0D1117;
+    --bg3: #131A24; --surface: rgba(13,17,23,0.85);
+    --border: rgba(30,111,255,0.12); --border-hi: rgba(30,111,255,0.35);
+    --text: #E8EDF5; --muted: #6B7A9A; --dim: #3A4258;
+    --green: #00C27A; --amber: #F5A623; --red: #E03A4A;
+    --font-display:'Syne',sans-serif; --font-body:'DM Sans',sans-serif;
+    --font-mono:'Space Mono',monospace;
   }
-  body, .dashboard, .main-content {
-    background-color: var(--bg-main) !important;
-    font-family: 'Inter', sans-serif !important;
+  nav { top: 52px !important; }
+
+  /* NEXO GLOBAL HEADER */
+  .nexo-header {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    height: 52px;
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 24px;
+    background: rgba(13,17,23,0.95);
+    border-bottom: 1px solid rgba(30,111,255,0.12);
+    backdrop-filter: blur(12px);
   }
-  .card, .feat-card, .sys-panel {
-    background: rgba(255, 255, 255, 0.05) !important;
-    backdrop-filter: blur(10px) !important;
-    -webkit-backdrop-filter: blur(10px) !important;
-    border: 1px solid rgba(0,212,255,0.1) !important;
+  .nexo-logo {
+    font-family: 'Syne', sans-serif;
+    font-size: 14px; font-weight: 700;
+    color: #E8EDF5;
+    letter-spacing: 0.1em; text-transform: uppercase;
+    display: flex; align-items: center; gap: 10px;
   }
-  h1, h2, h3, .brand {
-    font-family: 'Inter', sans-serif !important;
+  .status-pulse {
+    width: 8px; height: 8px;
+    background: #00C27A; border-radius: 50%;
+    animation: pulse-dot 2s ease-in-out infinite;
   }
-  pre, code, .terminal {
-    font-family: 'JetBrains Mono', monospace !important;
+  .system-vitals { display: flex; gap: 16px; align-items: center; }
+  .vital { font-family: 'Space Mono', monospace; font-size: 11px; color: #6B7A9A; letter-spacing: 0.05em; }
+  .system-clock { font-family: 'Space Mono', monospace; font-size: 12px; color: #00D4FF; letter-spacing: 0.1em; }
+
+  /* NEXO FOOTER */
+  .nexo-footer {
+    padding: 16px 24px;
+    border-top: 1px solid rgba(30,111,255,0.12);
+    font-family: 'Space Mono', monospace;
+    font-size: 11px; color: #3A4258;
+    letter-spacing: 0.05em; text-align: center;
+    background: rgba(13,17,23,0.95);
+    position: relative; z-index: 2;
   }
 </style>
 </head>
 
 <body>
+
+<header class="nexo-header">
+  <div class="nexo-logo">
+    <span class="status-pulse"></span>
+    NEXO <strong>SOBERANO</strong>
+  </div>
+  <div class="system-vitals">
+    <span class="vital" id="backend-status">Backend ●</span>
+    <span class="vital" id="discord-status">Discord ●</span>
+    <span class="vital" id="docker-status">Docker ●</span>
+  </div>
+  <div class="system-clock" id="clock"></div>
+</header>
 
 <div id="pbar"></div>
 <div id="cur"></div>
@@ -261,7 +304,7 @@ footer{padding:40px 48px;border-top:1px solid var(--border);display:flex;align-i
 
 <!-- NAV -->
 <nav id="nav">
-  <a href="#" class="logo">NEXO SOBERANO</a>
+  <a href="#" class="logo">El Anarcocapital</a>
   <ul class="nav-links">
     <li><a href="#features" data-s="features">Módulos</a></li>
     <li><a href="#arquitectura" data-s="arquitectura">Arquitectura</a></li>
@@ -488,18 +531,38 @@ footer{padding:40px 48px;border-top:1px solid var(--border);display:flex;align-i
   </div>
 </section>
 
-<footer>
-  <div class="ft-logo">NEXO SOBERANO © 2025</div>
-  <ul class="ft-links">
-    <li><a href="http://localhost:8000/api/docs">API Docs</a></li>
-    <li><a href="http://localhost:8000/api/metrics/system">Métricas</a></li>
-    <li><a href="https://github.com/Reidskar/NEXO_SOBERANO">GitHub</a></li>
-    <li><a href="https://railway.app/project/00679a4c-2811-42c8-a0ab-2b8bfade901f">Railway</a></li>
-  </ul>
-  <div class="ft-build">Build <span>7e99d6a</span> · Railway + Supabase + Upstash Redis</div>
-</footer>
+<div class="nexo-footer">
+  El Anarcocapital v3.0.0 · Sistema Operativo · © 2026 Camilo Estefano
+</div>
 
 <script>
+/* ── NEXO SHARED ────────────────────────── */
+function startNexoClock() {
+  const el = document.getElementById('clock');
+  if (!el) return;
+  const tick = () => el.textContent = new Date()
+    .toLocaleTimeString('es-CL', {hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false});
+  tick(); setInterval(tick, 1000);
+}
+function setStatus(name, state) {
+  const el = document.getElementById(name+'-status');
+  if (!el) return;
+  el.style.color = ({ok:'#00C27A',warn:'#F5A623',error:'#E03A4A',loading:'#6B7A9A'})[state]||'#6B7A9A';
+}
+function startHealthPolling() {
+  const poll = async () => {
+    try {
+      const r = await fetch('http://localhost:8000/api/health', {signal:AbortSignal.timeout(4000)});
+      const d = await r.json();
+      setStatus('backend', d.status==='ok'?'ok':'warn');
+      setStatus('discord', d.discord?'ok':'warn');
+      setStatus('docker',  d.docker ?'ok':'warn');
+    } catch { setStatus('backend','error'); }
+  };
+  poll(); setInterval(poll, 15000);
+}
+startNexoClock(); startHealthPolling();
+
 /* ── CURSOR ─────────────────────────────── */
 const cur = document.getElementById('cur');
 const ring = document.getElementById('cur-ring');

@@ -1,0 +1,46 @@
+:root {
+    --bg-deep: #080B12;
+    --bg-surface: #0D1117;
+    --accent-blue: #1E6FFF;
+    --accent-cyan: #00D4FF;
+    --text-main: #E8EDF5;
+    --text-muted: #6B7A9A;
+    --border-glow: rgba(30, 111, 255, 0.12);
+}
+
+body {
+    background-color: var(--bg-deep);
+    color: var(--text-main);
+    font-family: 'Inter', sans-serif;
+}
+
+.nexo-card {
+    background: rgba(13, 17, 23, 0.85);
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--border-glow);
+    border-radius: 8px;
+}
+
+.status-pulse {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    background-color: #00C27A;
+    border-radius: 50%;
+    box-shadow: 0 0 8px #00C27A;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.4;
+    }
+
+    100% {
+        opacity: 1;
+    }
+}

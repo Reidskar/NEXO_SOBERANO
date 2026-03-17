@@ -2,6 +2,8 @@ import os
 from pathlib import Path
 from dataclasses import dataclass
 
+from dotenv import load_dotenv
+
 ROOT_DIR = Path(__file__).parent.parent
 PROJECT_DIR = ROOT_DIR
 NEXO_DIR = PROJECT_DIR / "NEXO_SOBERANO"
@@ -10,6 +12,8 @@ CHROMA_DIR = NEXO_DIR / "memoria_vectorial"
 DOCS_DIR = PROJECT_DIR / "documentos"
 BITACORA = NEXO_DIR / "bitacora" / "evolucion.md"
 ENV_FILE = PROJECT_DIR / ".env"
+
+load_dotenv(ENV_FILE)
 
 NEXO_MODE = os.getenv("NEXO_MODE", "local").lower()
 IS_PRODUCTION = NEXO_MODE == "railway"
@@ -23,15 +27,25 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
 MODELO_FLASH = os.getenv("GEMINI_MODEL_FLASH", "gemini-2.5-flash-lite")
 MODELO_PRO = os.getenv("GEMINI_MODEL_PRO", "gemini-2.5-pro")
+CLAUDE_MODEL = os.getenv("CLAUDE_MODEL", "claude-sonnet-4-6")
+LLM_PROVIDER = os.getenv("NEXO_LLM_PROVIDER", "auto")
 
 OWNER_DISPLAY_NAME = os.getenv("NEXO_OWNER_NAME", "Soberano")
 
 UPSTASH_REDIS_URL = os.getenv("UPSTASH_REDIS_URL", "")
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN", "")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
+OPENAI_BASE_URL = os.getenv("OPENAI_BASE_URL", "")
+OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+XAI_API_KEY = os.getenv("XAI_API_KEY", "")
+XAI_API_URL = os.getenv("XAI_API_URL", "https://api.x.ai/v1/chat/completions")
+XAI_MODEL = os.getenv("XAI_MODEL", "grok-beta")
+MAX_TOKENS_DIA = int(os.getenv("NEXO_MAX_TOKENS_DIA", "900000"))
 
 EMBED_LOCAL = "all-MiniLM-L6-v2"
 EMBED_GEMINI = "models/embedding-001"
 TOP_K = 5
+RELEVANCE_THRESHOLD = float(os.getenv("NEXO_RAG_RELEVANCE_THRESHOLD", "1.2"))
 
 @dataclass
 class Config:
@@ -66,7 +80,7 @@ class Config:
         faltantes = [k for k, v in required.items() if not v]
         if faltantes:
             # En local solo loggeamos, en prod podría ser crítico
-            print(f"[WARN] Variables faltantes: {faltantes}")
+            log.info(f"[WARN] Variables faltantes: {faltantes}")
         return True
 
 config = Config()

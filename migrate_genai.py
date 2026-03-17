@@ -16,6 +16,6 @@ for path, subdirs, files in os.walk(root):
                     new_content = content.replace('from google import genai', 'from google import genai')
                     with open(filepath, 'w', encoding='utf-8') as f:
                         f.write(new_content)
-                    print(f"Migrated import in: {filepath}")
+                    log.info(f"Migrated import in: {filepath}")
             except Exception as e:
-                print(f"Error processing {filepath}: {e}")
+                log.info(f"Error processing {filepath}: {e}")

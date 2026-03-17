@@ -1,14 +1,20 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>NEXO SOBERANO — War Room v2</title>
+    <link rel="stylesheet" href="/static/nexo_theme.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&family=Syne:wght@600;700;800&display=swap"
+        rel="stylesheet">
     <style>
         /* ════════════════════════════════════════════════════════════ */
-        /* RESET & VARIABLES */
+        /* NEXO SOVEREIGN INTELLIGENCE — WARROOM v2 UNIFIED THEME     */
         /* ════════════════════════════════════════════════════════════ */
-        
+
         * {
             margin: 0;
             padding: 0;
@@ -16,23 +22,41 @@
         }
 
         :root {
-            --bg-primary: #0a0e27;
-            --bg-secondary: #16213e;
-            --bg-tertiary: #1a2847;
-            --accent-cyan: #00d9ff;
-            --accent-purple: #b026ff;
-            --accent-red: #ff4444;
-            --accent-green: #00ff88;
-            --text-primary: #e0e0e0;
-            --text-secondary: #a0a0a0;
-            --border-color: #2a3f5f;
-            --glow-strength: 0.8;
+            --nexo-bg-deep: #080B12;
+            --nexo-bg-surface: #0D1117;
+            --nexo-bg-elevated: #131A24;
+            --nexo-bg-glass: rgba(13, 17, 23, 0.85);
+            --nexo-accent-blue: #1E6FFF;
+            --nexo-accent-cyan: #00D4FF;
+            --nexo-accent-gold: #C9A84C;
+            --nexo-text-primary: #E8EDF5;
+            --nexo-text-muted: #6B7A9A;
+            --nexo-text-dim: #3A4258;
+            --nexo-success: #00C27A;
+            --nexo-warning: #F5A623;
+            --nexo-danger: #E03A4A;
+            --nexo-border: rgba(30, 111, 255, 0.12);
+            --nexo-border-glow: rgba(30, 111, 255, 0.35);
+            --font-display: 'Syne', sans-serif;
+            --font-body: 'DM Sans', sans-serif;
+            --font-mono: 'Space Mono', monospace;
+            /* legacy compat */
+            --bg-primary: var(--nexo-bg-deep);
+            --bg-secondary: var(--nexo-bg-surface);
+            --bg-tertiary: var(--nexo-bg-elevated);
+            --accent-cyan: var(--nexo-accent-cyan);
+            --accent-purple: var(--nexo-accent-blue);
+            --accent-red: var(--nexo-danger);
+            --accent-green: var(--nexo-success);
+            --text-primary: var(--nexo-text-primary);
+            --text-secondary: var(--nexo-text-muted);
+            --border-color: var(--nexo-border);
         }
 
         body {
-            font-family: "Courier New", monospace;
-            background: linear-gradient(135deg, #0a0e27 0%, #16213e 50%, #0a0e27 100%);
-            color: var(--text-primary);
+            font-family: var(--font-body);
+            background: var(--nexo-bg-deep);
+            color: var(--nexo-text-primary);
             overflow: hidden;
             user-select: none;
         }
@@ -48,15 +72,9 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: repeating-linear-gradient(
-                0deg,
-                rgba(0, 0, 0, 0.15),
-                rgba(0, 0, 0, 0.15) 1px,
-                transparent 1px,
-                transparent 2px
-            );
+            background: repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.08), rgba(0, 0, 0, 0.08) 1px, transparent 1px, transparent 2px);
             pointer-events: none;
-            z-index: 9999;
+            z-index: 0;
         }
 
         /* ════════════════════════════════════════════════════════════ */
@@ -68,50 +86,61 @@
             flex-direction: column;
             height: 100vh;
             width: 100%;
-            background: var(--bg-primary);
+            background: var(--nexo-bg-deep);
         }
 
         .header-warroom {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 12px 20px;
-            background: linear-gradient(90deg, #0a0e27 0%, #16213e 50%, #0a0e27 100%);
-            border-bottom: 2px solid var(--accent-cyan);
-            box-shadow: 0 0 20px rgba(0, 217, 255, 0.3), inset 0 1px 0 rgba(0, 217, 255, 0.1);
+            padding: 0 24px;
+            height: 52px;
+            background: var(--nexo-bg-surface);
+            border-bottom: 1px solid var(--nexo-border);
+            backdrop-filter: blur(12px);
             position: relative;
-            overflow: hidden;
-        }
-
-        .header-warroom::after {
-            content: "";
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(0, 217, 255, 0.1), transparent);
-            animation: scanline-header 3s infinite;
-            pointer-events: none;
-        }
-
-        @keyframes scanline-header {
-            0% { left: -100%; }
-            100% { left: 100%; }
+            z-index: 100;
         }
 
         .logo {
-            font-size: 16px;
-            font-weight: bold;
-            color: var(--accent-cyan);
-            text-shadow: 0 0 10px var(--accent-cyan), 0 0 20px rgba(0, 217, 255, 0.5);
-            letter-spacing: 2px;
+            font-family: var(--font-display);
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--nexo-text-primary);
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            display: flex;
+            align-items: center;
+            gap: 10px;
             z-index: 10;
+        }
+
+        .logo::before {
+            content: '';
+            width: 8px;
+            height: 8px;
+            background: var(--nexo-success);
+            border-radius: 50%;
+            animation: pulse-dot 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse-dot {
+
+            0%,
+            100% {
+                opacity: 1;
+                box-shadow: 0 0 10px var(--nexo-success);
+            }
+
+            50% {
+                opacity: .5;
+                box-shadow: 0 0 3px var(--nexo-success);
+            }
         }
 
         .header-stats {
             display: flex;
-            gap: 30px;
+            gap: 12px;
             align-items: center;
             z-index: 10;
         }
@@ -120,38 +149,47 @@
             display: flex;
             align-items: center;
             gap: 8px;
-            padding: 4px 10px;
-            background: rgba(0, 217, 255, 0.05);
-            border: 1px solid rgba(0, 217, 255, 0.2);
-            border-radius: 3px;
+            padding: 6px 12px;
+            background: var(--nexo-bg-glass);
+            border: 1px solid var(--nexo-border);
+            border-radius: 8px;
         }
 
         .stat-label {
-            font-size: 11px;
-            color: var(--text-secondary);
+            font-family: var(--font-mono);
+            font-size: 10px;
+            color: var(--nexo-text-muted);
             text-transform: uppercase;
-            letter-spacing: 1px;
+            letter-spacing: 0.08em;
         }
 
         .stat-value {
-            font-size: 14px;
-            color: var(--accent-cyan);
+            font-family: var(--font-mono);
+            font-size: 13px;
+            color: var(--nexo-accent-cyan);
             font-weight: bold;
             min-width: 50px;
         }
 
         .stat-value.high {
-            color: var(--accent-red);
+            color: var(--nexo-danger);
             animation: pulse-red 1.5s infinite;
         }
 
         @keyframes pulse-red {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.6; }
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.6;
+            }
         }
 
         .stat-value.ok {
-            color: var(--accent-green);
+            color: var(--nexo-success);
         }
 
         /* ════════════════════════════════════════════════════════════ */
@@ -167,41 +205,42 @@
 
         .tabs-header {
             display: flex;
-            gap: 2px;
-            padding: 8px 20px;
-            background: rgba(0, 0, 0, 0.3);
-            border-bottom: 1px solid var(--border-color);
+            gap: 8px;
+            padding: 10px 24px;
+            background: var(--nexo-bg-surface);
+            border-bottom: 1px solid var(--nexo-border);
             z-index: 100;
         }
 
         .tab-button {
-            padding: 6px 16px;
-            background: rgba(0, 217, 255, 0.05);
-            border: 1px solid rgba(0, 217, 255, 0.2);
-            color: var(--text-secondary);
+            padding: 8px 16px;
+            background: var(--nexo-bg-glass);
+            border: 1px solid var(--nexo-border);
+            color: var(--nexo-text-muted);
             cursor: pointer;
             transition: all 0.2s;
-            font-family: "Courier New", monospace;
-            font-size: 12px;
-            letter-spacing: 1px;
-            text-transform: uppercase;
+            font-family: var(--font-body);
+            font-size: 13px;
+            letter-spacing: 0.02em;
+            border-radius: 8px;
         }
 
         .tab-button:hover {
-            background: rgba(0, 217, 255, 0.15);
-            color: var(--accent-cyan);
+            background: rgba(30, 111, 255, 0.1);
+            color: var(--nexo-accent-cyan);
+            border-color: var(--nexo-border-glow);
         }
 
         .tab-button.active {
-            background: linear-gradient(135deg, rgba(0, 217, 255, 0.3), rgba(176, 38, 255, 0.2));
-            border-color: var(--accent-cyan);
-            color: var(--accent-cyan);
-            box-shadow: 0 0 10px rgba(0, 217, 255, 0.4), inset 0 1px 0 rgba(0, 217, 255, 0.2);
+            background: rgba(30, 111, 255, 0.15);
+            border-color: var(--nexo-accent-blue);
+            color: var(--nexo-accent-cyan);
         }
 
         .tabs-content {
             flex: 1;
             overflow: hidden;
+            background: var(--nexo-bg-deep);
         }
 
         .tab-panel {
@@ -230,8 +269,10 @@
             flex: 1;
             overflow-y: auto;
             padding: 15px;
-            background: linear-gradient(135deg, rgba(10, 14, 39, 0.9), rgba(22, 33, 62, 0.9));
-            border: 1px solid var(--border-color);
+            background: var(--nexo-bg-surface);
+            border: 1px solid var(--nexo-border);
+            border-radius: 8px;
+            margin: 12px 16px 0;
         }
 
         .message {
@@ -242,8 +283,15 @@
         }
 
         @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
 
         .message.user {
@@ -260,21 +308,21 @@
         }
 
         .message.assistant .message-bubble {
-            background: rgba(0, 217, 255, 0.1);
-            border: 1px solid rgba(0, 217, 255, 0.3);
-            color: var(--text-primary);
+            background: var(--nexo-bg-elevated);
+            border: 1px solid var(--nexo-border);
+            color: var(--nexo-text-primary);
         }
 
         .message.user .message-bubble {
-            background: rgba(176, 38, 255, 0.15);
-            border: 1px solid rgba(176, 38, 255, 0.4);
-            color: var(--text-primary);
+            background: rgba(30, 111, 255, 0.15);
+            border: 1px solid var(--nexo-border-glow);
+            color: var(--nexo-text-primary);
         }
 
         .message.system .message-bubble {
-            background: rgba(255, 68, 68, 0.1);
-            border: 1px solid rgba(255, 68, 68, 0.3);
-            color: var(--accent-red);
+            background: rgba(224, 58, 74, 0.1);
+            border: 1px solid rgba(224, 58, 74, 0.3);
+            color: var(--nexo-danger);
             max-width: 90%;
         }
 
@@ -293,52 +341,49 @@
         .chat-input-area {
             display: flex;
             gap: 8px;
-            padding: 15px;
-            background: rgba(0, 0, 0, 0.2);
-            border-top: 1px solid var(--border-color);
+            padding: 12px 16px;
+            background: var(--nexo-bg-deep);
+            border-top: 1px solid var(--nexo-border);
         }
 
         .chat-input {
             flex: 1;
-            padding: 8px 12px;
-            background: rgba(0, 217, 255, 0.05);
-            border: 1px solid rgba(0, 217, 255, 0.3);
-            color: var(--text-primary);
-            font-family: "Courier New", monospace;
-            font-size: 12px;
-            border-radius: 3px;
+            padding: 10px 14px;
+            background: var(--nexo-bg-surface);
+            border: 1px solid var(--nexo-border);
+            color: var(--nexo-text-primary);
+            font-family: var(--font-body);
+            font-size: 13px;
+            border-radius: 8px;
             transition: all 0.2s;
         }
 
         .chat-input:focus {
             outline: none;
-            background: rgba(0, 217, 255, 0.1);
-            box-shadow: 0 0 10px rgba(0, 217, 255, 0.2);
-            border-color: var(--accent-cyan);
+            border-color: var(--nexo-accent-blue);
+            box-shadow: 0 0 0 3px rgba(30, 111, 255, 0.15);
         }
 
         .chat-input::placeholder {
-            color: var(--text-secondary);
+            color: var(--nexo-text-dim);
         }
 
         .send-button {
-            padding: 8px 16px;
-            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-purple));
-            border: 1px solid var(--accent-cyan);
-            color: var(--bg-primary);
+            padding: 10px 20px;
+            background: var(--nexo-accent-blue);
+            border: none;
+            color: #fff;
             cursor: pointer;
-            font-family: "Courier New", monospace;
-            font-size: 12px;
-            font-weight: bold;
-            border-radius: 3px;
+            font-family: var(--font-body);
+            font-size: 13px;
+            font-weight: 600;
+            border-radius: 8px;
             transition: all 0.2s;
-            text-transform: uppercase;
-            letter-spacing: 1px;
         }
 
         .send-button:hover {
-            box-shadow: 0 0 20px rgba(0, 217, 255, 0.5);
-            transform: scale(1.02);
+            background: #1560e8;
+            transform: translateY(-1px);
         }
 
         .send-button:active {
@@ -367,58 +412,66 @@
         }
 
         .stat-card {
-            background: linear-gradient(135deg, rgba(0, 217, 255, 0.1), rgba(176, 38, 255, 0.05));
-            border: 1px solid var(--border-color);
-            border-radius: 3px;
-            padding: 15px;
+            background: var(--nexo-bg-glass);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--nexo-border);
+            border-radius: 12px;
+            padding: 16px;
             position: relative;
             overflow: hidden;
+            transition: border-color .25s ease, transform .25s ease;
         }
 
         .stat-card::before {
-            content: "";
+            content: '';
             position: absolute;
             top: 0;
+            left: 0;
             right: 0;
-            width: 2px;
-            height: 30%;
-            background: linear-gradient(180deg, var(--accent-cyan), transparent);
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--nexo-accent-blue), transparent);
+        }
+
+        .stat-card:hover {
+            border-color: var(--nexo-border-glow);
+            transform: translateY(-2px);
         }
 
         .stat-card-label {
-            font-size: 11px;
-            color: var(--text-secondary);
+            font-family: var(--font-mono);
+            font-size: 10px;
+            color: var(--nexo-text-muted);
             text-transform: uppercase;
-            letter-spacing: 1px;
+            letter-spacing: 0.08em;
             margin-bottom: 8px;
         }
 
         .stat-card-value {
+            font-family: var(--font-display);
             font-size: 24px;
-            color: var(--accent-cyan);
+            color: var(--nexo-accent-cyan);
             font-weight: bold;
             margin-bottom: 4px;
         }
 
         .stat-card-unit {
-            font-size: 10px;
-            color: var(--text-secondary);
+            font-size: 11px;
+            color: var(--nexo-text-dim);
         }
 
         .progress-bar {
             width: 100%;
-            height: 6px;
-            background: rgba(0, 217, 255, 0.2);
-            border-radius: 3px;
+            height: 4px;
+            background: var(--nexo-border);
+            border-radius: 4px;
             margin-top: 10px;
             overflow: hidden;
         }
 
         .progress-fill {
             height: 100%;
-            background: linear-gradient(90deg, var(--accent-cyan), var(--accent-purple));
-            border-radius: 3px;
-            box-shadow: 0 0 8px rgba(0, 217, 255, 0.5);
+            background: linear-gradient(90deg, var(--nexo-accent-blue), var(--nexo-accent-cyan));
+            border-radius: 4px;
             transition: width 0.3s;
         }
 
@@ -431,13 +484,13 @@
         }
 
         .status-indicator.online {
-            background: var(--accent-green);
-            box-shadow: 0 0 8px var(--accent-green);
+            background: var(--nexo-success);
+            box-shadow: 0 0 8px var(--nexo-success);
         }
 
         .status-indicator.offline {
-            background: var(--accent-red);
-            box-shadow: 0 0 8px var(--accent-red);
+            background: var(--nexo-danger);
+            box-shadow: 0 0 8px var(--nexo-danger);
         }
 
         /* ════════════════════════════════════════════════════════════ */
@@ -454,13 +507,13 @@
         }
 
         .drive-title {
+            font-family: var(--font-display);
             font-size: 14px;
-            color: var(--accent-cyan);
-            text-transform: uppercase;
-            letter-spacing: 2px;
+            color: var(--nexo-accent-cyan);
+            letter-spacing: 0.05em;
             margin-bottom: 12px;
             padding-bottom: 8px;
-            border-bottom: 1px solid var(--border-color);
+            border-bottom: 1px solid var(--nexo-border);
         }
 
         .drive-list {
@@ -470,11 +523,11 @@
         }
 
         .drive-item {
-            background: rgba(0, 217, 255, 0.05);
-            border: 1px solid rgba(0, 217, 255, 0.2);
+            background: var(--nexo-bg-glass);
+            border: 1px solid var(--nexo-border);
             padding: 10px 12px;
-            border-radius: 3px;
-            font-size: 12px;
+            border-radius: 8px;
+            font-size: 13px;
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -483,37 +536,36 @@
         }
 
         .drive-item:hover {
-            background: rgba(0, 217, 255, 0.15);
-            border-color: var(--accent-cyan);
+            background: rgba(30, 111, 255, 0.1);
+            border-color: var(--nexo-border-glow);
         }
 
         .drive-item-name {
-            color: var(--text-primary);
+            color: var(--nexo-text-primary);
             flex: 1;
         }
 
         .drive-item-date {
-            color: var(--text-secondary);
-            font-size: 10px;
+            color: var(--nexo-text-muted);
+            font-size: 11px;
+            font-family: var(--font-mono);
         }
 
         .sync-button {
             padding: 8px 16px;
-            background: rgba(0, 255, 136, 0.2);
-            border: 1px solid var(--accent-green);
-            color: var(--accent-green);
+            background: rgba(0, 194, 122, 0.15);
+            border: 1px solid var(--nexo-success);
+            color: var(--nexo-success);
             cursor: pointer;
-            font-family: "Courier New", monospace;
-            font-size: 12px;
-            border-radius: 3px;
+            font-family: var(--font-body);
+            font-size: 13px;
+            font-weight: 600;
+            border-radius: 8px;
             transition: all 0.2s;
-            text-transform: uppercase;
-            letter-spacing: 1px;
         }
 
         .sync-button:hover {
-            background: rgba(0, 255, 136, 0.3);
-            box-shadow: 0 0 15px rgba(0, 255, 136, 0.3);
+            background: rgba(0, 194, 122, 0.25);
         }
 
         /* ════════════════════════════════════════════════════════════ */
@@ -615,7 +667,9 @@
         }
 
         @keyframes spin {
-            to { transform: rotate(360deg); }
+            to {
+                transform: rotate(360deg);
+            }
         }
 
         .typing-indicator {
@@ -640,8 +694,16 @@
         }
 
         @keyframes typing {
-            0%, 60%, 100% { opacity: 0.3; }
-            30% { opacity: 1; }
+
+            0%,
+            60%,
+            100% {
+                opacity: 0.3;
+            }
+
+            30% {
+                opacity: 1;
+            }
         }
 
         /* ════════════════════════════════════════════════════════════ */
@@ -939,35 +1001,54 @@
             vertical-align: middle;
         }
 
-        .chart-dot.tokens { background: #1d4ed8; }
-        .chart-dot.queries { background: #047857; }
+        .chart-dot.tokens {
+            background: #1d4ed8;
+        }
+
+        .chart-dot.queries {
+            background: #047857;
+        }
     </style>
 
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=JetBrains+Mono&display=swap" rel="stylesheet">
-<style>
-  :root {
-    --bg-main: #0a0a0f !important;
-    --bg-sec: #111118 !important;
-    --accent: #6c63ff !important;
-    --accent-2: #00d4ff !important;
-  }
-  body, .dashboard, .main-content {
-    background-color: var(--bg-main) !important;
-    font-family: 'Inter', sans-serif !important;
-  }
-  .card, .feat-card, .sys-panel {
-    background: rgba(255, 255, 255, 0.05) !important;
-    backdrop-filter: blur(10px) !important;
-    -webkit-backdrop-filter: blur(10px) !important;
-    border: 1px solid rgba(0,212,255,0.1) !important;
-  }
-  h1, h2, h3, .brand {
-    font-family: 'Inter', sans-serif !important;
-  }
-  pre, code, .terminal {
-    font-family: 'JetBrains Mono', monospace !important;
-  }
-</style>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=JetBrains+Mono&display=swap"
+        rel="stylesheet">
+    <style>
+        :root {
+            --bg-main: #0a0a0f !important;
+            --bg-sec: #111118 !important;
+            --accent: #6c63ff !important;
+            --accent-2: #00d4ff !important;
+        }
+
+        body,
+        .dashboard,
+        .main-content {
+            background-color: var(--bg-main) !important;
+            font-family: 'Inter', sans-serif !important;
+        }
+
+        .card,
+        .feat-card,
+        .sys-panel {
+            background: rgba(255, 255, 255, 0.05) !important;
+            backdrop-filter: blur(10px) !important;
+            -webkit-backdrop-filter: blur(10px) !important;
+            border: 1px solid rgba(0, 212, 255, 0.1) !important;
+        }
+
+        h1,
+        h2,
+        h3,
+        .brand {
+            font-family: 'Inter', sans-serif !important;
+        }
+
+        pre,
+        code,
+        .terminal {
+            font-family: 'JetBrains Mono', monospace !important;
+        }
+    </style>
 </head>
 
 <body>
@@ -1009,7 +1090,8 @@
                 <div class="tab-panel active" id="chat-panel">
                     <div class="chat-messages" id="chat-messages"></div>
                     <div class="chat-input-area">
-                        <input type="text" class="chat-input" id="chat-input" placeholder="Consulta analítica (ej: ¿qué cambió hoy y por qué importa?)" />
+                        <input type="text" class="chat-input" id="chat-input"
+                            placeholder="Consulta analítica (ej: ¿qué cambió hoy y por qué importa?)" />
                         <button class="send-button" id="send-button">Analizar</button>
                     </div>
                 </div>
@@ -1071,15 +1153,15 @@
                         <div class="setup-step">
                             <div class="setup-step-title">Paso 1: Descargar Credenciales OAuth</div>
                             <div class="setup-step-content">
-                                1. Ve a <strong>Google Cloud Console</strong> (console.cloud.google.com)<br/>
-                                2. Crea un proyecto nuevo<br/>
-                                3. Habilita <strong>Google Drive API</strong><br/>
+                                1. Ve a <strong>Google Cloud Console</strong> (console.cloud.google.com)<br />
+                                2. Crea un proyecto nuevo<br />
+                                3. Habilita <strong>Google Drive API</strong><br />
                                 4. En la sección <em>OAuth consent screen</em>:
                                 <ul>
                                     <li>Selecciona <strong>External</strong> como tipo de usuario.</li>
                                     <li>Agrega tu cuenta de Google como <strong>test user</strong>.</li>
                                 </ul>
-                                Esto permite autorizar la app aun cuando no ha sido verificada por Google<br/>
+                                Esto permite autorizar la app aun cuando no ha sido verificada por Google<br />
                                 5. Descarga el JSON en tu máquina
                             </div>
                         </div>
@@ -1096,7 +1178,8 @@
                                 En terminal, desde la carpeta del proyecto:
                             </div>
                             <div class="code-block">
-                                python -c "from services.connectors.google_connector import authorize_drive; authorize_drive()"
+                                python -c "from services.connectors.google_connector import authorize_drive;
+                                authorize_drive()"
                             </div>
                         </div>
                         <div class="setup-step">
@@ -1107,7 +1190,8 @@
                         </div>
                     </div>
                     <div class="warning-box">
-                        ⚠️ <strong>Seguridad:</strong> Nunca compartas el archivo de credenciales. Están en .gitignore por defecto.
+                        ⚠️ <strong>Seguridad:</strong> Nunca compartas el archivo de credenciales. Están en .gitignore
+                        por defecto.
                     </div>
                 </div>
             </div>
@@ -1173,7 +1257,7 @@
 
         function cambiarTab(e) {
             const tabName = e.target.dataset.tab;
-            
+
             // Actualizar botones
             document.querySelectorAll(".tab-button").forEach(btn => {
                 btn.classList.remove("active");
@@ -1285,7 +1369,7 @@
                 const bubble = el.querySelector(".message-bubble");
                 bubble.textContent = text;
                 estado.mensajes[id].text = text;
-                document.getElementById("chat-messages").scrollTop = 
+                document.getElementById("chat-messages").scrollTop =
                     document.getElementById("chat-messages").scrollHeight;
             }
         }
@@ -1301,9 +1385,9 @@
 
                 // Header stats
                 document.getElementById("rag-status").textContent = data.rag_loaded ? "🟢" : "🔴";
-                document.getElementById("rag-status").className = 
+                document.getElementById("rag-status").className =
                     `stat-value ${data.rag_loaded ? "ok" : "high"}`;
-                
+
                 document.getElementById("doc-count").textContent = data.total_documentos;
 
                 // Presupuesto
@@ -1311,14 +1395,14 @@
                 const usado = presupuesto.tokens_usados_hoy || 0;
                 const limite = presupuesto.limite_diario || 900000;
                 const porcentaje = Math.round((usado / limite) * 100);
-                
+
                 document.getElementById("budget-value").textContent = `${porcentaje}%`;
-                document.getElementById("budget-value").className = 
+                document.getElementById("budget-value").className =
                     `stat-value ${porcentaje > 80 ? "high" : "ok"}`;
-                
-                document.getElementById("tokens-today").textContent = 
+
+                document.getElementById("tokens-today").textContent =
                     `${Math.round(usado / 1000)}K`;
-                
+
                 // Debug: log presupuesto structure
                 console.log("Presupuesto received:", presupuesto);
             } catch (error) {
@@ -1338,18 +1422,18 @@
                 const presupuesto = data.presupuesto || {};
 
                 document.getElementById("stats-docs").textContent = data.total_documentos;
-                
+
                 const chunks = Math.round((data.total_documentos || 0) * 1.5);
                 document.getElementById("stats-chunks").textContent = chunks;
 
                 const usado = presupuesto.tokens_usados_hoy || 0;
                 const limite = presupuesto.limite_diario || 900000;
                 const porcentaje = Math.round((usado / limite) * 100);
-                
+
                 document.getElementById("stats-budget").textContent = `${porcentaje}%`;
                 document.getElementById("progress-fill").style.width = `${Math.min(porcentaje, 100)}%`;
 
-                const velocidad = estado.velocidadPromedio.length > 0 
+                const velocidad = estado.velocidadPromedio.length > 0
                     ? Math.round(estado.velocidadPromedio.reduce((a, b) => a + b) / estado.velocidadPromedio.length)
                     : 0;
                 document.getElementById("stats-speed").textContent = velocidad > 0 ? velocidad : "Sin datos";
@@ -1476,4 +1560,5 @@
         }
     </script>
 </body>
+
 </html>

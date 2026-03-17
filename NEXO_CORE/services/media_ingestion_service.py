@@ -21,7 +21,15 @@ class MediaIngestionService:
                 from faster_whisper import WhisperModel
                 logger.info(f"Cargando modelo Whisper ({self.model_size})...")
                 # Usar CPU por defecto si no hay GPU configurada o disponible de forma sencilla
-                self._model = WhisperModel(self.model_size, device="cpu", compute_type="int8")
+                # Auto-detect GPU (RTX 3060 / CUDA)
+                try:
+                    import torch
+                    _device = "cuda" if torch.cuda.is_available() else "cpu"
+                    _compute = "float16" if _device == "cuda" else "int8"
+                except Exception:
+                    _device, _compute = "cpu", "int8"
+                logger.info(f"Whisper device={_device}, compute={_compute}")
+                self._model = WhisperModel(self.model_size, device=_device, compute_type=_compute)
             except ImportError:
                 logger.warning("faster_whisper no está instalado. El servicio de ingesta multimedia no estará funcional.")
                 raise RuntimeError("El modelo Whisper no está disponible en este entorno.")

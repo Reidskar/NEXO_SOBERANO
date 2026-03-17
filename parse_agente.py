@@ -22,6 +22,6 @@ for node in ast.iter_child_nodes(tree):
         end = node.end_lineno
         
         if is_endpoint:
-            print(f"ENDPOINT: {route} -> func: {node.name} (Lines: {start}-{end})")
+            log.info(f"ENDPOINT: {route} -> func: {node.name} (Lines: {start}-{end})")
         else:
-            print(f"HELPER: func: {node.name} (Lines: {start}-{end})")
+            log.info(f"HELPER: func: {node.name} (Lines: {start}-{end})")

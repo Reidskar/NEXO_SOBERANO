@@ -165,9 +165,9 @@ def loop_heartbeat():
 
 def modo_interactivo():
     """Permite hacer queries al agente desde la terminal Termux."""
-    print("\n=== NEXO MOBILE — Modo Interactivo ===")
-    print(f"Backend: {BACKEND_URL}")
-    print("Escribe 'salir' para terminar, 'metrics' para ver métricas locales\n")
+    log.info("\n=== NEXO MOBILE — Modo Interactivo ===")
+    log.info(f"Backend: {BACKEND_URL}")
+    log.info("Escribe 'salir' para terminar, 'metrics' para ver métricas locales\n")
 
     while True:
         try:
@@ -178,11 +178,11 @@ def modo_interactivo():
                 break
             if query.lower() == "metrics":
                 m = get_device_metrics()
-                print(json.dumps(m, indent=2, ensure_ascii=False))
+                log.info(json.dumps(m, indent=2, ensure_ascii=False))
                 continue
-            print("Consultando...")
+            log.info("Consultando...")
             respuesta = consultar_agente(query)
-            print(f"NEXO: {respuesta}\n")
+            log.info(f"NEXO: {respuesta}\n")
         except KeyboardInterrupt:
             break
 

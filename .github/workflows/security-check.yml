@@ -1,0 +1,25 @@
+name: "Security Status Monitor"
+
+on:
+  workflow_run:
+    workflows: ["CodeQL"]
+    types:
+      - completed
+
+jobs:
+  check-alerts:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Check for Security Alerts
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          alerts=$(gh api repos/${{ github.repository }}/code-scanning/alerts --jq 'map(select(.state == "open" and .rule.severity == "critical")) | length')
+          if [ "$alerts" -gt 0 ]; then
+            echo "🚨 Se detectaron $alerts alertas críticas de seguridad."
+            exit 1
+          else
+            echo "✅ No hay alertas críticas abiertas. La Torre es segura."

@@ -41,7 +41,7 @@ def run_supervisor():
 
             # Leer salida en tiempo real
             for line in process.stdout:
-                print(f"[DISCORD] {line.strip()}")
+                log.info(f"[DISCORD] {line.strip()}")
             
             process.wait()
             rc = process.returncode

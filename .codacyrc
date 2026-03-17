@@ -1,0 +1,9 @@
+{
+    "exclude_paths": [
+        "discord_bot/temp_audio/**",
+        "assets/sounds/**",
+        "**/*.wav",
+        "**/*.mp3",
+        "results.sarif"
+    ]
+}

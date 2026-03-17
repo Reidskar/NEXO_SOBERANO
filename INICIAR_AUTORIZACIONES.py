@@ -44,9 +44,9 @@ TOKEN_FILES = {
 
 def run_authorization():
     """Ejecuta el flujo interactivo de OAuth2 para Google Drive y Photos."""
-    print("\n" + "="*60)
-    print("NEXO SOBERANO — INICIADOR DE AUTORIZACIONES GOOGLE")
-    print("="*60 + "\n")
+    log.info("\n" + "="*60)
+    log.info("NEXO SOBERANO — INICIADOR DE AUTORIZACIONES GOOGLE")
+    log.info("="*60 + "\n")
 
     if not CLIENT_SECRETS_FILE.exists():
         # Intentar buscar en localizaciones comunes
@@ -66,12 +66,12 @@ def run_authorization():
         
         if not found:
             logger.error(f"FATAL: No se encontró '{CLIENT_SECRETS_FILE}'.")
-            print(f"\n[!] ERROR: Coloca el archivo 'credenciales_google.json' de Google Cloud Console")
-            print(f"    en la carpeta '{AUTH_DIR}' y vuelve a ejecutar este script.")
+            log.info(f"\n[!] ERROR: Coloca el archivo 'credenciales_google.json' de Google Cloud Console")
+            log.info(f"    en la carpeta '{AUTH_DIR}' y vuelve a ejecutar este script.")
             return
 
     try:
-        print("[*] Iniciando servidor local para autorización...")
+        log.info("[*] Iniciando servidor local para autorización...")
         flow = InstalledAppFlow.from_client_secrets_file(str(CLIENT_SECRETS_FILE), SCOPES)
         creds = flow.run_local_server(port=0)
 
@@ -82,17 +82,17 @@ def run_authorization():
                 path.write_text(token_json, encoding="utf-8")
                 logger.info(f"Token guardado: {path}")
 
-            print("\n" + "✓"*60)
-            print("¡AUTORIZACIÓN EXITOSA!")
-            print(f"Tokens generados en: {AUTH_DIR}")
-            print("Nexo Soberano ahora tiene acceso a Drive y Photos.")
-            print("✓"*60 + "\n")
+            log.info("\n" + "✓"*60)
+            log.info("¡AUTORIZACIÓN EXITOSA!")
+            log.info(f"Tokens generados en: {AUTH_DIR}")
+            log.info("Nexo Soberano ahora tiene acceso a Drive y Photos.")
+            log.info("✓"*60 + "\n")
         else:
             logger.error("No se recibieron credenciales válidas.")
 
     except Exception as e:
         logger.error(f"Error durante la autorización: {e}")
-        print(f"\n[!] ERROR CRÍTICO: {e}")
+        log.info(f"\n[!] ERROR CRÍTICO: {e}")
 
 if __name__ == "__main__":
     run_authorization()

@@ -1,50 +1,39 @@
-name: "CodeQL Advanced"
+name: "CodeQL"
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [main, master]
   pull_request:
-    branches: [ "main" ]
+    branches: [main, master]
   schedule:
-    - cron: '28 21 * * 3'
+    - cron: '0 3 * * 1' # Lunes a las 03:00 UTC
 
 jobs:
   analyze:
-    name: Analyze (${{ matrix.language }})
-    runs-on: ${{ (matrix.language == 'swift' && 'macos-latest') || 'ubuntu-latest' }}
-    
+    name: Analyze
+    runs-on: ubuntu-latest
+
     permissions:
-      # Permisos necesarios para reportar seguridad
-      security-events: write
-      contents: write
       actions: read
-      packages: read
-      pull-requests: write
+      contents: read
+      security-events: write
 
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - language: actions
-            build-mode: none
-          - language: javascript-typescript
-            build-mode: none
-          - language: python
-            build-mode: none
+        language: [python, javascript]
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@v4
+        uses: github/codeql-action/init@v3
         with:
           languages: ${{ matrix.language }}
-          build-mode: ${{ matrix.build-mode }}
-          # continue-on-error ayuda a que no se detenga por avisos menores
-        continue-on-error: true
+
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@v3
 
       - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v4
-        with:
-          category: "/language:${{matrix.language}}"
+        uses: github/codeql-action/analyze@v3

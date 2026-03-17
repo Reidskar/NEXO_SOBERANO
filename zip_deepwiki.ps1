@@ -1,0 +1,1 @@
+Compress-Archive -Path nexo_soberano.md -DestinationPath nexo_soberano.zip

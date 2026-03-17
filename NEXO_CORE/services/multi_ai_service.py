@@ -83,5 +83,5 @@ def consultar_ia(query: str) -> str:
 if __name__ == "__main__":
     # Test rápido si se ejecuta directamente
     logging.basicConfig(level=logging.INFO)
-    print("Probando Multi-AI Service...")
-    print(consultar_ia("hola, ¿cuál es tu estatus?"))
+    log.info("Probando Multi-AI Service...")
+    log.info(consultar_ia("hola, ¿cuál es tu estatus?"))

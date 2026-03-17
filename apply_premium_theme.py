@@ -72,7 +72,7 @@ def main():
             if process_file(file):
                 modified_files.append(os.path.relpath(file, root_dir))
                 
-    print("ARCHIVOS_MODIFICADOS=" + ",".join(modified_files))
+    log.info("ARCHIVOS_MODIFICADOS=" + ",".join(modified_files))
 
 if __name__ == "__main__":
     main()

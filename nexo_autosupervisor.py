@@ -40,6 +40,24 @@ for stream_name in ("stdout", "stderr"):
 # ─── CONFIGURACIÓN ───────────────────────────────────────────────────────────
 
 BASE_DIR = Path(__file__).parent
+
+
+def _load_env() -> None:
+    """Carga variables de entorno desde .env si no están ya definidas."""
+    env_file = BASE_DIR / ".env"
+    if not env_file.exists():
+        return
+    for raw_line in env_file.read_text(encoding="utf-8", errors="replace").splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        k, v = key.strip(), value.strip()
+        if k and not os.environ.get(k):
+            os.environ[k] = v
+
+
+_load_env()
 LOG_DIR = BASE_DIR / "logs" / "supervisor"
 LOG_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -647,71 +665,208 @@ class NexoSupervisor:
             pass
 
 
-# ─── MEJORA CON IA ──────────────────────────────────────────────────────────
+# ─── MEJORA CON IA (MULTI-MODELO) ───────────────────────────────────────────
 
 class AIImprover:
-    """Usa la API de Anthropic para sugerir mejoras automáticas"""
+    """
+    Análisis multi-IA: usa Gemini Flash para análisis rápido de todos los archivos
+    y Claude Sonnet para análisis profundo de archivos críticos.
+    Genera un consenso final con las recomendaciones más impactantes.
+    """
 
-    def __init__(self, api_key: Optional[str] = None):
-        self.api_key = api_key or os.getenv("ANTHROPIC_API_KEY", "")
-        self.enabled = bool(self.api_key)
-        if not self.enabled:
-            log.warning("AI Improver: ANTHROPIC_API_KEY no configurada — mejoras IA desactivadas")
+    SYSTEM_PROMPT = (
+        "Eres un arquitecto de software senior especializado en Python, seguridad y sistemas distribuidos. "
+        "Analiza issues de código y genera sugerencias CONCRETAS y ACCIONABLES. "
+        "Responde SIEMPRE en español. Sin markdown, solo texto plano."
+    )
 
-    def suggest_improvements(self, metrics: FileMetrics) -> List[str]:
-        """Pide sugerencias de mejora a Claude para un archivo con issues"""
-        if not self.enabled or not metrics.issues:
-            return []
+    def __init__(self):
+        self.anthropic_key = os.getenv("ANTHROPIC_API_KEY", "")
+        self.gemini_key = os.getenv("GEMINI_API_KEY", "")
+        self.has_claude = bool(self.anthropic_key)
+        self.has_gemini = bool(self.gemini_key)
+        self.enabled = self.has_claude or self.has_gemini
 
-        # Solo para archivos con issues altos o críticos
-        serious = [i for i in metrics.issues if i.severity in ("critical", "high", "medium")]
-        if not serious:
-            return []
+        providers = []
+        if self.has_gemini:
+            providers.append("Gemini")
+        if self.has_claude:
+            providers.append("Claude")
+        if self.enabled:
+            log.info(f"AI Improver: activo con {' + '.join(providers)}")
+        else:
+            log.warning("AI Improver: ninguna API key configurada — mejoras IA desactivadas")
 
+    # ── Gemini: análisis rápido ──────────────────────────────────────────────
+
+    def _ask_gemini(self, prompt: str, max_tokens: int = 600) -> str:
+        if not self.has_gemini:
+            return ""
         try:
-            import urllib.request
-            import json as json_mod
+            import urllib.request as _req
+            import json as _j
 
-            issues_text = "\n".join([
-                f"- L{i.line} [{i.severity}] {i.code}: {i.message}"
-                for i in serious[:10]
-            ])
-
-            prompt = f"""Eres un experto en código Python y seguridad.
-Analiza estos issues encontrados en el archivo `{Path(metrics.path).name}`:
-
-{issues_text}
-
-Proporciona sugerencias CONCRETAS y ACCIONABLES para mejorar el código.
-Responde en español, formato lista, máximo 5 sugerencias.
-Sé específico con nombres de funciones/patterns a usar."""
-
-            payload = json_mod.dumps({
-                "model": "claude-haiku-4-5-20251001",
-                "max_tokens": 600,
-                "messages": [{"role": "user", "content": prompt}]
+            payload = _j.dumps({
+                "contents": [{"parts": [{"text": f"{self.SYSTEM_PROMPT}\n\n{prompt}"}]}],
+                "generationConfig": {"maxOutputTokens": max_tokens, "temperature": 0.3},
             }).encode()
 
-            req = urllib.request.Request(
+            model = "gemini-2.5-flash-lite"
+            url = (
+                f"https://generativelanguage.googleapis.com/v1beta/models/"
+                f"{model}:generateContent?key={self.gemini_key}"
+            )
+            req = _req.Request(url, data=payload, headers={"Content-Type": "application/json"})
+            with _req.urlopen(req, timeout=20) as resp:
+                data = _j.loads(resp.read())
+            return (
+                data.get("candidates", [{}])[0]
+                .get("content", {})
+                .get("parts", [{}])[0]
+                .get("text", "")
+                .strip()
+            )
+        except Exception as e:
+            log.debug("Gemini error: %s", e)
+            return ""
+
+    # ── Claude: análisis profundo ────────────────────────────────────────────
+
+    def _ask_claude(self, prompt: str, max_tokens: int = 800) -> str:
+        if not self.has_claude:
+            return ""
+        try:
+            import urllib.request as _req
+            import json as _j
+
+            payload = _j.dumps({
+                "model": "claude-haiku-4-5-20251001",
+                "max_tokens": max_tokens,
+                "system": self.SYSTEM_PROMPT,
+                "messages": [{"role": "user", "content": prompt}],
+            }).encode()
+
+            req = _req.Request(
                 "https://api.anthropic.com/v1/messages",
                 data=payload,
                 headers={
                     "Content-Type": "application/json",
-                    "x-api-key": self.api_key,
-                    "anthropic-version": "2023-06-01"
-                }
+                    "x-api-key": self.anthropic_key,
+                    "anthropic-version": "2023-06-01",
+                },
             )
-            with urllib.request.urlopen(req, timeout=15) as resp:
-                data = json_mod.loads(resp.read())
-                return [data["content"][0]["text"]]
-
+            with _req.urlopen(req, timeout=20) as resp:
+                data = _j.loads(resp.read())
+            return data["content"][0]["text"].strip()
         except Exception as e:
-            log.debug(f"AI Improver error: {e}")
+            log.debug("Claude error: %s", e)
+            return ""
+
+    # ── Prompt builder ───────────────────────────────────────────────────────
+
+    def _build_prompt(self, metrics: FileMetrics, serious: list) -> str:
+        issues_text = "\n".join(
+            f"- L{i.line} [{i.severity}] {i.code}: {i.message}" for i in serious[:10]
+        )
+        return (
+            f"Archivo: `{Path(metrics.path).name}` "
+            f"({metrics.lines} líneas, {metrics.functions} funciones, score={metrics.quality_score:.0f}/100)\n\n"
+            f"Issues detectados:\n{issues_text}\n\n"
+            "Proporciona exactamente 5 sugerencias CONCRETAS y ACCIONABLES para mejorar el código. "
+            "Una por línea. Sé específico: indica función/patrón/módulo a usar."
+        )
+
+    # ── API pública ──────────────────────────────────────────────────────────
+
+    def suggest_improvements(self, metrics: FileMetrics) -> List[str]:
+        """
+        Genera sugerencias de mejora usando multi-IA.
+        - Archivos críticos: consulta ambos modelos y muestra ambas perspectivas.
+        - Archivos normales: solo Gemini (más rápido y económico).
+        """
+        if not self.enabled or not metrics.issues:
             return []
 
+        serious = [i for i in metrics.issues if i.severity in ("critical", "high", "medium")]
+        if not serious:
+            return []
+
+        is_critical = any(i.severity == "critical" for i in serious)
+        prompt = self._build_prompt(metrics, serious)
+        results: List[str] = []
+
+        # Gemini: análisis rápido (siempre que esté disponible)
+        gemini_resp = self._ask_gemini(prompt)
+        if gemini_resp:
+            results.append(f"[Gemini] {gemini_resp}")
+
+        # Claude: solo para archivos críticos o si Gemini no está disponible
+        if is_critical or not gemini_resp:
+            claude_resp = self._ask_claude(prompt)
+            if claude_resp:
+                results.append(f"[Claude] {claude_resp}")
+
+        return results
+
+    def run_consensus_report(self, report: "SupervisorReport", top_metrics: List[FileMetrics]) -> Optional[str]:
+        """
+        Genera un reporte de consenso multi-IA sobre el estado del código.
+        Se llama al final del ciclo --improve con los archivos más problemáticos.
+        """
+        if not self.enabled:
+            return None
+
+        critical_files = [m for m in top_metrics if any(i.severity == "critical" for i in m.issues)][:5]
+        high_files = [m for m in top_metrics if any(i.severity == "high" for i in m.issues)][:5]
+
+        summary = (
+            f"Proyecto: NEXO SOBERANO\n"
+            f"Archivos escaneados: {report.files_scanned}\n"
+            f"Score global: {report.quality_score:.1f}/100\n"
+            f"Issues: {report.critical} críticos, {report.high} altos, {report.medium} medios\n"
+            f"Auto-reparados en este ciclo: {report.auto_fixed}\n\n"
+            f"Archivos críticos:\n" +
+            "\n".join(f"  - {Path(m.path).name} (score={m.quality_score:.0f})" for m in critical_files) +
+            f"\n\nArchivos con issues altos:\n" +
+            "\n".join(f"  - {Path(m.path).name} (score={m.quality_score:.0f})" for m in high_files)
+        )
+
+        consensus_prompt = (
+            f"Estado del sistema NEXO SOBERANO tras escaneo de código:\n\n{summary}\n\n"
+            "Genera un veredicto ejecutivo con:\n"
+            "1) Estado general del sistema (1 párrafo)\n"
+            "2) Top 3 acciones INMEDIATAS (24h)\n"
+            "3) Top 3 mejoras ESTRUCTURALES (1 semana)\n"
+            "4) Riesgo principal identificado"
+        )
+
+        # Gemini: veredicto rápido
+        gemini_verdict = self._ask_gemini(consensus_prompt, max_tokens=800)
+
+        # Claude: veredicto profundo (siempre en consenso final)
+        claude_verdict = self._ask_claude(consensus_prompt, max_tokens=1000)
+
+        if not gemini_verdict and not claude_verdict:
+            return None
+
+        lines = ["=" * 60, "CONSENSO MULTI-IA — NEXO SOBERANO", "=" * 60, ""]
+        if gemini_verdict:
+            lines += ["── GEMINI FLASH ─────────────────────", gemini_verdict, ""]
+        if claude_verdict:
+            lines += ["── CLAUDE HAIKU ─────────────────────", claude_verdict, ""]
+        lines += ["=" * 60]
+
+        consensus_text = "\n".join(lines)
+
+        # Guardar en logs
+        consensus_path = REPORT_DIR / "ai_consensus_last.txt"
+        consensus_path.write_text(consensus_text, encoding="utf-8")
+        log.info(f"Consenso multi-IA guardado: {consensus_path}")
+
+        return consensus_text
+
     def generate_missing_docstrings(self, path: Path) -> int:
-        """Agrega docstrings a funciones que no los tienen"""
-        if not self.enabled or path.suffix != ".py":
+        if path.suffix != ".py":
             return 0
         try:
             source = path.read_text(encoding="utf-8")
@@ -742,7 +897,7 @@ def main():
     parser.add_argument("--scan", action="store_true", help="Escaneo único")
     parser.add_argument("--fix", action="store_true", help="Auto-reparar issues")
     parser.add_argument("--report", action="store_true", help="Mostrar último reporte")
-    parser.add_argument("--improve", action="store_true", help="Ciclo de mejora con IA")
+    parser.add_argument("--improve", action="store_true", help="Ciclo de mejora con IA multi-modelo")
     parser.add_argument("--interval", type=int, default=30, help="Intervalo watch en segundos")
     parser.add_argument("--workers", type=int, default=4, help="Workers paralelos")
     parser.add_argument("--max-files", type=int, default=0, help="Máximo de archivos por escaneo (0=usar env/default)")
@@ -764,15 +919,25 @@ def main():
             log.info("No hay reportes previos. Ejecuta --scan primero.")
     elif args.improve:
         ai = AIImprover()
-        supervisor.scan(auto_fix=True)
-        log.info("🤖 Iniciando ciclo de mejora con IA...")
+        report = supervisor.scan(auto_fix=True)
+        log.info("Iniciando ciclo de mejora con IA multi-modelo (Gemini + Claude)...")
+
+        # Analizar top archivos con más issues
         files = supervisor.collect_files()
-        for f in files[:20]:
-            metrics = supervisor.analyze_file(f)
-            suggestions = ai.suggest_improvements(metrics)
-            if suggestions:
-                log.info(f"\n💡 Sugerencias para {f.name}:\n{suggestions[0]}")
+        all_metrics: List[FileMetrics] = []
+        for f in files[:30]:
+            m = supervisor.analyze_file(f)
+            all_metrics.append(m)
+            suggestions = ai.suggest_improvements(m)
+            for s in suggestions:
+                log.info(f"\nSugerencias para {f.name}:\n{s}")
             ai.generate_missing_docstrings(f)
+
+        # Reporte de consenso final
+        top_problematic = sorted(all_metrics, key=lambda x: x.quality_score)[:10]
+        consensus = ai.run_consensus_report(report, top_problematic)
+        if consensus:
+            log.info(f"\n{consensus}")
     else:
         supervisor.scan(auto_fix=False)
 

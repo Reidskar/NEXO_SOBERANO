@@ -21,7 +21,7 @@ EXCLUIR_DIRS = {'.git', '__pycache__', '.venv', 'venv', 'node_modules', 'exports
 
 def exportar_contexto_maestro():
     """Recorre el proyecto y genera un archivo consolidado para NotebookLM."""
-    print("Iniciando exportacion de contexto maestro...")
+    log.info("Iniciando exportacion de contexto maestro...")
     
     # Asegurar directorios
     EXPORT_DIR.mkdir(exist_ok=True)
@@ -39,7 +39,7 @@ def exportar_contexto_maestro():
     buffer.append("=" * 60 + "\n")
 
     # Recorrido recursivo usando Path.rglob
-    print("Escaneando archivos...")
+    log.info("Escaneando archivos...")
     for file_path in repo_root.rglob("*"):
         # Ignorar directorios excluidos
         if any(part in EXCLUIR_DIRS for part in file_path.parts):
@@ -67,7 +67,7 @@ def exportar_contexto_maestro():
             
             archivos_procesados += 1
             if archivos_procesados % 10 == 0:
-                print(f"   Processed {archivos_procesados} files...")
+                log.info(f"   Processed {archivos_procesados} files...")
         except Exception as e:
             logger.error(f"Error leyendo {file_path}: {e}")
 
@@ -82,11 +82,11 @@ def exportar_contexto_maestro():
     # Sincronizar con Obsidian
     OBSIDIAN_FILE.write_text(final_content, encoding='utf-8')
 
-    print("Exportacion completada!")
-    print(f"   Archivos incluidos: {archivos_procesados}")
-    print(f"   Destino 1: {NOTEBOOKLM_FILE}")
-    print(f"   Destino 2: {CAMILO_FILE}")
-    print(f"   Destino 3: {OBSIDIAN_FILE}")
+    log.info("Exportacion completada!")
+    log.info(f"   Archivos incluidos: {archivos_procesados}")
+    log.info(f"   Destino 1: {NOTEBOOKLM_FILE}")
+    log.info(f"   Destino 2: {CAMILO_FILE}")
+    log.info(f"   Destino 3: {OBSIDIAN_FILE}")
     
     return {
         "ok": True,

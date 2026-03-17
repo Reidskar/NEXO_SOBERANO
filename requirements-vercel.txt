@@ -1,0 +1,8 @@
+fastapi
+uvicorn
+requests
+python-dotenv
+qdrant-client
+discord.py>=2.2.2
+python-telegram-bot
+PyJWT==2.10.1
