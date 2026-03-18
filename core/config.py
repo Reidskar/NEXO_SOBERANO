@@ -12,6 +12,8 @@ class Settings(BaseSettings):
     AZURE_OPENAI_KEY: str = ""
     AZURE_OPENAI_DEPLOYMENT: str = ""
     DISCORD_WEBHOOK_URL: str = ""
+    SUPABASE_WEBHOOK_SECRET: str = "super_secure_nexo_token"
+    VERCEL_DEPLOY_HOOK_URL: str = ""
 
     class Config:
         env_file = ".env"

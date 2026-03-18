@@ -15,3 +15,5 @@ google-api-python-client
 pillow
 celery
 redis
+
+PyNaCl

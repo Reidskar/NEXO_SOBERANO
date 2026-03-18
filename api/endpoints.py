@@ -7,6 +7,8 @@ from core.database import get_db, Document, Event
 from services.document_processor import document_processor
 from datetime import datetime
 import logging
+from api.webhooks.supabase import router as webhook_supabase_router
+from api.webhooks.discord import router as webhook_discord_router
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -26,8 +28,8 @@ async def get_system_config():
 
 @router.post("/ai/control")
 async def control_system_via_ai(payload: NLPControlPayload):
-    from services.ai_controller import ai_controller
-    result = await ai_controller.execute_command(payload.command)
+    from services.ai_controller import nlp_command_controller
+    result = await nlp_command_controller.execute_command(payload.command)
     if result.get("action") == "error":
         raise HTTPException(status_code=500, detail=result.get("error"))
     return result
@@ -55,12 +57,21 @@ async def complete_task(payload: TaskCompletePayload, db: AsyncSession = Depends
         return {"status": "error_logged"}
         
     # Azure AI Analysis con el texto devuelto desde la PC local
-    success, ai_data = await document_processor.analyze_and_save(doc, payload.extracted_text, db)
-    
-    if success:
-        return {"status": "completed"}
-    else:
-        raise HTTPException(status_code=500, detail="AI processing in cloud failed")
+    try:
+        success, ai_data = await document_processor.analyze_and_save(doc, payload.extracted_text, db)
+        
+        if success:
+            return {"status": "completed"}
+        else:
+            raise HTTPException(status_code=500, detail="AI processing in cloud failed")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# ================================
+# REGISTRO DE WEBHOOKS AUTÓNOMOS
+# ================================
+router.include_router(webhook_supabase_router, prefix="/webhooks", tags=["Webhooks"])
+router.include_router(webhook_discord_router, prefix="/webhooks", tags=["Webhooks"])
 
 # ---- ENDPOINTS PÚBLICOS DE DATOS Y FRONTEND (Dashboard MVP) ----
 

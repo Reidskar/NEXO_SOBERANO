@@ -2,13 +2,17 @@ import json
 import logging
 from core.config import settings
 from core.system_config import get_config, update_config
-from core.learning_log import get_recent_changes, log_change
+from core.learning_log import get_recent_changes, log_change, get_recent_epochs
 try:
     from openai import AsyncAzureOpenAI
 except ImportError:
     AsyncAzureOpenAI = None
+from datetime import datetime, timedelta
 
 logger = logging.getLogger(__name__)
+
+# Control Anti-Loop (Cooldown State)
+last_deploy_time = None
 
 class AIReflectionEngine:
     def __init__(self):
@@ -84,8 +88,32 @@ class AIReflectionEngine:
                 logger.warning(f"⚡ [REFLECTION ENGINE] INICIANDO MUTACIÓN EVOLUTIVA AUTÓNOMA.")
                 log_change("ai_reflection_adjustment", current_config, new_config, reason)
                 update_config(new_config)
+                
+                # ⬅️ INYECCIÓN PARA RECONSTRUIR VERCEL Front-end automáticamente
+                self._trigger_vercel_redeploy()
 
         except Exception as e:
             logger.error(f"Error crítico durante la heurística de reflexión: {e}")
+
+    def _trigger_vercel_redeploy(self):
+        global last_deploy_time
+        if last_deploy_time and (datetime.utcnow() - last_deploy_time).seconds < 900:
+            logger.warning("⏳ [VERCEL LIMIT GUARD] Cooldown activo (<15min). Se ignora petición para evitar loop de facturación.")
+            return
+
+        hook_url = getattr(settings, "VERCEL_DEPLOY_HOOK_URL", None)
+        if not hook_url:
+            logger.info("ℹ️ No VERCEL_DEPLOY_HOOK_URL configurado. Frontend de Vercel no recompilará automáticamente.")
+            return
+            
+        try:
+            import urllib.request
+            req = urllib.request.Request(hook_url, method="POST")
+            with urllib.request.urlopen(req) as response:
+                if response.status in (200, 201):
+                    last_deploy_time = datetime.utcnow()
+                    logger.info("🚀 [VERCEL CI/CD] Despliegue automático disparado y registrado en cooldown.")
+        except Exception as e:
+            logger.error(f"Falla notificando a Vercel Webhook: {e}")
 
 reflection_engine = AIReflectionEngine()

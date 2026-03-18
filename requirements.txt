@@ -158,3 +158,4 @@ zipp
 zstandard
 PyMuPDF
 openai
+PyNaCl
