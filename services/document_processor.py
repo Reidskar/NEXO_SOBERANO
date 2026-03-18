@@ -10,6 +10,7 @@ from core.config import settings
 from core.system_config import get_config
 from services.discord_service import discord_service
 from services.video_generator import video_generator
+from services.system_monitor import system_monitor
 try:
     from openai import AsyncAzureOpenAI
 except ImportError:
@@ -75,6 +76,14 @@ class DocumentProcessor:
             doc.impact_level = ai_data['impact_score']
             doc.status = "processed"
             
+            # --- Crecimiento & SEO ---
+            doc.seo_title = ai_data.get('seo_title')
+            doc.meta_description = ai_data.get('meta_description')
+            doc.keywords = ai_data.get('keywords')
+            # Anti-Duplicado (Slug uniqueness)
+            base_slug = ai_data.get('slug', f"report-{doc.id}")
+            doc.slug = f"{base_slug}-{doc.id}"
+            
             new_event = Event(
                 country=ai_data['country'],
                 type=ai_data.get('type', 'generic'),
@@ -106,7 +115,14 @@ class DocumentProcessor:
             doc.last_error = str(e)
             doc.retry_count += 1
             await session.commit()
-            logger.error(f"Error procesando Cloud IA para documento {doc.id}: {e}")
+            
+            # 🚨 Integración de Auto-Supervisión
+            await system_monitor.log_error(
+                module="DocumentProcessor",
+                message=f"external_failure | Falla analizando Doc ID {doc.id}: {e}",
+                severity="HIGH",
+                event_id=f"doc_{doc.id}"
+            )
             return False, {}
 
     async def analyze_with_ai(self, text: str) -> Dict[str, Any]:
@@ -118,7 +134,7 @@ class DocumentProcessor:
         safe_text = text[:max_chars]
         
         prompt = (
-            "You are a geopolitical intelligence analyst. Extract structured data from the following document. "
+            "You are a geopolitical intelligence analyst and SEO growth hacker. Extract structured data from the following document. "
             "Return ONLY a strictly valid JSON dictionary with no markdown formatting.\n"
             "Format:\n"
             "{\n"
@@ -127,7 +143,11 @@ class DocumentProcessor:
             "  \"category\": \"military, economic, or political\",\n"
             "  \"summary\": \"max 300 words\",\n"
             "  \"impact_score\": 5,\n"
-            "  \"confidence_score\": 0.90\n"
+            "  \"confidence_score\": 0.90,\n"
+            "  \"seo_title\": \"catchy viral SEO title max 60 chars\",\n"
+            "  \"meta_description\": \"SEO meta description max 150 chars\",\n"
+            "  \"keywords\": [\"keyword1\", \"keyword2\"],\n"
+            "  \"slug\": \"url-safe-slug-title\"\n"
             "}\n\n"
             f"Document:\n{safe_text}"
         )
@@ -156,7 +176,11 @@ class DocumentProcessor:
                     "summary": data.get("summary", ""),
                     "impact_score": int(data.get("impact_score", 5)),
                     "confidence_score": float(data.get("confidence_score", 0.5)),
-                    "type": "situational_report"
+                    "type": "situational_report",
+                    "seo_title": data.get("seo_title", f"Reporte sobre {data.get('country', 'Global')}"),
+                    "meta_description": data.get("meta_description", ""),
+                    "keywords": ",".join(data.get("keywords", [])),
+                    "slug": data.get("slug", "reporte")
                 }
 
             except json.JSONDecodeError as e:

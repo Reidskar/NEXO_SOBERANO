@@ -9,6 +9,7 @@ from datetime import datetime
 import logging
 from api.webhooks.supabase import router as webhook_supabase_router
 from api.webhooks.discord import router as webhook_discord_router
+from services.analytics_service import analytics_service, TrackEventPayload, EmailSubscribePayload
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -72,6 +73,22 @@ async def complete_task(payload: TaskCompletePayload, db: AsyncSession = Depends
 # ================================
 router.include_router(webhook_supabase_router, prefix="/webhooks", tags=["Webhooks"])
 router.include_router(webhook_discord_router, prefix="/webhooks", tags=["Webhooks"])
+
+@router.post("/analytics/track")
+async def track_frontend_event(payload: TrackEventPayload):
+    """API para recolectar eventos de interacción UX (Time on page, scrolls, clicks)"""
+    success = await analytics_service.track(payload)
+    if not success:
+        raise HTTPException(status_code=500, detail="Analytics Tracking Error")
+    return {"status": "ok"}
+
+@router.post("/email/subscribe")
+async def subscribe_user_email(payload: EmailSubscribePayload):
+    """API Core de Growth - Captura silenciosa de Leads y Newsletters"""
+    res = await analytics_service.subscribe(payload)
+    if res["status"] == "error":
+        raise HTTPException(status_code=500, detail="Internal Error")
+    return res
 
 # ---- ENDPOINTS PÚBLICOS DE DATOS Y FRONTEND (Dashboard MVP) ----
 

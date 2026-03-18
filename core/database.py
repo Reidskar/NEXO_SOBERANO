@@ -43,6 +43,12 @@ class Document(Base):
     distributed_to_web = Column(Boolean, default=False)
     distributed_to_newsletter = Column(Boolean, default=False)
     distribution_timestamp = Column(DateTime, nullable=True)
+    
+    # 📈 SEO & Growth
+    seo_title = Column(String, nullable=True)
+    meta_description = Column(String, nullable=True)
+    keywords = Column(String, nullable=True)
+    slug = Column(String, unique=True, index=True, nullable=True)
 
     events = relationship("Event", back_populates="document")
 
@@ -71,6 +77,33 @@ class MarketData(Base):
     market_name = Column(String, index=True)
     probability = Column(Float)
     volume = Column(Float)
+    timestamp = Column(DateTime)
+
+class AnalyticsEvent(Base):
+    __tablename__ = "analytics_events"
+    id = Column(Integer, primary_key=True, index=True)
+    event_id = Column(String, unique=True, index=True)
+    document_id = Column(Integer, nullable=True, index=True)
+    event_type = Column(String, index=True)
+    metadata_json = Column(Text, nullable=True)
+    timestamp = Column(DateTime)
+
+class Subscriber(Base):
+    __tablename__ = "subscribers"
+    id = Column(Integer, primary_key=True, index=True)
+    email = Column(String, unique=True, index=True)
+    source = Column(String)
+    created_at = Column(DateTime)
+
+class SystemErrorLog(Base):
+    __tablename__ = "system_errors"
+    id = Column(Integer, primary_key=True, index=True)
+    error_id = Column(String, unique=True, index=True)
+    event_id = Column(String, nullable=True)
+    module = Column(String, index=True)
+    error_message = Column(Text)
+    severity = Column(String, default="LOW")
+    resolved = Column(Boolean, default=False)
     timestamp = Column(DateTime)
 
 class User(Base):

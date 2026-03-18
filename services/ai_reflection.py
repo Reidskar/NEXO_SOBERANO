@@ -45,46 +45,55 @@ class AIReflectionEngine:
 
         prompt = (
             "You are the NEXO SOBERANO AI Reflection Engine. You evaluate if the current intelligence system configuration is optimal based on historical execution metrics.\n"
-            "Analyze the latest epoch metrics and decide if the configuration should be kept, reverted, or adjusted to improve performance or accuracy.\n"
-            f"Current Active Configuration:\n{json.dumps(current_config, indent=2)}\n\n"
-            f"Recent Telemetry Metrics:\n{json.dumps(metrics, indent=2)}\n\n"
-            "Strict Rules:\n"
-            "1. You MAY ONLY modify ['video']['style'], ['video']['min_impact_score'], and ['ai']['temperature'].\n"
-            "2. Ensure the structural integrity of the output JSON.\n"
-            "Output strictly JSON:\n"
-            "{\n"
-            "  \"decision\": \"keep\" | \"adjust\",\n"
-            "  \"reason\": \"Explain your highly analytical reason based purely on given metrics\",\n"
-            "  \"suggested_changes\": { \"video\": { \"style\": \"aggressive\" } }\n"
-            "}\n"
-            "If 'keep', leave 'suggested_changes' empty."
-        )
-
         try:
             if not self.client:
                 logger.warning("No Azure OpenAI disponible. Fallback Reflection Engine.")
                 return
 
-            response = await self.client.chat.completions.create(
+            # Recuperación de Memoria Sensitiva + Analíticas
+            docs = get_recent_changes(limit=3)
+            # Todo: Aquí se inyectarían métricas del AnalyticsService en Memoria para Growth Optimization
+            
+            prompt = (
+                "You are the Nexo Soberano Evolutionary Architect. "
+                "Analyze recent error logs, user engagement patterns, and config changes. "
+                "PROPOSE AT MOST ONE (1) CONFIG MUTATION if necessary to improve conversion, SEO reach, or stability. "
+                "Current Config:\n"
+                f"{json.dumps(current_config, indent=2)}\n\n"
+                "Recent Memory:\n"
+                f"{json.dumps(docs, indent=2)}\n\n"
+                "Return ONLY a strictly valid JSON with no markdown:\n"
+                "{\n"
+                "  \"mutate\": true/false,\n"
+                "  \"reason\": \"explanation\",\n"
+                "  \"proposed_config\": { ...full modified config... }\n"
+                "}"
+            )
+
+            response = await asyncio.to_thread(
+                self.client.chat.completions.create,
                 model=settings.AZURE_OPENAI_DEPLOYMENT,
                 messages=[{"role": "user", "content": prompt}],
                 temperature=0.2,
                 response_format={"type": "json_object"}
             )
             
-            evaluation = json.loads(response.choices[0].message.content)
-            decision = evaluation.get("decision", "keep")
-            reason = evaluation.get("reason", "No reason provided")
+            result = json.loads(response.choices[0].message.content)
             
-            logger.info(f"🔍 [REFLECTION ENGINE] Decisión Autónoma: {decision.upper()} | Razonamiento: {reason}")
+            if result.get("mutate") == False:
+                logger.info("ℹ️ Mutación rechazada por la Heurística IA.")
+                return
 
-            if decision == "adjust" and evaluation.get("suggested_changes"):
-                # Shallow Merge dinámico
-                new_config = {**current_config} 
-                for section, values in evaluation["suggested_changes"].items():
-                    if section in new_config and isinstance(values, dict):
-                        new_config[section] = {**new_config[section], **values}
+            if "proposed_config" in result:
+                new_config = result["proposed_config"]
+                reason = result.get("reason", "Evolución autónoma de Growth / Stability")
                 
+                # 🛡️ RESTRICTION SHIELD: MAXIMUM 1 MUTACIÓN & 15m Cooldown Centralizado
+                global last_deploy_time
+                if last_deploy_time and (datetime.utcnow() - last_deploy_time).seconds < 900:
+                    logger.warning("🛡️ [AI REFLECTION] Bloqueado. Máximo 1 mutación cada 15m para proteger estabilidad.")
+                    return
+
                 logger.warning(f"⚡ [REFLECTION ENGINE] INICIANDO MUTACIÓN EVOLUTIVA AUTÓNOMA.")
                 log_change("ai_reflection_adjustment", current_config, new_config, reason)
                 update_config(new_config)
