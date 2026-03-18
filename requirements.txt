@@ -161,3 +161,5 @@ openai
 PyNaCl
 
 supabase
+
+httpx

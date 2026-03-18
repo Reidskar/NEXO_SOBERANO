@@ -76,9 +76,17 @@ async def lifespan(app: FastAPI):
     logger.info("=== NEXO SOBERANO SYSTEM INITIALIZED ===")
     await nexo.init_services()
     await nexo.start_background_tasks()
+    
+    # 🛡️ Iniciar Supervisor Constante
+    from services.connection_supervisor import connection_supervisor
+    bg_task = asyncio.create_task(connection_supervisor.start_monitoring())
+    
     yield
+    
     # Shutdown Events
     logger.info("=== NEXO SOBERANO SYSTEM SHUTTING DOWN ===")
+    connection_supervisor.running = False
+    bg_task.cancel()
     await nexo.shutdown()
 
 app = FastAPI(title="NEXO SOBERANO Main API", lifespan=lifespan)

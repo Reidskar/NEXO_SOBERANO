@@ -10,6 +10,7 @@ import logging
 from api.webhooks.supabase import router as webhook_supabase_router
 from api.webhooks.discord import router as webhook_discord_router
 from services.analytics_service import analytics_service, TrackEventPayload, EmailSubscribePayload
+from services.connection_supervisor import connection_supervisor
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -89,6 +90,11 @@ async def subscribe_user_email(payload: EmailSubscribePayload):
     if res["status"] == "error":
         raise HTTPException(status_code=500, detail="Internal Error")
     return res
+
+@router.get("/system/status")
+async def get_system_health_status():
+    """Retorna la latencia y la salud de la estructura distribuida"""
+    return {"status": "ok", "nodes": connection_supervisor.system_status}
 
 # ---- ENDPOINTS PÚBLICOS DE DATOS Y FRONTEND (Dashboard MVP) ----
 

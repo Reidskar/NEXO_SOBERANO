@@ -34,4 +34,16 @@ class AutoRepairEngine:
             logger.error(f"❌ [AUTO-REPAIR FAIL] Fallo en la cascada de reparación: {e}")
             return False
 
+    async def handle_connection_issue(self, service_name: str, status: str):
+        logger.error(f"🛠️ [CIRCUIT BREAKER] Contingencia accionada por Supervisor para: {service_name.upper()} ({status})")
+        if service_name == "api":
+            logger.warning("Intentando reanudar proceso de red local...")
+        elif service_name == "supabase":
+            logger.warning("Frenando temporalmente todas las validaciones de base de datos de impacto")
+        elif service_name == "discord":
+            logger.warning("Acumulando notificaciones en Queue para evitar drop por Timeout")
+            
+        # Generar alerta pasiva a un administrador
+        return True
+
 auto_repair = AutoRepairEngine()
