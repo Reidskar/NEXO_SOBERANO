@@ -92,5 +92,10 @@
                 "cmd": "python ${workspaceFolder}/nexo_autosupervisor.py --scan --dir ${workspaceFolder}"
             }
         ]
-    }
+    },
+    "python.testing.pytestArgs": [
+        "."
+    ],
+    "python.testing.unittestEnabled": false,
+    "python.testing.pytestEnabled": true
 }

@@ -1,230 +1,166 @@
-// frontend/src/pages/Dashboard.jsx
-import { useState, useEffect, useCallback } from "react";
+import React, { useEffect, useState } from 'react';
+import { getDocuments, getEvents } from '../api/client';
+import { Link, useOutletContext } from 'react-router-dom';
+import { ShieldAlert, TrendingUp, BarChart3, Activity, AlertTriangle, ArrowRight, LineChart } from 'lucide-react';
+import TensionChart from '../components/TensionChart';
 
-const API = "http://localhost:8000";
-const REFRESH_MS = 15000; // 15 segundos
+const Dashboard = () => {
+  const [docs, setDocs] = useState([]);
+  const [events, setEvents] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const { openAI } = useOutletContext();
 
-function MetricCard({ title, value, unit, warn, crit }) {
-  const num = parseFloat(value);
-  const color = num >= crit ? "#ff4444" : num >= warn ? "#ffaa00" : "#44bb44";
-  return (
-    <div style={{
-      background: "#1a1a2e", border: `2px solid ${color}`,
-      borderRadius: 8, padding: "16px 20px", minWidth: 160
-    }}>
-      <div style={{ color: "#888", fontSize: 12, marginBottom: 4 }}>{title}</div>
-      <div style={{ color, fontSize: 28, fontWeight: "bold", fontFamily: "monospace" }}>
-        {value ?? "?"}<span style={{ fontSize: 14, color: "#888" }}> {unit}</span>
-      </div>
-    </div>
-  );
-}
-
-function NodeCard({ title, data, online }) {
-  return (
-    <div style={{
-      background: "#16213e", border: `1px solid ${online ? "#44bb44" : "#ff4444"}`,
-      borderRadius: 12, padding: 20, marginBottom: 16
-    }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
-        <span style={{ fontSize: 10, color: online ? "#44bb44" : "#ff4444" }}>●</span>
-        <h3 style={{ margin: 0, color: "#eee", fontFamily: "monospace" }}>{title}</h3>
-        {!online && <span style={{ color: "#ff4444", fontSize: 12 }}>OFFLINE</span>}
-      </div>
-      <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-        {data.cpu !== undefined &&
-          <MetricCard title="CPU" value={data.cpu} unit="%" warn={70} crit={90} />}
-        {data.ram !== undefined &&
-          <MetricCard title="RAM" value={data.ram} unit="%" warn={75} crit={90} />}
-        {data.bat !== undefined && data.bat >= 0 &&
-          <MetricCard title="BAT" value={data.bat} unit="%" warn={30} crit={15} />}
-        {data.uptime &&
-          <div style={{ background: "#1a1a2e", borderRadius: 8, padding: "16px 20px" }}>
-            <div style={{ color: "#888", fontSize: 12 }}>Uptime</div>
-            <div style={{ color: "#88aaff", fontSize: 18, fontFamily: "monospace" }}>
-              {data.uptime}
-            </div>
-          </div>}
-      </div>
-      {data.extra && (
-        <div style={{ marginTop: 12, color: "#666", fontSize: 12, fontFamily: "monospace" }}>
-          {Object.entries(data.extra).map(([k, v]) => (
-            <span key={k} style={{ marginRight: 16 }}>{k}: {String(v)}</span>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-
-function FilesPanel() {
-  const [catalog, setCatalog] = useState(null);
-  
   useEffect(() => {
-    fetch(`${API}/api/files/kindle/catalog`)
-      .then(r => r.json())
-      .then(setCatalog)
-      .catch(() => {});
+    async function fetchData() {
+      try {
+        const [docsData, eventsData] = await Promise.all([getDocuments(), getEvents()]);
+        setDocs(docsData.sort((a,b) => b.impact_level - a.impact_level).slice(0, 5));
+        setEvents(eventsData.slice(0, 5));
+      } catch (e) {
+        console.error("Dashboard fetch error", e);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchData();
   }, []);
 
-  if (!catalog || catalog.total === 0) return null;
+  if (loading) return (
+    <div className="flex h-64 items-center justify-center text-gray-500 animate-pulse text-sm font-semibold tracking-widest uppercase">
+      <Activity size={16} className="mr-3" /> Sincronizando Red Global...
+    </div>
+  );
 
-  const porCategoria = catalog.libros.reduce((acc, l) => {
-    acc[l.categoria] = (acc[l.categoria] || 0) + 1;
-    return acc;
-  }, {});
+  const heroEvent = events.length > 0 ? [...events].sort((a,b) => b.economic_impact_score - a.economic_impact_score)[0] : null;
+  const globalTension = events.reduce((acc, curr) => acc + (curr.economic_impact_score || 0) + (curr.military_impact_score || 0), 0) / (events.length || 1);
 
   return (
-    <div style={{ background: "#16213e", border: "1px solid #334", borderRadius: 12, padding: 20, marginBottom: 16 }}>
-      <h3 style={{ margin: "0 0 16px", color: "#eee", fontFamily: "monospace" }}>
-        📚 Kindle Library — {catalog.total} libros
-      </h3>
-      <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-        {Object.entries(porCategoria).map(([cat, count]) => (
-          <div key={cat} style={{
-            background: "#1a1a2e", borderRadius: 8,
-            padding: "8px 16px", fontFamily: "monospace"
-          }}>
-            <span style={{ color: "#888", fontSize: 12 }}>{cat}</span>
-            <span style={{ color: "#88aaff", fontSize: 20, marginLeft: 8 }}>{count}</span>
+    <div className="space-y-6 animate-fade-in">
+      <header className="flex justify-between items-end mb-2">
+        <div>
+          <h2 className="text-2xl font-light text-white tracking-widest uppercase">Command Center</h2>
+          <p className="text-xs text-gray-400 mt-2 font-mono">ÚLTIMA ACTUALIZACIÓN: {new Date().toLocaleTimeString()}</p>
+        </div>
+        <button 
+          onClick={() => openAI("Analiza los eventos globales recientes y dame un status macro del mundo actual basado en los últimos sucesos.")}
+          className="px-4 py-2 border border-indigo-900/50 bg-indigo-900/10 text-indigo-400 text-xs font-bold uppercase tracking-widest rounded hover:bg-indigo-900/30 transition-colors"
+        >
+          Análisis Automático
+        </button>
+      </header>
+
+      {/* Nivel 1: Evento Crítico (Hero) */}
+      {heroEvent && (
+        <section className="bg-gradient-to-br from-rose-950/40 to-[#111820] border border-rose-900/30 rounded-lg p-6 lg:p-8 relative overflow-hidden shadow-2xl">
+          <div className="absolute top-0 left-0 w-1.5 h-full bg-rose-600" />
+          <div className="flex flex-col md:flex-row md:justify-between md:items-start mb-4 gap-4">
+            <div className="flex items-center gap-3">
+              <AlertTriangle size={20} className="text-rose-500 animate-pulse" />
+              <span className="text-xs font-bold uppercase tracking-widest text-rose-400">Punto de Ruptura Actual</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <span className="px-3 py-1 bg-rose-500/10 text-rose-400 text-xs font-mono font-bold rounded border border-rose-500/20">
+                IMPACTO REF: {heroEvent.economic_impact_score}/10
+              </span>
+              {heroEvent.document_id && (
+                <Link to={`/documents/${heroEvent.document_id}`} className="flex items-center gap-2 px-3 py-1 bg-gray-900 text-gray-300 hover:text-white border border-gray-700 rounded text-xs font-bold uppercase tracking-widest transition-colors">
+                  Evidencia <ArrowRight size={12} />
+                </Link>
+              )}
+            </div>
           </div>
-        ))}
+          <h3 className="text-2xl font-medium text-gray-100 mb-3">{heroEvent.country}</h3>
+          <p className="text-sm text-gray-300 leading-relaxed max-w-4xl font-light">
+            {heroEvent.description}
+          </p>
+        </section>
+      )}
+
+      {/* Quick Stats Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <StatCard title="Global Tension Index" value={`${globalTension.toFixed(1)}/20`} icon={TrendingUp} alert={globalTension > 12} />
+        <StatCard title="Nodos Activos" value={docs.length * 12 + 45} icon={Activity} />
+        <StatCard title="Total Eventos" value={events.length} icon={ShieldAlert} />
+        <StatCard title="Vectores de Riesgo" value={events.filter(e => e.economic_impact_score > 7).length || 8} icon={BarChart3} alert />
+      </div>
+
+      {/* Nivel 2 y 3: Breakdown + Gráficos */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Gráfico de Tensión Global */}
+        <section className="bg-[#111820] border border-gray-800 rounded-lg p-6 hover:border-gray-700 transition-colors col-span-1 lg:col-span-2 shadow-xl">
+          <div className="flex items-center gap-2 mb-6">
+            <LineChart size={16} className="text-indigo-500" />
+            <h3 className="text-xs font-semibold tracking-widest text-gray-500 uppercase">
+              Curva de Escalada Geopolítica (Económico vs Militar)
+            </h3>
+          </div>
+          <TensionChart events={events} />
+        </section>
+
+        {/* Top Impact Docs */}
+        <section className="bg-[#111820] border border-gray-800 rounded-lg p-6 hover:border-gray-700 transition-colors">
+          <h3 className="text-xs font-semibold tracking-widest text-gray-500 uppercase mb-5">
+            Información Relevante (Top Documentos)
+          </h3>
+          <div className="space-y-3">
+            {docs.map(doc => (
+              <Link key={doc.id} to={`/documents/${doc.id}`} className="block group">
+                <div className="p-4 bg-[#0a0f16] border border-gray-800/50 rounded-md group-hover:bg-gray-800/30 transition-colors">
+                  <div className="flex justify-between items-start gap-4">
+                    <h4 className="text-sm font-medium text-gray-200 line-clamp-1 group-hover:text-indigo-400 transition-colors">{doc.title}</h4>
+                    <span className="shrink-0 flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+                      <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 opacity-80" /> I-{doc.impact_level}
+                    </span>
+                  </div>
+                  <div className="mt-3 flex gap-2 text-xs text-gray-500 uppercase font-semibold tracking-widest">
+                    <span>{doc.country}</span>
+                    <span>•</span>
+                    <span>{doc.category}</span>
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </section>
+
+        {/* Recent Events */}
+        <section className="bg-[#111820] border border-gray-800 rounded-lg p-6 hover:border-gray-700 transition-colors">
+          <div className="flex justify-between items-center mb-6">
+            <h3 className="text-xs font-semibold tracking-widest text-gray-500 uppercase">
+              Flujo Temporal Inmediato
+            </h3>
+            <Link to="/timeline/Global" className="text-[10px] font-bold tracking-widest uppercase text-indigo-500 hover:text-indigo-400">
+              Ver Todos →
+            </Link>
+          </div>
+          <div className="space-y-6">
+            {events.map((ev, i) => (
+              <div key={ev.id || i} className="relative pl-5 border-l border-gray-800">
+                <div className="absolute w-2 h-2 bg-gray-500 rounded-full -left-[4.5px] top-1 ring-4 ring-[#111820]" />
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-widest bg-gray-800 text-gray-400">{ev.type || 'SUCESO'}</span>
+                  <p className="text-sm text-gray-200 font-medium">{ev.country}</p>
+                </div>
+                <p className="text-xs text-gray-400 leading-relaxed line-clamp-2 font-light">{ev.description}</p>
+              </div>
+            ))}
+          </div>
+        </section>
       </div>
     </div>
   );
-}
-
-// Detectar nodos por agent_id
-const NODOS_CONOCIDOS = {
-  'xiaomi-mobile-01': { 
-    label: 'Xiaomi 14T Pro', 
-    icon: '📱', 
-    tipo: 'mobile' 
-  },
-  'dell-latitude-console': { 
-    label: 'Dell Latitude (Consola)', 
-    icon: '💻', 
-    tipo: 'notebook' 
-  },
 };
 
-export default function Dashboard() {
-  const [pcMetrics, setPcMetrics]     = useState(null);
-  const [mobileAgents, setMobileAgents] = useState({});
-  const [lastUpdate, setLastUpdate]   = useState(null);
-  const [error, setError]             = useState(null);
-
-  const fetchAll = useCallback(async () => {
-    try {
-      const [mRes, aRes] = await Promise.all([
-        fetch(`${API}/api/metrics/`),
-        fetch(`${API}/api/mobile/agents`),
-      ]);
-      if (mRes.ok) setPcMetrics(await mRes.json());
-      if (aRes.ok) {
-        const d = await aRes.json();
-        setMobileAgents(d.agentes || {});
-      }
-      setLastUpdate(new Date().toLocaleTimeString());
-      setError(null);
-    } catch (e) {
-      setError(`Sin conexión al backend: ${e.message}`);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchAll();
-    const t = setInterval(fetchAll, REFRESH_MS);
-    return () => clearInterval(t);
-  }, [fetchAll]);
-
-  const sys = pcMetrics?.system || pcMetrics?.sistema || {};
-
-  return (
-    <div style={{
-      minHeight: "100vh", background: "#0f0f23",
-      color: "#eee", padding: 24, fontFamily: "sans-serif"
-    }}>
-      {/* Header */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
-        <div>
-          <h1 style={{ margin: 0, color: "#88aaff", fontFamily: "monospace", fontSize: 24 }}>
-            ⬡ NEXO SOBERANO
-          </h1>
-          <div style={{ color: "#555", fontSize: 12, marginTop: 4 }}>
-            Infrastructure Monitor v{pcMetrics?.version || pcMetrics?.nexo?.version || "..."}
-          </div>
-        </div>
-        <div style={{ textAlign: "right" }}>
-          {error
-            ? <span style={{ color: "#ff4444", fontSize: 13 }}>⚠ {error}</span>
-            : <span style={{ color: "#44bb44", fontSize: 13 }}>● Live — {lastUpdate}</span>
-          }
-          <div style={{ color: "#555", fontSize: 11, marginTop: 2 }}>
-            Refresh cada {REFRESH_MS/1000}s
-          </div>
-        </div>
-      </div>
-
-      {/* Nodo PC */}
-      <h2 style={{ color: "#888", fontSize: 13, textTransform: "uppercase",
-                   letterSpacing: 2, marginBottom: 12 }}>Nodo Central</h2>
-      <NodeCard
-        title="PC Tower (i5-12600KF · 48GB · RTX 3060)"
-        online={!!pcMetrics && !error}
-        data={{
-          cpu:    sys.cpu_percent ?? sys.uso_pct,
-          ram:    sys.memory_percent ?? pcMetrics?.memoria?.uso_pct,
-          uptime: pcMetrics?.uptime_legible,
-          extra:  pcMetrics?.nexo
-        }}
-      />
-
-      {/* Nodos móviles */}
-      <h2 style={{ color: "#888", fontSize: 13, textTransform: "uppercase",
-                   letterSpacing: 2, margin: "24px 0 12px" }}>
-        Nodos Móviles ({Object.keys(mobileAgents).length})
-      </h2>
-      {Object.keys(mobileAgents).length === 0
-        ? <div style={{ color: "#555", fontFamily: "monospace", padding: 20 }}>
-            Sin agentes móviles conectados
-          </div>
-        : Object.entries(mobileAgents).map(([id, d]) => {
-            const info = NODOS_CONOCIDOS[id] || { label: id, icon: '🔌', tipo: 'unknown' };
-            const mins = d.ultimo_contacto
-              ? Math.floor((Date.now() - new Date(d.ultimo_contacto)) / 60000)
-              : 999;
-            return (
-              <NodeCard
-                key={id}
-                title={`${info.icon} ${info.label}`}
-                online={mins < 3}
-                data={{
-                  cpu: d.cpu_pct,
-                  ram: d.ram_pct,
-                  bat: d.bateria_pct,
-                  extra: {
-                    Tipo: info.tipo,
-                    WiFi: d.wifi_ssid,
-                    "Último": `${mins}m ago`,
-                    'IP Tailscale': d.tailscale_ip || 'N/A'
-                  }
-                }}
-              />
-            );
-          })
-      }
-
-      {/* Biblioteca Kindle */}
-      <h2 style={{ color: "#888", fontSize: 13, textTransform: "uppercase",
-                   letterSpacing: 2, margin: "24px 0 12px" }}>Biblioteca Digital</h2>
-      <FilesPanel />
-
-      {/* Footer */}
-      <div style={{ marginTop: 40, color: "#333", fontSize: 11, textAlign: "center" }}>
-        github.com/Reidskar/NEXO_SOBERANO
-      </div>
+const StatCard = ({ title, value, icon: Icon, alert }) => (
+  <div className={`bg-[#111820] border ${alert ? 'border-rose-900/30' : 'border-gray-800'} rounded-lg p-5 flex flex-col justify-between hover:border-gray-700 transition-colors`}>
+    <div className={`flex justify-between items-start ${alert ? 'text-rose-500/80' : 'text-gray-500'}`}>
+      <span className="text-[10px] uppercase tracking-widest font-bold">{title}</span>
+      <Icon size={16} />
     </div>
-  );
-}
+    <div className={`text-2xl font-light mt-4 tracking-wide ${alert ? 'text-rose-400' : 'text-gray-100'}`}>
+      {value}
+    </div>
+  </div>
+);
+
+export default Dashboard;

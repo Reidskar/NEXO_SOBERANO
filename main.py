@@ -1,221 +1,114 @@
-from fastapi import FastAPI
-from contextlib import asynccontextmanager
+import asyncio
+import logging
 import os
-from database import test_connection
-from fastapi.staticfiles import StaticFiles
+from contextlib import asynccontextmanager
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+import uvicorn
+from core.database import check_db_connection
+
+# Logging Profesional
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(name)s - %(message)s"
+)
+logger = logging.getLogger("NexoSystem")
+
+class NexoSystem:
+    """Sistema Orquestador Central controlado por estado"""
+    def __init__(self):
+        self.db = None
+        self.tasks = []
+        self.running = False
+
+    async def init_services(self):
+        logger.info("Inicializando servicios (DB, Drive, AI, Discord)...")
+        try:
+            from core.database import engine, Base
+            async with engine.begin() as conn:
+                await conn.run_sync(Base.metadata.create_all)
+            logger.info("Base de datos inicializada correctamente.")
+        except Exception as e:
+            logger.error(f"Error al inicializar la base de datos: {e}")
+            
+        self.running = True
+
+    async def start_background_tasks(self):
+        logger.info("Lanzando tareas en segundo plano...")
+        # Ejemplo: guardar referencia a la tarea
+        self.tasks.append(asyncio.create_task(self.run_pipeline()))
+
+    async def run_pipeline(self):
+        logger.info("Pipeline background task iniciada. Esperando 10s antes del primer ciclo...")
+        await asyncio.sleep(10) # Dar tiempo a que el sistema suba completamente
+        try:
+            from workers.pipeline import pipeline_orchestrator
+            while self.running:
+                await pipeline_orchestrator.run_cycle()
+                await asyncio.sleep(120)  # Cada 2 minutos
+        except Exception as e:
+            logger.error(f"Error fatal en el loop del orquestador: {e}")
+
+    async def shutdown(self):
+        logger.info("Iniciando apagado controlado...")
+        self.running = False
+        
+        for task in self.tasks:
+            task.cancel()
+            
+        # Esperar a que las tareas se cancelen
+        if self.tasks:
+            await asyncio.gather(*self.tasks, return_exceptions=True)
+            self.tasks.clear()
+            
+        logger.info("Cerrando conexión a base de datos...")
+        try:
+            from core.database import engine
+            await engine.dispose()
+        except Exception as e:
+            logger.error(f"Error al cerrar la base de datos: {e}")
+
+nexo = NexoSystem()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    await test_connection()
+    # Startup Events
+    logger.info("=== NEXO SOBERANO SYSTEM INITIALIZED ===")
+    await nexo.init_services()
+    await nexo.start_background_tasks()
     yield
+    # Shutdown Events
+    logger.info("=== NEXO SOBERANO SYSTEM SHUTTING DOWN ===")
+    await nexo.shutdown()
 
-app = FastAPI(title="NEXO_SOBERANO", lifespan=lifespan)
+app = FastAPI(title="NEXO SOBERANO Main API", lifespan=lifespan)
+
+# CORS PRO-MODE PARA EL FRONTEND
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Restringir en prod a https://elanarcocapital.com
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+try:
+    from api.endpoints import router as endpoint_router
+    app.include_router(endpoint_router, prefix="/api")
+    logger.info("Endpoints API (/api) y Local Queues importados correctamente.")
+except ImportError as e:
+    logger.error(f"Falla importando endpoints de API: {e}")
 
 @app.get("/health")
 async def health():
-    return {"status": "ok", "db": "connected", "project": "NEXO_SOBERANO"}
-
-# Sirve tus HTMLs originales (warroom, control-center, etc.)
-app.mount("/", StaticFiles(directory=".", html=True), name="static")
-
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", 8000)))
-from fastapi.staticfiles import StaticFiles
-# Montar frontend/dist como archivos estáticos
-app.mount("/", StaticFiles(directory="frontend/dist", html=True), name="frontend")
-from __future__ import annotations
-
-import logging
-import uuid
-from pathlib import Path
-
-from fastapi import FastAPI, HTTPException, Request
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
-from starlette.middleware.trustedhost import TrustedHostMiddleware
-from starlette.responses import JSONResponse
-
-from NEXO_CORE import config
-from NEXO_CORE.api.health import router as health_router
-from NEXO_CORE.api.ai import router as ai_router
-from NEXO_CORE.api.knowledge import router as knowledge_router
-from NEXO_CORE.api.legacy import router as legacy_router
-from NEXO_CORE.api.stream import router as stream_router
-from NEXO_CORE.core.errors import register_exception_handlers
-from NEXO_CORE.core.logger import setup_logging
-from NEXO_CORE.middleware.cors import build_cors_options
-from NEXO_CORE.middleware.rate_limit import InMemoryRateLimiter
-from NEXO_CORE.services.discord_manager import discord_manager
-from NEXO_CORE.services.obs_manager import obs_manager
-from NEXO_CORE.agents.discord_supervisor import discord_supervisor
-from NEXO_CORE.agents.web_ai_supervisor import web_ai_supervisor
-
-setup_logging()
-logger = logging.getLogger(__name__)
-
-app = FastAPI(
-    title=config.APP_TITLE,
-    description=config.APP_DESCRIPTION,
-    version=config.APP_VERSION,
-    docs_url="/api/docs",
-    openapi_url="/api/openapi.json",
-)
-
-app.add_middleware(CORSMiddleware, **build_cors_options())
-
-if config.ALLOWED_HOSTS:
-    app.add_middleware(TrustedHostMiddleware, allowed_hosts=config.ALLOWED_HOSTS)
-
-read_limiter = InMemoryRateLimiter(max_requests=config.RATE_LIMIT_READ_PER_MIN, window_seconds=60)
-write_limiter = InMemoryRateLimiter(max_requests=config.RATE_LIMIT_WRITE_PER_MIN, window_seconds=60)
-
-
-@app.middleware("http")
-async def request_context_middleware(request: Request, call_next):
-    path = request.url.path
-    method = request.method.upper()
-    client_ip = request.client.host if request.client else "unknown"
-
-    if method == "OPTIONS":
-        response = await call_next(request)
-        response.headers["X-Request-ID"] = request.headers.get("X-Request-ID", str(uuid.uuid4()))
-        return response
-
-    protected = any(path.startswith(prefix) for prefix in config.PROTECTED_PATH_PREFIXES)
-    if protected and config.NEXO_API_KEY:
-        provided_key = (
-            request.headers.get("X-NEXO-API-KEY", "")
-            or request.headers.get("X-NEXO-KEY", "")
-        )
-        if provided_key != config.NEXO_API_KEY:
-            return JSONResponse(status_code=401, content={"detail": "Unauthorized"})
-
-    if protected:
-        limiter_key = f"{client_ip}:{path}"
-        if method in {"POST", "PUT", "PATCH", "DELETE"}:
-            write_limiter.check(limiter_key)
-        else:
-            read_limiter.check(limiter_key)
-
-    content_length = request.headers.get("content-length")
-    if content_length:
-        try:
-            if int(content_length) > config.REQUEST_MAX_BYTES:
-                return JSONResponse(status_code=413, content={"detail": "Request too large"})
-        except ValueError:
-            return JSONResponse(status_code=400, content={"detail": "Invalid Content-Length"})
-
-    request_id = request.headers.get("X-Request-ID", str(uuid.uuid4()))
-    response = await call_next(request)
-    response.headers["X-Request-ID"] = request_id
-
-    if config.ENABLE_SECURITY_HEADERS:
-        response.headers.setdefault("X-Content-Type-Options", "nosniff")
-        response.headers.setdefault("X-Frame-Options", "DENY")
-        response.headers.setdefault("Referrer-Policy", "no-referrer")
-        response.headers.setdefault("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
-        response.headers.setdefault(
-            "Content-Security-Policy",
-            "default-src 'self'; "
-            "script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; "
-            "style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; "
-            "font-src 'self' https://fonts.gstatic.com data:; "
-            "img-src 'self' data: blob: https:; "
-            "connect-src 'self' http://localhost:8000 http://127.0.0.1:8000 https:; "
-            "frame-ancestors 'none'; base-uri 'self'; object-src 'none'",
-        )
-        response.headers.setdefault("Cache-Control", "no-store")
-        if request.url.scheme == "https":
-            response.headers.setdefault("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
-
-    return response
-
-
-register_exception_handlers(app)
-
-app.include_router(health_router)
-app.include_router(ai_router)
-app.include_router(knowledge_router)
-app.include_router(stream_router)
-app.include_router(legacy_router)
-
-
-def _serve_existing_html(candidates: list[str]):
-    root = Path(__file__).resolve().parent.parent
-    for relative in candidates:
-        target = root / relative
-        if target.exists():
-            return FileResponse(str(target))
-    raise HTTPException(status_code=404, detail="Not Found")
-
-
-@app.get("/")
-async def root():
+    db_status = await check_db_connection()
     return {
-        "status": "NEXO_CORE activo",
-        "version": config.APP_VERSION,
-        "docs": "/api/docs",
-        "control_center": "/control-center",
+        "status": "ok",
+        "db": "connected" if db_status else "error",
+        "system": "running" if nexo.running else "stopped"
     }
 
-
-@app.get("/control-center")
-async def control_center():
-    return _serve_existing_html(["frontend_public/control_center.html"])
-
-
-@app.get("/warroom")
-async def warroom_default_page():
-    return _serve_existing_html([
-        "NEXO_SOBERANO_v3.html",
-        "warroom_v3.html",
-        "warroom_v2.html",
-        "frontend_public/warroom_v2.html",
-    ])
-
-
-@app.get("/warroom_v3.html")
-async def warroom_v3_page():
-    return _serve_existing_html([
-        "NEXO_SOBERANO_v3.html",
-        "warroom_v3.html",
-        "frontend_public/warroom_v3.html",
-    ])
-
-
-@app.get("/warroom_v2.html")
-async def warroom_v2_page():
-    return _serve_existing_html([
-        "warroom_v2.html",
-        "frontend_public/warroom_v2.html",
-    ])
-
-
-@app.get("/admin_dashboard.html")
-async def admin_dashboard_page():
-    return _serve_existing_html([
-        "admin_dashboard.html",
-        "frontend_public/admin_dashboard_v2.html",
-    ])
-
-
-@app.on_event("startup")
-async def startup_event():
-    logger.info("NEXO_CORE startup")
-    obs_manager.start_background_reconnect()
-    discord_supervisor.start()  # Inicia el supervisor inteligente de Discord
-    web_ai_supervisor.start()
-    logger.info("Discord Supervisor activado")
-    logger.info("Web AI Supervisor activado")
-
-
-@app.on_event("shutdown")
-async def shutdown_event():
-    logger.info("NEXO_CORE shutdown")
-    await obs_manager.shutdown()
-    await discord_manager.shutdown()
-    await discord_supervisor.shutdown()
-    await web_ai_supervisor.shutdown()
-    logger.info("Discord Supervisor detenido")
-    logger.info("Web AI Supervisor detenido")
+if __name__ == "__main__":
+    port = int(os.getenv("PORT", 8000))
+    logger.info(f"Arrancando servidor ASGI en puerto {port}")
+    uvicorn.run("main:app", host="0.0.0.0", port=port, reload=True)

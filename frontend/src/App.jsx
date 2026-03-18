@@ -1,21 +1,25 @@
-import Sidebar from "./components/Sidebar";
-import Header from "./components/Header";
-import Dashboard from "./pages/Dashboard";
-import { useState } from "react";
+import React from 'react';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import MainLayout from './layouts/MainLayout';
+import Dashboard from './pages/Dashboard';
+import Documents from './pages/Documents';
+import DocumentDetail from './pages/DocumentDetail';
+import Timeline from './pages/Timeline';
+import SystemControl from './pages/SystemControl';
 
 function App() {
-  const [currentPage, setCurrentPage] = useState("dashboard");
-
   return (
-    <div className="flex h-screen bg-[#0a0a0f] text-white">
-      <Sidebar currentPage={currentPage} setCurrentPage={setCurrentPage} />
-      <div className="flex-1 flex flex-col">
-        <Header />
-        <main className="flex-1 overflow-auto">
-          {currentPage === "dashboard" && <Dashboard />}
-        </main>
-      </div>
-    </div>
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<MainLayout />}>
+          <Route index element={<Dashboard />} />
+          <Route path="documents" element={<Documents />} />
+          <Route path="documents/:id" element={<DocumentDetail />} />
+          <Route path="timeline/:country" element={<Timeline />} />
+          <Route path="control" element={<SystemControl />} />
+        </Route>
+      </Routes>
+    </BrowserRouter>
   );
 }
 

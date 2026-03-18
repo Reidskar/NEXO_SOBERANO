@@ -156,3 +156,5 @@ youtube-transcript-api
 yt-dlp
 zipp
 zstandard
+PyMuPDF
+openai

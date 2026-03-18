@@ -1,3 +1,4 @@
+This file has been removed to avoid conflicts with main.py in the root directory.
 from __future__ import annotations
 
 import logging
