@@ -1,15 +1,13 @@
-"""
-RAG Service — Motor de búsqueda + respuesta IA
-Extrae lógica principal de nexo_v2.py
-"""
+
+# RAG Service — Motor de búsqueda + respuesta IA
+# Extrae lógica principal de nexo_v2.py
 
 import sqlite3
 import time
 import json
 from utils.ai_core import get_logger, get_gemini_embedding_model
-import requests
 from datetime import datetime
-from typing import Optional, List, Dict
+from typing import Optional, List, Dict, Mapping
 from pathlib import Path
 
 import sys
@@ -179,7 +177,7 @@ class RAGService:
 
         # Buscar en ChromaDB
         try:
-            where = None
+            where: Mapping[str, str | int | float | bool] = None
             if categoria:
                 where = {"categoria": categoria}
             n = min(config.TOP_K, col.count())

@@ -32,6 +32,7 @@ def _get_rag_state() -> dict[str, Any]:
                 "rag_loaded": bool(state.get("rag_loaded", False)),
                 "total_documentos": int(state.get("total_documentos", 0) or 0),
                 "total_chunks": int(state.get("total_chunks", 0) or 0),
+                "coleccion_items": int(state.get("coleccion_items", 0) or 0),
                 "checked_at": time.time(),
             }
         else:
