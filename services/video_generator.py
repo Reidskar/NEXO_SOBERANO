@@ -54,6 +54,26 @@ class VideoGenerator:
             success = await self._assemble_video(str(audio_path), str(video_path), script_data)
             
             if success:
+                # 4. Upload a Supabase (CDN) y Limpieza Efímera
+                video_url = None
+                if os.path.exists(video_path):
+                    video_url = await asyncio.to_thread(self._upload_video_sync, str(video_path), document.id)
+                    logger.info("🧹 [VIDEO ENGINE] Limpiando almacenamiento efímero local.")
+                    os.remove(video_path)
+                    if os.path.exists(audio_path):
+                        os.remove(audio_path)
+                
+                # 5. Persistir URL en Database de forma segura
+                if video_url:
+                    from core.database import SessionLocal
+                    async with SessionLocal() as session:
+                        db_doc = await session.get(Document, document.id)
+                        if db_doc:
+                            db_doc.video_url = video_url
+                            db_doc.status = "completed"
+                            await session.commit()
+                            logger.info("💾 [VIDEO ENGINE] Video URL y estado persistido en BD maestra.")
+                            
                 total_time = time.time() - start_time
                 attach_result_metrics({
                     "subsystem": "video_engine",
@@ -61,14 +81,36 @@ class VideoGenerator:
                     "script_length_chars": len(script_data['full_script']),
                     "country_target": country
                 })
-                logger.info(f"🚀 [VIDEO ENGINE] Video exportado exitosamente: {video_path}")
-                # Pipeline de publicación iría aquí (YouTube API, TikTok)
+                logger.info(f"🚀 [VIDEO ENGINE] Video CDN Distribuido Exitosamente: {video_url}")
                 return True
             return False
 
         except Exception as e:
             logger.error(f"❌ Error crítico en Video Generator: {e}")
             return False
+
+    def _upload_video_sync(self, file_path: str, document_id: int):
+        from supabase import create_client
+        if not settings.SUPABASE_URL or not settings.SUPABASE_KEY:
+            logger.error("No hay credenciales Supabase para el upload de CDN.")
+            return None
+            
+        supabase = create_client(settings.SUPABASE_URL, settings.SUPABASE_KEY)
+        bucket = getattr(settings, "SUPABASE_BUCKET", "videos")
+        
+        file_name = f"{document_id}.mp4"
+        with open(file_path, "rb") as f:
+            supabase.storage.from_(bucket).upload(
+                path=file_name,
+                file=f,
+                file_options={
+                    "upsert": True,
+                    "content-type": "video/mp4",
+                    "cache-control": "3600"
+                }
+            )
+        
+        return supabase.storage.from_(bucket).get_public_url(file_name)
 
     async def _generate_script(self, summary: str, country: str):
         if not self.client:

@@ -14,6 +14,10 @@ class Settings(BaseSettings):
     DISCORD_WEBHOOK_URL: str = ""
     SUPABASE_WEBHOOK_SECRET: str = "super_secure_nexo_token"
     VERCEL_DEPLOY_HOOK_URL: str = ""
+    
+    SUPABASE_URL: str = ""
+    SUPABASE_KEY: str = ""
+    SUPABASE_BUCKET: str = "videos"
 
     class Config:
         env_file = ".env"

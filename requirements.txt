@@ -159,3 +159,5 @@ zstandard
 PyMuPDF
 openai
 PyNaCl
+
+supabase

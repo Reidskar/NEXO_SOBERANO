@@ -34,6 +34,7 @@ class Document(Base):
     retry_count = Column(Integer, default=0)
     last_error = Column(Text, nullable=True)
     priority = Column(Integer, default=3, index=True) # 1: Alto, 2: Medio, 3: Normal
+    video_url = Column(String, nullable=True)
     
     events = relationship("Event", back_populates="document")
 
