@@ -6,7 +6,7 @@ Extrae lógica principal de nexo_v2.py
 import sqlite3
 import time
 import json
-import logging
+from utils.ai_core import get_logger, get_gemini_embedding_model
 import requests
 from datetime import datetime
 from typing import Optional, List, Dict
@@ -19,7 +19,7 @@ from backend import config
 from backend.services.cost_manager import get_cost_manager
 from backend.services.unified_cost_tracker import get_cost_tracker
 
-logger = logging.getLogger(__name__)
+logger = get_logger("rag_service")
 
 # ════════════════════════════════════════════════════════════════════
 # INICIALIZACIÓN BD
@@ -70,45 +70,20 @@ ensure_db_schema()
 # EMBEDDINGS
 # ════════════════════════════════════════════════════════════════════
 
-_embed_model = None
-
 def get_embed_model():
-    """Carga modelo de embeddings local (all-MiniLM-L6-v2)"""
-    global _embed_model
-    if _embed_model is None:
-        try:
-            from sentence_transformers import SentenceTransformer
-            _embed_model = SentenceTransformer(config.EMBED_LOCAL)
-            logger.info("✅ Modelo de embeddings local cargado")
-        except ImportError:
-            logger.warning("⚠️ sentence-transformers no disponible, usando Gemini")
-            _embed_model = "gemini"
-    return _embed_model
+    """Carga modelo de embeddings usando Gemini centralizado"""
+    return get_gemini_embedding_model(config.GEMINI_API_KEY)
 
 def generar_embedding(texto: str) -> Optional[List[float]]:
-    """Genera embedding del texto. Prioridad: local → Gemini fallback"""
-    model = get_embed_model()
-
-    if model != "gemini":
-        try:
-            import numpy as np
-            emb = model.encode(texto[:2000])
-            return np.asarray(emb).tolist()
-        except Exception as e:
-            logger.warning(f"Error en embedding local: {e}, intentando Gemini...")
-
-    # Fallback: Gemini
-    if not config.GEMINI_API_KEY:
-        return None
-
+    """Genera embedding del texto usando Gemini centralizado"""
     try:
-        import google.generativeai as genai
-        genai.configure(api_key=config.GEMINI_API_KEY)
-        result = genai.embed_content(
-            model="models/embedding-001",
-            content=texto[:2048]
-        )
-        return result['embedding']
+        model = get_embed_model()
+        response = model.generate_content(texto[:2048])
+        import json
+        try:
+            return json.loads(response.text).get('embedding')
+        except Exception:
+            return None
     except Exception as e:
         logger.error(f"Error en embedding Gemini: {e}")
         return None
@@ -168,7 +143,7 @@ class RAGService:
             {
                 "respuesta": str,
                 "fuentes": List[str],
-                "chunks_usados": int,
+        from utils.ai_core import get_logger, get_gemini_embedding_model
                 "ms": int,
                 "total_docs": int,
                 "presupuesto": {...}
@@ -206,7 +181,7 @@ class RAGService:
         try:
             where = None
             if categoria:
-                where = {"categoria": {"$eq": categoria}}
+                where = {"categoria": categoria}
             n = min(config.TOP_K, col.count())
             res = col.query(
                 query_embeddings=[emb_q],
@@ -337,13 +312,12 @@ Análisis:"""
             try:
                 if item == "anthropic":
                     answer, model = self._gen_anthropic(prompt)
-                elif item == "grok":
-                    answer, model = self._gen_grok(prompt)
-                elif item == "openai":
-                    answer, model = self._gen_openai_or_copilot(prompt)
+                # elif item == "grok":
+                #     answer, model = self._gen_grok(prompt)
+                # elif item == "openai":
+                #     answer, model = self._gen_openai_or_copilot(prompt)
                 else:
                     answer, model = self._gen_gemini(prompt)
-
                 tokens_in = len(prompt) // 4
                 tokens_out = len(answer) // 4
                 self.cost_manager.registrar(model, tokens_in, tokens_out, "rag_consulta")
@@ -367,20 +341,17 @@ Análisis:"""
             model=config.CLAUDE_MODEL,
             max_tokens=1200,
             temperature=0.2,
-            messages=[{"role": "user", "content": prompt}],
         )
-        text = "".join(
-            block.text for block in getattr(resp, "content", []) if getattr(block, "type", "") == "text"
-        ).strip()
+        text = (resp.text or "").strip()
         if not text:
-            raise RuntimeError("Claude no devolvió texto")
+            raise RuntimeError("Anthropic no devolvió texto")
         
         # Track costs
         try:
             usage = getattr(resp, "usage", None)
             if usage:
-                tokens_in = getattr(usage, "input_tokens", 0)
-                tokens_out = getattr(usage, "output_tokens", 0)
+                tokens_in = getattr(usage, "prompt_tokens", 0)
+                tokens_out = getattr(usage, "completion_tokens", 0)
                 tracker = get_cost_tracker()
                 tracker.track_ai_call("anthropic", config.CLAUDE_MODEL, tokens_in, tokens_out, "rag_consulta")
         except Exception as e:

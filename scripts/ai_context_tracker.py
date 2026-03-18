@@ -6,7 +6,7 @@ Importado por WebAISupervisor como: from scripts.ai_context_tracker import updat
 """
 from __future__ import annotations
 
-import logging
+from utils.ai_core import get_logger
 import os
 import sys
 import time
@@ -17,7 +17,7 @@ ROOT = Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-logger = logging.getLogger(__name__)
+logger = get_logger("ai_context_tracker")
 
 
 def _get_rag_state() -> dict[str, Any]:
@@ -34,52 +34,13 @@ def _get_rag_state() -> dict[str, Any]:
                 "total_chunks": int(state.get("total_chunks", 0) or 0),
                 "checked_at": time.time(),
             }
-
-        total_docs = 0
-        total_chunks = 0
-        rag_loaded = False
-
-        # Intentar obtener métricas del servicio RAG
-        if hasattr(rag, "total_docs"):
-            total_docs = int(rag.total_docs or 0)
-        if hasattr(rag, "total_chunks"):
-            total_chunks = int(rag.total_chunks or 0)
-        if hasattr(rag, "_loaded"):
-            rag_loaded = bool(rag._loaded)
-        elif total_chunks > 0:
-            rag_loaded = True
-
-        # Fallback: consultar directamente la base de datos
-        if total_docs == 0:
-            try:
-                db_path = ROOT / "NEXO_SOBERANO" / "base_sqlite" / "boveda.db"
-                if not db_path.exists():
-                    db_path = ROOT / "base_sqlite" / "boveda.db"
-                if db_path.exists():
-                    import sqlite3
-                    conn = sqlite3.connect(str(db_path))
-                    cur = conn.cursor()
-                    try:
-                        cur.execute("SELECT COUNT(*) FROM documentos")
-                        total_docs = cur.fetchone()[0] or 0
-                    except Exception:
-                        pass
-                    try:
-                        cur.execute("SELECT COUNT(*) FROM chunks")
-                        total_chunks = cur.fetchone()[0] or 0
-                    except Exception:
-                        pass
-                    conn.close()
-                    rag_loaded = total_chunks > 0
-            except Exception as e:
-                logger.debug("RAG DB fallback failed: %s", e)
-
-        return {
-            "rag_loaded": rag_loaded,
-            "total_documentos": total_docs,
-            "total_chunks": total_chunks,
-            "checked_at": time.time(),
-        }
+        else:
+            return {
+                "rag_loaded": False,
+                "total_documentos": 0,
+                "total_chunks": 0,
+                "checked_at": time.time(),
+            }
     except Exception as e:
         logger.warning("RAG state check failed: %s", e)
         return {
@@ -137,6 +98,5 @@ def update_ai_context_state() -> dict[str, Any]:
 
 if __name__ == "__main__":
     import json
-    logging.basicConfig(level=logging.INFO)
     state = update_ai_context_state()
-    log.info(json.dumps(state, ensure_ascii=False, indent=2))
+    logger.info(json.dumps(state, ensure_ascii=False, indent=2))
