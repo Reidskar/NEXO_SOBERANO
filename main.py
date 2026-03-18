@@ -1,3 +1,6 @@
+from fastapi.staticfiles import StaticFiles
+# Montar frontend/dist como archivos estáticos
+app.mount("/", StaticFiles(directory="frontend/dist", html=True), name="frontend")
 from __future__ import annotations
 
 import logging
