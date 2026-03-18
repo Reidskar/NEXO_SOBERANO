@@ -1,4 +1,5 @@
 import os
+import uuid
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 from sqlalchemy.orm import declarative_base, relationship
 from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, Text, Boolean, Index
@@ -112,6 +113,20 @@ class User(Base):
     email = Column(String, unique=True, index=True)
     preferences = Column(Text)
     created_at = Column(DateTime)
+
+class SponsoredSlot(Base):
+    """
+    Motor de Monetización Programática
+    Aloja inyecciones de sponsors para el motor de video.
+    """
+    __tablename__ = "sponsored_slots"
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    email = Column(String, nullable=False, index=True)
+    media_url = Column(String, nullable=False)
+    duration_seconds = Column(Integer, nullable=False)
+    status = Column(String, default="pending", index=True) # pending, approved, rejected, used
+    priority = Column(Integer, default=0, index=True)
+    created_at = Column(DateTime, default=DateTime)
 
 async def get_db():
     async with SessionLocal() as session:

@@ -189,17 +189,45 @@ class VideoGenerator:
 
     async def _assemble_video(self, audio_path: str, output_video: str, script_data: dict):
         logger.info("🎥 [VIDEO ENGINE] Procesando Matriz Visual con FFmpeg (Dark Minimal)...")
-        await asyncio.sleep(3)
+        await asyncio.sleep(2)
+        
+        # OBTENEMOS SPONSORS (Max 1 por video para no saturar)
+        sponsored_segments = []
+        try:
+            from core.database import SessionLocal, SponsoredSlot
+            from sqlalchemy.future import select
+            async with SessionLocal() as db:
+                stmt = select(SponsoredSlot).where(SponsoredSlot.status == "approved").order_by(SponsoredSlot.priority.desc()).limit(1)
+                res = await db.execute(stmt)
+                slots = res.scalars().all()
+                for slot in slots:
+                    sponsored_segments.append(slot.media_url)
+                    slot.status = "used"
+                if slots:
+                    await db.commit()
+        except Exception as e:
+            logger.error(f"⚠️ [MONETIZATION] Error obteniendo sponsors: {e}. Ignorando para proteger pipeline.")
+            
+        if sponsored_segments:
+            logger.info(f"💰 [MONETIZATION] Inyectando {len(sponsored_segments)} Inserciones Patrocinadas (Circuit-Safe)")
         
         # EL COMANDO PROFESIONAL DE FFMPEG SERÍA ASÍ (Placeholder activo):
+        ffmpeg_cmd = f'''ffmpeg -y \\
+        -f lavfi -i color=c=#0a0f16:s=1080x1920:r=30 \\
+        -i {audio_path} \\
         '''
-        ffmpeg -y \
-        -f lavfi -i color=c=#0a0f16:s=1080x1920:r=30 \
-        -i {audio_path} \
-        -filter_complex "[0:v]drawtext=text='{script_data['title']}':fontcolor=white:fontsize=84:x=(w-text_w)/2:y=(h-text_h)/3:font='Inter':shadowcolor=black:shadowx=2:shadowy=2[v_out]" \
-        -map "[v_out]" -map 1:a \
-        -c:v libx264 -c:a aac -shortest {output_video}
-        '''
+        
+        if sponsored_segments:
+            # Fake concat para sponsors patrocinados
+            ffmpeg_cmd += f"-i {sponsored_segments[0]} \\\n"
+            ffmpeg_cmd += f"        -filter_complex \"[0:v]drawtext=text='{script_data['title']}':fontcolor=white:fontsize=84:x=(w-text_w)/2:y=(h-text_h)/3:font='Inter':shadowcolor=black:shadowx=2:shadowy=2[base];[base][2:v]concat=n=2:v=1:a=0[v_out]\" \\\n"
+        else:
+            ffmpeg_cmd += f"        -filter_complex \"[0:v]drawtext=text='{script_data['title']}':fontcolor=white:fontsize=84:x=(w-text_w)/2:y=(h-text_h)/3:font='Inter':shadowcolor=black:shadowx=2:shadowy=2[v_out]\" \\\n"
+            
+        ffmpeg_cmd += f"        -map \"[v_out]\" -map 1:a \\\n        -c:v libx264 -c:a aac -shortest {output_video}"
+        
+        # Ejecutando simulación
+        # logger.debug(f"Ejecutando: {ffmpeg_cmd}")
         
         logger.info("🎬 [VIDEO ENGINE] Post-procesamiento visual completado.")
         return True

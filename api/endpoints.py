@@ -1,9 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request, BackgroundTasks
+from fastapi.responses import Response
 from pydantic import BaseModel
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
-from core.database import get_db, Document, Event
+from core.database import get_db, Document, Event, SessionLocal, SponsoredSlot
 from services.document_processor import document_processor
 from datetime import datetime
 import logging
@@ -91,6 +92,47 @@ async def subscribe_user_email(payload: EmailSubscribePayload):
         raise HTTPException(status_code=500, detail="Internal Error")
     return res
 
+# ---- ENDPOINTS MONETIZACIÓN (Sponsored Slots) ----
+
+@router.post("/sponsored/upload")
+async def register_sponsored_slot(payload: dict):
+    """Sube un clip pidiendo patrocinio en videos de NEXO (Máx 30s)"""
+    async with SessionLocal() as db:
+        duration = payload.get("duration_seconds", 0)
+        if duration > 30:
+            raise HTTPException(status_code=400, detail="Error: El vector publicitario excede los 30s de atención autorizada.")
+            
+        new_slot = SponsoredSlot(
+            email=payload.get("email", "anonymous@nexo.com"),
+            media_url=payload.get("media_url"),
+            duration_seconds=duration,
+            priority=payload.get("priority", 0)
+        )
+        db.add(new_slot)
+        await db.commit()
+        return {"status": "pending_validation", "slot_id": new_slot.id}
+
+@router.post("/sponsored/approve/{slot_id}")
+async def approve_sponsored_slot(slot_id: str):
+    """Uso Interno: Validador de Calidad / Copyright"""
+    async with SessionLocal() as db:
+        stmt = select(SponsoredSlot).where(SponsoredSlot.id == slot_id)
+        res = await db.execute(stmt)
+        slot = res.scalars().first()
+        if not slot:
+            raise HTTPException(status_code=404, detail="Slot Inexistente")
+            
+        slot.status = "approved"
+        await db.commit()
+        return {"status": "approved", "slot_id": slot_id}
+
+@router.get("/sponsored/active")
+async def get_active_sponsors():
+    async with SessionLocal() as db:
+        stmt = select(SponsoredSlot).where(SponsoredSlot.status == "approved").order_by(SponsoredSlot.priority.desc())
+        res = await db.execute(stmt)
+        return [{"id": s.id, "media_url": s.media_url, "duration": s.duration_seconds} for s in res.scalars().all()]
+
 @router.get("/system/status")
 async def get_system_health_status():
     """Retorna la latencia y la salud de la estructura distribuida"""
@@ -99,9 +141,80 @@ async def get_system_health_status():
 # ---- ENDPOINTS PÚBLICOS DE DATOS Y FRONTEND (Dashboard MVP) ----
 
 @router.get("/documents")
-async def get_documents(db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(Document).order_by(Document.created_at.desc()).limit(50))
-    return result.scalars().all()
+async def get_documents():
+    async with SessionLocal() as db:
+        stmt = select(Document).order_by(Document.created_at.desc())
+        docs = await db.execute(stmt)
+        return [
+            {
+                "id": d.id, 
+                "title": d.title or "Sin título", 
+                "summary": d.summary or "Sin resumen", 
+                "status": d.status, 
+                "impact_level": d.impact_level or 0, 
+                "video_url": getattr(d, 'video_url', None),
+                "slug": getattr(d, 'slug', f"report-{d.id}"),
+                "seo_title": getattr(d, 'seo_title', d.title),
+                "meta_description": getattr(d, 'meta_description', d.summary),
+                "published": getattr(d, 'published', False)
+            } for d in docs.scalars().all()
+        ]
+
+@router.get("/documents/{slug}")
+async def get_document_by_slug(slug: str):
+    async with SessionLocal() as db:
+        # Resolvemos soporte legacy vs nuevo slug
+        if slug.isdigit():
+            stmt = select(Document).where(Document.id == int(slug))
+        else:
+            stmt = select(Document).where(Document.slug == slug)
+            
+        res = await db.execute(stmt)
+        d = res.scalars().first()
+        if not d:
+            raise HTTPException(status_code=404, detail="Documento clasificado o purgado.")
+            
+        return {
+            "id": d.id, 
+            "title": d.title or "Sin título", 
+            "summary": d.summary or "Sin resumen", 
+            "status": d.status, 
+            "impact_level": d.impact_level or 0, 
+            "video_url": getattr(d, 'video_url', None),
+            "slug": getattr(d, 'slug', f"report-{d.id}"),
+            "seo_title": getattr(d, 'seo_title', d.title),
+            "meta_description": getattr(d, 'meta_description', d.summary),
+            "keywords": getattr(d, 'keywords', ""),
+            "published": getattr(d, 'published', False),
+            "content": f"{d.title}\n\n{d.summary}" # Mock para el análisis completo (paywall target)
+        }
+
+@router.get("/sitemap.xml", response_class=Response)
+async def generate_sitemap():
+    """Generador dinámico O(1) de Indexación para Vercel Edge"""
+    async with SessionLocal() as db:
+        # Traemos solo publicados para asegurar funnel sano
+        stmt = select(Document).where(Document.published == True)
+        res = await db.execute(stmt)
+        docs = res.scalars().all()
+        
+        xml_content = '<?xml version="1.0" encoding="UTF-8"?>\n'
+        xml_content += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+        
+        # Static Core Routes
+        xml_content += f"  <url>\n    <loc>https://elanarcocapital.com/</loc>\n    <changefreq>hourly</changefreq>\n    <priority>1.0</priority>\n  </url>\n"
+        
+        # Dynamic Slugs
+        for d in docs:
+            safe_slug = getattr(d, 'slug', f"report-{d.id}")
+            loc = f"https://elanarcocapital.com/d/{safe_slug}"
+            raw_date = getattr(d, 'published_at', datetime.utcnow())
+            lastmod = raw_date.strftime('%Y-%m-%d') if raw_date else datetime.utcnow().strftime('%Y-%m-%d')
+            
+            xml_content += f"  <url>\n    <loc>{loc}</loc>\n    <lastmod>{lastmod}</lastmod>\n    <changefreq>daily</changefreq>\n  </url>\n"
+            
+        xml_content += '</urlset>'
+        return Response(content=xml_content, media_type="application/xml")
 
 @router.get("/events")
 async def get_events(db: AsyncSession = Depends(get_db)):
