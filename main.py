@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from contextlib import asynccontextmanager
 import os
 from database import test_connection
+from fastapi.staticfiles import StaticFiles
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -13,6 +14,9 @@ app = FastAPI(title="NEXO_SOBERANO", lifespan=lifespan)
 @app.get("/health")
 async def health():
     return {"status": "ok", "db": "connected", "project": "NEXO_SOBERANO"}
+
+# Sirve tus HTMLs originales (warroom, control-center, etc.)
+app.mount("/", StaticFiles(directory=".", html=True), name="static")
 
 if __name__ == "__main__":
     import uvicorn
