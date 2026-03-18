@@ -36,6 +36,14 @@ class Document(Base):
     priority = Column(Integer, default=3, index=True) # 1: Alto, 2: Medio, 3: Normal
     video_url = Column(String, nullable=True)
     
+    # 📢 Tracking de Distribución Automática
+    published = Column(Boolean, default=False)
+    published_at = Column(DateTime, nullable=True)
+    distributed_to_discord = Column(Boolean, default=False)
+    distributed_to_web = Column(Boolean, default=False)
+    distributed_to_newsletter = Column(Boolean, default=False)
+    distribution_timestamp = Column(DateTime, nullable=True)
+
     events = relationship("Event", back_populates="document")
 
 # Índices explícitos

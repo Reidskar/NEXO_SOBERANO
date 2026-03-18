@@ -74,6 +74,16 @@ class VideoGenerator:
                             await session.commit()
                             logger.info("💾 [VIDEO ENGINE] Video URL y estado persistido en BD maestra.")
                             
+                    # 6. Lanzar Distribución Viral Automática
+                    from services.distribution_service import distribution_service
+                    await distribution_service.distribute(
+                        document_id=document.id,
+                        video_url=video_url,
+                        title=document.title or "Sin Asunto",
+                        summary=document.summary or "N/A",
+                        impact_score=float(getattr(document, 'impact_level', 0.0))
+                    )
+                            
                 total_time = time.time() - start_time
                 attach_result_metrics({
                     "subsystem": "video_engine",
