@@ -98,7 +98,11 @@ async def lifespan(app: FastAPI):
     from fastapi.middleware.cors import CORSMiddleware
     import uvicorn
     import os
-    from backend.core.database import test_connection
+    from fastapi import FastAPI
+    from fastapi.middleware.cors import CORSMiddleware
+    import uvicorn
+    import os
+    from backend.database import test_connection
     from backend.routes.agente import router as agente_router
 
     app = FastAPI(title="NEXO SOBERANO API", version="2.0")
@@ -113,10 +117,14 @@ async def lifespan(app: FastAPI):
 
     app.include_router(agente_router)
 
+    @app.on_event("startup")
+    async def startup():
+        await test_connection()
+
     @app.get("/health")
     async def health():
         db_ok = await test_connection()
-        return {"status": "healthy", "database": "OK" if db_ok else "FAIL"}
+        return {"status": "ok", "db": "connected" if db_ok else "fail"}
 
     if __name__ == "__main__":
         uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", 8000)))
