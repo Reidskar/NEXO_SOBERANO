@@ -12,6 +12,7 @@ from api.webhooks.supabase import router as webhook_supabase_router
 from api.webhooks.discord import router as webhook_discord_router
 from services.analytics_service import analytics_service, TrackEventPayload, EmailSubscribePayload
 from services.connection_supervisor import connection_supervisor
+from services.ops_agent import ops_agent
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -137,6 +138,11 @@ async def get_active_sponsors():
 async def get_system_health_status():
     """Retorna la latencia y la salud de la estructura distribuida"""
     return {"status": "ok", "nodes": connection_supervisor.system_status}
+
+@router.get("/system/ops")
+async def get_ops_state():
+    """Ventral del Agente Autónomo (Estado, Decisiones, Riesgo)"""
+    return ops_agent.state
 
 # ---- ENDPOINTS PÚBLICOS DE DATOS Y FRONTEND (Dashboard MVP) ----
 
