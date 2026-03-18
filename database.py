@@ -1,10 +1,10 @@
 import os
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
+from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 from sqlalchemy.orm import DeclarativeBase
 
 DATABASE_URL = os.getenv("DATABASE_URL")
 if not DATABASE_URL:
-    raise ValueError("DATABASE_URL no encontrada en entorno")
+    raise ValueError("DATABASE_URL no encontrada en variables de entorno")
 
 engine = create_async_engine(
     DATABASE_URL,
@@ -31,5 +31,5 @@ async def test_connection():
         print("✅ Conexión Supabase OK")
         return True
     except Exception as e:
-        print(f"❌ Error DB: {e}")
+        print(f"❌ Error SQL: {e}")
         return False
