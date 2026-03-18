@@ -1,3 +1,22 @@
+from fastapi import FastAPI
+from contextlib import asynccontextmanager
+import os
+from database import test_connection
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    await test_connection()
+    yield
+
+app = FastAPI(title="NEXO_SOBERANO", lifespan=lifespan)
+
+@app.get("/health")
+async def health():
+    return {"status": "ok", "db": "connected", "project": "NEXO_SOBERANO"}
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", 8000)))
 from fastapi.staticfiles import StaticFiles
 # Montar frontend/dist como archivos estáticos
 app.mount("/", StaticFiles(directory="frontend/dist", html=True), name="frontend")
