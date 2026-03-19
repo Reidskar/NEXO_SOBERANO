@@ -139,12 +139,21 @@ async def get_system_health_status():
     """Retorna la latencia y la salud de la estructura distribuida"""
     return {"status": "ok", "nodes": connection_supervisor.system_status}
 
-@router.get("/system/ops")
+# ---- ENDPOINTS PÚBLICOS DE DATOS Y FRONTEND (Dashboard MVP) ----
+
+import os
+ADMIN_SECRET = os.getenv("ADMIN_SECRET", "super-secret-key-nexo")
+
+def verify_admin(req: Request):
+    if req.headers.get("x-admin-key") != ADMIN_SECRET:
+        raise HTTPException(status_code=401, detail="Unauthorized Ops Access")
+
+@router.get("/system/ops", dependencies=[Depends(verify_admin)])
 async def get_ops_state():
     """Ventral del Agente Autónomo (Estado, Decisiones, Riesgo)"""
     return ops_agent.state
 
-@router.get("/system/expansion")
+@router.get("/system/expansion", dependencies=[Depends(verify_admin)])
 async def get_expansion_metrics():
     """Retorna historial y red de plataformas penetradas por NEXO"""
     from services.expansion_agent import expansion_agent

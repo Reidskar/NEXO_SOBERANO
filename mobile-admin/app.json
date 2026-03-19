@@ -1,0 +1,9 @@
+{
+  "expo": {
+    "name": "mobile-admin",
+    "slug": "mobile-admin",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark"
+  }
+}
