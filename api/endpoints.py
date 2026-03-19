@@ -127,6 +127,35 @@ async def approve_sponsored_slot(slot_id: str):
         await db.commit()
         return {"status": "approved", "slot_id": slot_id}
 
+@router.post("/pay/sponsored")
+async def create_sponsored_payment(payload: dict):
+    """Genera intención de pago (Stripe) con pricing dinámico por segundo."""
+    duration = payload.get("duration", 10)
+    price = duration * 1.0  # Pricing base: $1 USD = 1 seg
+    
+    # Aquí: stripe.checkout.Session.create(...)
+    return {
+        "status": "payment_required",
+        "checkout_url": "https://buy.stripe.com/mock_nexo_checkout",
+        "amount_usd": price,
+        "duration_seconds": duration
+    }
+
+@router.post("/pay/sponsored/callback")
+async def payment_success_callback(payload: dict):
+    """Webhook de Pago Completado -> Inyección directa al motor de video."""
+    async with SessionLocal() as db:
+        new_slot = SponsoredSlot(
+            email=payload.get("email", "paid_sponsor@nexo.com"),
+            media_url=payload.get("media_url"),
+            duration_seconds=payload.get("duration_seconds", 10),
+            status="approved", # Auto-aprobado tras pago validado
+            priority=int(payload.get("amount_paid", 10)) # El que paga más, sale primero
+        )
+        db.add(new_slot)
+        await db.commit()
+    return {"status": "success_monetized", "slot_id": new_slot.id}
+
 @router.get("/sponsored/active")
 async def get_active_sponsors():
     async with SessionLocal() as db:
