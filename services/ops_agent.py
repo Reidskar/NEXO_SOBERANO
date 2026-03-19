@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import time
+import socket
 from datetime import datetime
 import httpx
 
@@ -12,6 +13,13 @@ from sqlalchemy import func
 from core.system_config import get_config, update_config
 
 logger = logging.getLogger(__name__)
+
+def check_dns_resolution(domain: str) -> bool:
+    try:
+        socket.gethostbyname(domain)
+        return True
+    except socket.gaierror:
+        return False
 
 class OpsAgent:
     def __init__(self):
@@ -55,7 +63,7 @@ class OpsAgent:
         self.state["services"] = connection_supervisor.system_status
         
         # Domain Monitoring Remoto Real
-        domains = ["https://elanarcocapital.com", "http://127.0.0.1:8000/health"]
+        domains = ["https://elanarcocapital.com", "https://api.elanarcocapital.com/health"]
         for url in domains:
             try:
                 start = time.time()
@@ -64,6 +72,15 @@ class OpsAgent:
                 self.state["domains"][url] = {"status": res.status_code, "latency": round(lat, 2)}
             except Exception as e:
                 self.state["domains"][url] = {"status": "FAIL", "error": str(e)}
+
+        # DNS Resolution Hard-Check
+        for d in ["elanarcocapital.com", "api.elanarcocapital.com"]:
+            is_resolved = await asyncio.to_thread(check_dns_resolution, d)
+            if not is_resolved:
+                self.state["risk_level"] = "CRITICAL"
+                logger.error(f"🚨 [AIOPS] NXDOMAIN DETECTADO: {d} no resuelve. El Router DNS / Cloudflare está roto.")
+                if f"ALERTA DNS: {d} caído (NXDOMAIN)" not in self.state["last_decisions"]:
+                    self.state["last_decisions"].append(f"ALERTA DNS: {d} caído (NXDOMAIN)")
 
         # DB Metrics: Queue Load + Error Rate
         async with SessionLocal() as db:
