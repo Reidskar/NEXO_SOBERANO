@@ -144,6 +144,17 @@ async def get_ops_state():
     """Ventral del Agente Autónomo (Estado, Decisiones, Riesgo)"""
     return ops_agent.state
 
+@router.get("/system/expansion")
+async def get_expansion_metrics():
+    """Retorna historial y red de plataformas penetradas por NEXO"""
+    from services.expansion_agent import expansion_agent
+    return {
+        "status": "active" if expansion_agent.active else "paused",
+        "platforms_reached": list(expansion_agent.platforms_used),
+        "history_lines": len(expansion_agent.history),
+        "last_posts": expansion_agent.history[-10:]
+    }
+
 # ---- ENDPOINTS PÚBLICOS DE DATOS Y FRONTEND (Dashboard MVP) ----
 
 @router.get("/documents")

@@ -83,6 +83,19 @@ class VideoGenerator:
                         summary=document.summary or "N/A",
                         impact_score=float(getattr(document, 'impact_level', 0.0))
                     )
+                    
+                    # 7. LANZAR EXPANSIÓN OMNICANAL AUTÓNOMA (X, YT, TikTok, Telegram)
+                    try:
+                        from services.expansion_agent import expansion_agent
+                        await expansion_agent.distribute(
+                            document_id=document.id,
+                            impact_score=float(getattr(document, 'impact_level', 0.0)),
+                            title=document.title or "REPORTE TÁCTICO",
+                            summary=document.summary or "N/A",
+                            video_url=video_url
+                        )
+                    except Exception as e:
+                        logger.error(f"Error crítico desencadenando Expansion Agent: {e}")
                             
                 total_time = time.time() - start_time
                 attach_result_metrics({
