@@ -126,7 +126,12 @@ class SponsoredSlot(Base):
     duration_seconds = Column(Integer, nullable=False)
     status = Column(String, default="pending", index=True) # pending, approved, rejected, used
     priority = Column(Integer, default=0, index=True)
-    created_at = Column(DateTime, default=DateTime)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    
+    # Revenue & Retention Metrics
+    video_url = Column(String, nullable=True)
+    price_paid = Column(Float, default=0.0)
+    notified = Column(Boolean, default=False)
 
 async def get_db():
     async with SessionLocal() as session:

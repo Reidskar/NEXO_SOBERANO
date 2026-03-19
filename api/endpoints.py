@@ -4,6 +4,7 @@ from pydantic import BaseModel
 from typing import List, Optional, Dict, Any
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
+from sqlalchemy import func
 from core.database import get_db, Document, Event, SessionLocal, SponsoredSlot
 from services.document_processor import document_processor
 from datetime import datetime
@@ -129,28 +130,42 @@ async def approve_sponsored_slot(slot_id: str):
 
 @router.post("/pay/sponsored")
 async def create_sponsored_payment(payload: dict):
-    """Genera intención de pago (Stripe) con pricing dinámico por segundo."""
+    """Genera intención de pago con PRICING DINÁMICO (Ley de Demanda)."""
     duration = payload.get("duration", 10)
-    price = duration * 1.0  # Pricing base: $1 USD = 1 seg
     
-    # Aquí: stripe.checkout.Session.create(...)
-    return {
-        "status": "payment_required",
-        "checkout_url": "https://buy.stripe.com/mock_nexo_checkout",
-        "amount_usd": price,
-        "duration_seconds": duration
-    }
+    async with SessionLocal() as db:
+        # Calcular Escasez Real (Slots Pendientes o Aprobados Activos)
+        stmt = select(func.count()).where(SponsoredSlot.status.in_(["approved", "pending"]))
+        res = await db.execute(stmt)
+        active_slots = res.scalar() or 0
+        
+        # Fórmula de Pricing de Demanda (Demand Multiplier)
+        demand_multiplier = 1.0 + (active_slots * 0.5)
+        base_price = duration * 1.0  # $1 USD base = 1 seg
+        final_price = round(base_price * demand_multiplier, 2)
+    
+        # Aquí: stripe.checkout.Session.create(...)
+        return {
+            "status": "payment_required",
+            "checkout_url": "https://buy.stripe.com/mock_nexo_checkout",
+            "amount_usd": final_price,
+            "duration_seconds": duration,
+            "demand_multiplier": demand_multiplier,
+            "scarcity_slots_in_queue": active_slots
+        }
 
 @router.post("/pay/sponsored/callback")
 async def payment_success_callback(payload: dict):
     """Webhook de Pago Completado -> Inyección directa al motor de video."""
     async with SessionLocal() as db:
+        price_paid = payload.get("amount_paid", 10.0)
         new_slot = SponsoredSlot(
             email=payload.get("email", "paid_sponsor@nexo.com"),
             media_url=payload.get("media_url"),
             duration_seconds=payload.get("duration_seconds", 10),
-            status="approved", # Auto-aprobado tras pago validado
-            priority=int(payload.get("amount_paid", 10)) # El que paga más, sale primero
+            status="approved", # Auto-aprobado para retención instantánea
+            priority=int(price_paid), # Prioridad algorítmica por LTV directo
+            price_paid=float(price_paid)
         )
         db.add(new_slot)
         await db.commit()
@@ -162,6 +177,31 @@ async def get_active_sponsors():
         stmt = select(SponsoredSlot).where(SponsoredSlot.status == "approved").order_by(SponsoredSlot.priority.desc())
         res = await db.execute(stmt)
         return [{"id": s.id, "media_url": s.media_url, "duration": s.duration_seconds} for s in res.scalars().all()]
+
+@router.get("/sponsored/availability")
+async def get_sponsored_availability():
+    """Calcula cuántos slots libres quedan en el próximo render (Max 3). Reflexiona escasez al frontend."""
+    async with SessionLocal() as db:
+        stmt = select(func.count()).where(SponsoredSlot.status == "approved")
+        res = await db.execute(stmt)
+        waiting = res.scalar() or 0
+        return {"available_in_next_video": max(0, 3 - waiting), "total_waiting_queue": waiting}
+
+@router.get("/sponsored/history/{email}")
+async def get_sponsored_history(email: str):
+    """Retención de Usuario: Permite al usuario consultar el tracking de sus inserciones compradas (y ver links)."""
+    async with SessionLocal() as db:
+        stmt = select(SponsoredSlot).where(SponsoredSlot.email == email).order_by(SponsoredSlot.created_at.desc())
+        res = await db.execute(stmt)
+        slots = res.scalars().all()
+        return [{
+            "id": s.id,
+            "status": s.status,
+            "duration": s.duration_seconds,
+            "price_paid": s.price_paid,
+            "video_url": s.video_url, # Resultado Real entregado
+            "notified": s.notified
+        } for s in slots]
 
 @router.get("/system/status")
 async def get_system_health_status():

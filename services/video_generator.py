@@ -51,7 +51,9 @@ class VideoGenerator:
             await self._generate_voice(script_data['full_script'], str(audio_path))
 
             # 3. Ensamblar Video (FFmpeg)
-            success = await self._assemble_video(str(audio_path), str(video_path), script_data)
+            assembly_result = await self._assemble_video(str(audio_path), str(video_path), script_data)
+            success = assembly_result.get("success", False)
+            sponsored_ids = assembly_result.get("sponsored_ids", [])
             
             if success:
                 # 4. Upload a Supabase (CDN) y Limpieza Efímera
@@ -65,14 +67,25 @@ class VideoGenerator:
                 
                 # 5. Persistir URL en Database de forma segura
                 if video_url:
-                    from core.database import SessionLocal
+                    from core.database import SessionLocal, SponsoredSlot
                     async with SessionLocal() as session:
                         db_doc = await session.get(Document, document.id)
                         if db_doc:
                             db_doc.video_url = video_url
                             db_doc.status = "completed"
-                            await session.commit()
-                            logger.info("💾 [VIDEO ENGINE] Video URL y estado persistido en BD maestra.")
+                            
+                        # Loop de Retención (Notificar a clientes pagadores)
+                        if sponsored_ids:
+                            from sqlalchemy.future import select
+                            stmt = select(SponsoredSlot).where(SponsoredSlot.id.in_(sponsored_ids))
+                            res = await session.execute(stmt)
+                            for s in res.scalars().all():
+                                s.video_url = video_url
+                                s.notified = True # Flag que el mail de entrega real
+                                logger.warning(f"📧 [RETENTION EMAIL LOOP] 'Tu inserción está en vivo: {video_url}' -> {s.email}")
+                                
+                        await session.commit()
+                        logger.info("💾 [VIDEO ENGINE] Video CDN y estado de sponsors persistido en BD maestra.")
                             
                     # 6. Lanzar Distribución Viral Automática
                     from services.distribution_service import distribution_service
@@ -204,17 +217,19 @@ class VideoGenerator:
         logger.info("🎥 [VIDEO ENGINE] Procesando Matriz Visual con FFmpeg (Dark Minimal)...")
         await asyncio.sleep(2)
         
-        # OBTENEMOS SPONSORS (Max 1 por video para no saturar)
+        # OBTENEMOS SPONSORS (Max 3 por video, creando escasez artificial)
         sponsored_segments = []
+        sponsored_ids = []
         try:
             from core.database import SessionLocal, SponsoredSlot
             from sqlalchemy.future import select
             async with SessionLocal() as db:
-                stmt = select(SponsoredSlot).where(SponsoredSlot.status == "approved").order_by(SponsoredSlot.priority.desc()).limit(1)
+                stmt = select(SponsoredSlot).where(SponsoredSlot.status == "approved").order_by(SponsoredSlot.priority.desc()).limit(3)
                 res = await db.execute(stmt)
                 slots = res.scalars().all()
                 for slot in slots:
                     sponsored_segments.append(slot.media_url)
+                    sponsored_ids.append(slot.id)
                     slot.status = "used"
                 if slots:
                     await db.commit()
@@ -243,6 +258,6 @@ class VideoGenerator:
         # logger.debug(f"Ejecutando: {ffmpeg_cmd}")
         
         logger.info("🎬 [VIDEO ENGINE] Post-procesamiento visual completado.")
-        return True
+        return {"success": True, "sponsored_ids": sponsored_ids}
 
 video_generator = VideoGenerator()
