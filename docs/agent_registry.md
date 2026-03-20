@@ -12,6 +12,7 @@ Mantenido por: nexo-director | Creado: 2026-03-20
 | 006 | nexo-director     | 1.0     | 8h       | 🟢 Activo |
 | 007 | nexo-sentinel     | 1.0     | 4h       | 🟢 Activo |
 | 008 | nexo-forge        | 1.0     | on_demand| 🟢 Activo |
+| 009 | nexo-tester       | 1.0     | daily_03:00 | 🟢 Activo |
 
 ## Backlog
 | Prioridad | Nombre         | Sprint estimado |

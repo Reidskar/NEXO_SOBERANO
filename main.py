@@ -113,6 +113,22 @@ async def health_check():
     except:
         running = []
 
+    # Leer estado de circuit breakers
+    circuit_status = {}
+    open_circuits = []
+    try:
+        import json
+        from pathlib import Path
+        cb_file = Path("logs/circuit_states.json")
+        if cb_file.exists():
+            circuit_data = json.loads(cb_file.read_text())
+            open_circuits = [k for k,v in circuit_data.items()
+                           if v.get("state") == "OPEN"]
+            circuit_status = {k: v.get("state","CLOSED")
+                            for k,v in circuit_data.items()}
+    except Exception as e:
+        circuit_status = {"error": str(e)}
+
     return {
         "status": "ok",
         "timestamp": datetime.now().isoformat(),
@@ -122,6 +138,11 @@ async def health_check():
             "api": "online",
             "docker_nexo": "ok" if docker_ok else "degraded",
             "containers_running": [s for s in running if s]
+        },
+        "circuit_breakers": {
+            "status": "warning" if open_circuits else "ok",
+            "open_circuits": open_circuits,
+            "states": circuit_status
         },
         "agents": {
             "total_registered": 9,
