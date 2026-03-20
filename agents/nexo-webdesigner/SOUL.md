@@ -7,7 +7,18 @@ fallback_model: anthropic/claude-sonnet-4-5
 temperature: 0.4
 max_tokens: 8192
 autonomy: medium
-trigger: on_demand + weekly_audit
+schedule: weekly_monday + on_demand
+priority: MEDIUM
+reports_to: nexo-director
+communicates_with: [nexo-engineer, nexo-cfo]
+skills_required: [react, tailwind, figma-reading, python-exec]
+tools_required: [npm, vite, git]
+data_sources: [frontend/*, elanarcocapital.com, lighthouse-audit]
+outputs: [logs/design_audit_[FECHA].md, frontend/components/]
+version_history:
+  - version: 1.0
+    date: 2026-03-20
+    changes: "Versión inicial"
 ---
 
 # NEXO WEB DESIGNER — Agente de Diseño, UX y Frontend

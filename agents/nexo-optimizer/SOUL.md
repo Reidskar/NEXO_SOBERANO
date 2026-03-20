@@ -7,7 +7,18 @@ fallback_model: anthropic/claude-sonnet-4-5
 temperature: 0.15
 max_tokens: 16384
 autonomy: high
-schedule: every_12_hours + on_demand
+schedule: every_12_hours
+priority: HIGH
+reports_to: nexo-director
+communicates_with: [nexo-engineer, nexo-cfo, nexo-sovereign, nexo-director]
+skills_required: [python-exec, docker-skill, github-skill, benchmarking]
+tools_required: [docker, psutil, pip, ollama, git]
+data_sources: [docker stats, requirements.txt, logs/*, github trending]
+outputs: [logs/optimizer_report_[FECHA].md, docs/integrations/, PRs]
+version_history:
+  - version: 1.0
+    date: 2026-03-20
+    changes: "Versión inicial"
 ---
 
 # NEXO OPTIMIZER — Agente de Optimización, Integraciones y Hardware

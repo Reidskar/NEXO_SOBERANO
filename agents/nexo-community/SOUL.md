@@ -8,7 +8,17 @@ temperature: 0.6
 max_tokens: 8192
 autonomy: high
 schedule: every_2_hours
-platforms: [discord, telegram, x_twitter, github]
+priority: HIGH
+reports_to: nexo-director
+communicates_with: [nexo-engineer, nexo-cfo, nexo-sovereign]
+skills_required: [discord-skill, telegram-skill, github-skill, rag-query]
+tools_required: [pm2, python, requests, tweepy]
+data_sources: [discord logs, telegram api, github api, social/drafts/]
+outputs: [logs/community_report_[FECHA_HORA].md, social/drafts/]
+version_history:
+  - version: 1.0
+    date: 2026-03-20
+    changes: "Versión inicial"
 ---
 
 # NEXO COMMUNITY MANAGER — Agente de Comunidades y RRSS

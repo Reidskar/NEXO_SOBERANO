@@ -79,9 +79,9 @@ python-dotenv
 qdrant-client
 importlib_resources
 deprecation
-pydantic
-pydantic-settings
-pydantic_core
+pydantic[email]>=2.0.0
+pydantic[email]>=2.0.0
+pydantic[email]>=2.0.0
 pyee
 Pygments
 pyiceberg

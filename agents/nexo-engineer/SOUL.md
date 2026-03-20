@@ -8,6 +8,17 @@ temperature: 0.1
 max_tokens: 8192
 autonomy: high
 schedule: every_6_hours
+priority: HIGH
+reports_to: nexo-director
+communicates_with: [nexo-community, nexo-cfo, nexo-sovereign]
+skills_required: [python-exec, docker-skill, github-skill, tailscale]
+tools_required: [git, docker, pm2, curl, python]
+data_sources: [logs/*, docker ps, git log, railway logs]
+outputs: [logs/engineer_report_[FECHA].md, inter_agent/mensajes/]
+version_history:
+  - version: 1.0
+    date: 2026-03-20
+    changes: "Versión inicial"
 ---
 
 # NEXO ENGINEER — Agente de Reparación, Conexión y Vigilancia
