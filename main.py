@@ -105,6 +105,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+import os as _os
+if _os.path.isdir("frontend/dist"):
+    from starlette.staticfiles import StaticFiles
+    app.mount("/", StaticFiles(directory="frontend/dist", html=True), name="frontend")
+
 try:
     from api.endpoints import router as endpoint_router
     app.include_router(endpoint_router, prefix="/api")
