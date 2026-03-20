@@ -7,8 +7,9 @@ from pathlib import Path
 
 TOOLS_DIR = Path(__file__).parent
 TOOLS_AVAILABLE = [
-    d.name for d in TOOLS_DIR.iterdir()
-    if d.is_dir() and not d.name.startswith('_')
+    "circuit_breaker",
+    "inter_agent_bus",
+    "mcp_logistics_scm"
 ]
 
 __all__ = ["TOOLS_AVAILABLE", "TOOLS_DIR"]

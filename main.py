@@ -96,6 +96,39 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="NEXO SOBERANO Main API", lifespan=lifespan)
 
+@app.get("/api/health")
+async def health_check():
+    import subprocess, os
+    from datetime import datetime
+    
+    # Docker services
+    docker_ok = False
+    try:
+        result = subprocess.run(
+            ["docker", "ps", "--filter", "name=nexo_", "--format", "{{.Names}}"],
+            capture_output=True, text=True, timeout=5
+        )
+        running = result.stdout.strip().split('\n')
+        docker_ok = len([s for s in running if s]) >= 3
+    except:
+        running = []
+
+    return {
+        "status": "ok",
+        "timestamp": datetime.now().isoformat(),
+        "version": "NEXO SOBERANO v1.0",
+        "web": "elanarcocapital.com",
+        "services": {
+            "api": "online",
+            "docker_nexo": "ok" if docker_ok else "degraded",
+            "containers_running": [s for s in running if s]
+        },
+        "agents": {
+            "total_registered": 9,
+            "registry": "docs/agent_registry.md"
+        }
+    }
+
 # CORS PRO-MODE PARA EL FRONTEND
 app.add_middleware(
     CORSMiddleware,
