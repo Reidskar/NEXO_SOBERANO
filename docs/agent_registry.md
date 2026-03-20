@@ -10,6 +10,8 @@ Mantenido por: nexo-director | Creado: 2026-03-20
 | 004 | nexo-optimizer    | 1.0     | 12h      | 🟢 Activo |
 | 005 | nexo-cfo          | 1.0     | Diario   | 🟢 Activo |
 | 006 | nexo-director     | 1.0     | 8h       | 🟢 Activo |
+| 007 | nexo-sentinel     | 1.0     | 4h       | 🟢 Activo |
+| 008 | nexo-forge        | 1.0     | on_demand| 🟢 Activo |
 
 ## Backlog
 | Prioridad | Nombre         | Sprint estimado |

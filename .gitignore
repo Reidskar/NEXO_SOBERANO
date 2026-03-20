@@ -67,6 +67,75 @@ scripts/setup_x_monitor_task.ps1
 nexo_soberano_package.zip
 *.zip
 
+# Ignore credentials and tokens
+credenciales_google.json
+credenciales_microsoft.json
+token_google.json
+token_microsoft.json
+token_google*.json
+token_microsoft*.json
+token_youtube*.json
+*.pem
+*.key
+*.p12
+# also backend/auth storage
+/backend/auth/credenciales_google.json
+/backend/auth/credenciales_microsoft.json
+/backend/auth/token_google.json
+/backend/auth/token_microsoft.json
+/backend/auth/token_google_*.json
+/backend/auth/token_microsoft_*.json
+/backend/auth/token_youtube*.json
+
+# output of health/check scripts
+/tools/
+/backend/checks/
+/logs/
+/reports/
+
+# Python env
+.venv/
+__pycache__/
+*.pyc
+.tmp_*.py
+
+# Local state/databases
+*.db
+*.sqlite
+*.sqlite3
+NEXO_SOBERANO/base_sqlite/
+NEXO_SOBERANO/memoria_vectorial/
+
+# JS deps/build
+node_modules/
+frontend/node_modules/
+frontend/dist/
+
+# Local env
+.env
+.env.local
+
+# Local backup artifacts
+.supervisor_backups/
+
+# Agente Supervisor: clave cifrado y reportes cifrados
+NEXO_SOBERANO/agentes_autonomos/.supervisor.key
+NEXO_SOBERANO/agentes_autonomos/.supervisor.*.bak
+NEXO_SOBERANO/agentes_autonomos/reportes_cifrados/
+
+# Local media captures (can exceed GitHub limits)
+documentos/media_intake_test/
+
+# Unindexable local placeholder file
+scripts/install_x_monitor_task.ps1
+scripts/install_x_monitor_task_fixed.ps1
+scripts/setup_x_monitor_task.ps1
+
+# Google OAuth client secrets
+/backend/auth/drive_client_secrets.json
+nexo_soberano_package.zip
+*.zip
+
 backend/auth/*.json
 NEXO_TRANSFER_NOTEBOOK.zip
 camilo*/
@@ -74,5 +143,7 @@ exports/
 nexo_soberano_para_notebooklm.txt
 .env.test
 
-system_config.json
+tools_staging/
+tools_staging/*
 
+system_config.json
