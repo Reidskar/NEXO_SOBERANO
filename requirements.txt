@@ -163,3 +163,4 @@ PyNaCl
 supabase
 
 httpx
+aiosqlite>=0.21.0
