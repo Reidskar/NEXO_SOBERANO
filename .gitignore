@@ -72,3 +72,7 @@ NEXO_TRANSFER_NOTEBOOK.zip
 camilo*/
 exports/
 nexo_soberano_para_notebooklm.txt
+.env.test
+
+system_config.json
+
