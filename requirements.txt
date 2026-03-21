@@ -173,3 +173,4 @@ slowapi>=0.1.9
 
 pip-audit>=2.0.0
 
+aiohttp>=3.9.0
