@@ -162,9 +162,11 @@ app.add_middleware(
 try:
     from api.endpoints import router as endpoint_router
     from backend.routes.agente import router as agente_router
+    from backend.routes.tools import router as tools_router
     app.include_router(endpoint_router, prefix="/api")
     app.include_router(agente_router, prefix="/api")
-    logger.info("Endpoints API (/api) y Local Queues importados correctamente.")
+    app.include_router(tools_router)
+    logger.info("Endpoints API (/api), Agente y Tools importados correctamente.")
 except ImportError as e:
     logger.error(f"Falla importando endpoints de API: {e}")
 

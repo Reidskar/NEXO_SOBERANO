@@ -468,6 +468,16 @@ SI SE DETECTA INTRUSIÓN O BRECHA:
 5. Post-mortem obligatorio 24h después del incidente
 ```
 
+### CICLO F — Domain Intelligence (cada 4h)
+```
+1. curl http://localhost:8000/api/tools/domain-scan
+2. Verificar que ssl_days_left > 30
+3. Si ssl_days_left < 30: ALERTA CRÍTICA via inter_agent_bus
+4. Verificar que dns_resolved: true
+5. Si hay alertas: enviar a nexo-director urgencia=critical
+6. Guardar resultado en logs/domain_scan_[FECHA].json
+```
+
 ---
 
 ## CHECKLIST DE SEGURIDAD — Estado actual NEXO
