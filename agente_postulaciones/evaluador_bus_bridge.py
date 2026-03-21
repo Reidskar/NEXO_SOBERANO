@@ -103,6 +103,24 @@ Responde SOLO con un JSON con este formato exacto:
                         f"score={score} fuente={result.fuente}"
                     )
 
+                # Disparar webhook n8n para Telegram
+                try:
+                    from NEXO_CORE.tools.n8n_webhook import n8n_webhook
+                    from NEXO_CORE.tools.n8n_webhook.service import WebhookPayload
+                    webhook_result = await n8n_webhook.postulacion_alta(
+                        WebhookPayload(
+                            titulo=job_title,
+                            empresa=company if 'company' in dir() else "Empresa",
+                            score=score,
+                            url=job_url if 'job_url' in dir() else "",
+                            modelo_usado=result.modelo_usado,
+                            fuente_ia=result.fuente
+                        )
+                    )
+                    logger.info(f"n8n webhook: {webhook_result.success}")
+                except Exception as e:
+                    logger.warning(f"n8n webhook fallido (no critico): {e}")
+
                 return {
                     "score": score,
                     "justificacion": data.get("justificacion", ""),

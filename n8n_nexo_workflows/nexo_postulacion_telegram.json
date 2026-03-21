@@ -1,0 +1,80 @@
+{
+  "name": "NEXO - Alerta Telegram al Postular",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "nexo-postulacion",
+        "responseMode": "onReceived",
+        "responseData": "firstEntryJson"
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook NEXO",
+      "type": "n8n-nodes-base.webhook",
+      "position": [250, 300],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "number": [
+            {
+              "value1": "={{$json[\"score\"]}}",
+              "operation": "largerEqual",
+              "value2": 80
+            }
+          ]
+        }
+      },
+      "id": "filter-score",
+      "name": "Filtro Score >= 80",
+      "type": "n8n-nodes-base.if",
+      "position": [450, 300],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "chatId": "={{$env.TELEGRAM_CHAT_ID}}",
+        "text": "=🎯 *Nueva postulación enviada*\n\n*Cargo:* {{$json[\"titulo\"]}}\n*Empresa:* {{$json[\"empresa\"]}}\n*Score:* {{$json[\"score\"]}}%\n*IA usada:* {{$json[\"modelo_usado\"]}}\n*Fuente:* {{$json[\"fuente_ia\"]}}\n\n[Ver oferta]({{$json[\"url\"]}})",
+        "parse_mode": "Markdown",
+        "additionalFields": {}
+      },
+      "id": "telegram-send",
+      "name": "Enviar a Telegram",
+      "type": "n8n-nodes-base.telegram",
+      "position": [650, 200],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "status",
+              "value": "score_bajo_ignorado"
+            }
+          ]
+        }
+      },
+      "id": "skip-low",
+      "name": "Score bajo - ignorar",
+      "type": "n8n-nodes-base.set",
+      "position": [650, 400],
+      "typeVersion": 1
+    }
+  ],
+  "connections": {
+    "Webhook NEXO": {
+      "main": [[{"node": "Filtro Score >= 80", "type": "main", "index": 0}]]
+    },
+    "Filtro Score >= 80": {
+      "main": [
+        [{"node": "Enviar a Telegram", "type": "main", "index": 0}],
+        [{"node": "Score bajo - ignorar", "type": "main", "index": 0}]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {},
+  "tags": ["nexo", "postulaciones", "telegram"]
+}
