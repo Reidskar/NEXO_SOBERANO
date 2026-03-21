@@ -159,17 +159,19 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+try:
+    from api.endpoints import router as endpoint_router
+    from backend.routes.agente import router as agente_router
+    app.include_router(endpoint_router, prefix="/api")
+    app.include_router(agente_router, prefix="/api")
+    logger.info("Endpoints API (/api) y Local Queues importados correctamente.")
+except ImportError as e:
+    logger.error(f"Falla importando endpoints de API: {e}")
+
 import os as _os
 if _os.path.isdir("frontend/dist"):
     from starlette.staticfiles import StaticFiles
     app.mount("/", StaticFiles(directory="frontend/dist", html=True), name="frontend")
-
-try:
-    from api.endpoints import router as endpoint_router
-    app.include_router(endpoint_router, prefix="/api")
-    logger.info("Endpoints API (/api) y Local Queues importados correctamente.")
-except ImportError as e:
-    logger.error(f"Falla importando endpoints de API: {e}")
 
 @app.get("/health")
 async def health():
