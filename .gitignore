@@ -147,3 +147,11 @@ tools_staging/
 tools_staging/*
 
 system_config.json
+.env.txt
+*.txt
+test_*.py
+*_out.txt
+*_out.py
+sandbox/
+.vercel/
+inter_agent/mensajes/
