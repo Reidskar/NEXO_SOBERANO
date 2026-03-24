@@ -2,178 +2,178 @@
 // NEXO SOBERANO — Status Dashboard Component
 // © 2026 elanarcocapital.com
 // ============================================================
-import { useState, useEffect } from "react"
+import { useState, useEffect } from 'react';
+import { RefreshCw, Activity, Shield, Cpu, Globe } from 'lucide-react';
 
-const API_BASE = import.meta.env.VITE_API_URL || ""
+const API_BASE = import.meta.env.VITE_API_URL || '';
 
-function StatusBadge({ status }) {
-  const color = status === "ok" || status === "online"
-    ? "bg-green-500"
-    : status === "degraded"
-    ? "bg-yellow-500"
-    : "bg-red-500"
+function MetricCard({ icon: Icon, label, value, sub, color = '#00e5ff' }) {
   return (
-    <span className={`inline-block w-2 h-2 rounded-full ${color} mr-2`} />
-  )
+    <div style={{
+      background: 'var(--bg2)', border: '1px solid var(--border)',
+      padding: '20px 24px', transition: 'all 0.3s'
+    }}
+      onMouseEnter={e => e.currentTarget.style.borderColor = 'rgba(0,229,255,0.3)'}
+      onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border)'}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+        {Icon && <Icon size={14} style={{ color }} />}
+        <span style={{ fontFamily: "'Space Mono', monospace", fontSize: 10, color: 'var(--dim)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>{label}</span>
+      </div>
+      <div style={{ fontSize: 24, fontWeight: 700, color: 'var(--text)', letterSpacing: '-0.02em', marginBottom: 4 }}>{value}</div>
+      {sub && <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 11, color: 'var(--muted)' }}>{sub}</div>}
+    </div>
+  );
 }
 
-function MetricCard({ label, value, sub }) {
+function ServiceRow({ name, status }) {
+  const color = status === 'ok' || status === 'online' ? '#10b981'
+    : status === 'degraded' ? '#f59e0b' : '#ef4444';
   return (
-    <div className="bg-gray-800 rounded-lg p-4 border border-gray-700">
-      <p className="text-gray-400 text-xs uppercase tracking-wide mb-1">
-        {label}
-      </p>
-      <p className="text-white text-2xl font-medium">{value}</p>
-      {sub && <p className="text-gray-500 text-xs mt-1">{sub}</p>}
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid rgba(0,229,255,0.06)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <span style={{ width: 6, height: 6, borderRadius: '50%', background: color, boxShadow: `0 0 6px ${color}` }} />
+        <span style={{ fontFamily: "'Space Mono', monospace", fontSize: 12, color: 'var(--muted)' }}>{name}</span>
+      </div>
+      <span style={{ fontFamily: "'Space Mono', monospace", fontSize: 11, color }}>{status}</span>
     </div>
-  )
+  );
 }
 
 export default function StatusDashboard() {
-  const [health, setHealth]   = useState(null)
-  const [domain, setDomain]   = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError]     = useState(null)
-  const [lastUpdate, setLastUpdate] = useState(null)
+  const [health, setHealth] = useState(null);
+  const [domain, setDomain] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [lastUpdate, setLastUpdate] = useState(null);
 
   const fetchData = async () => {
     try {
-      const [h, d] = await Promise.all([
+      const [h, d] = await Promise.allSettled([
         fetch(`${API_BASE}/api/health`).then(r => r.json()),
-        fetch(`${API_BASE}/api/tools/domain-scan`).then(r => r.json())
-      ])
-      setHealth(h)
-      setDomain(d)
-      setLastUpdate(new Date().toLocaleTimeString("es-CL"))
-      setError(null)
+        fetch(`${API_BASE}/api/tools/domain-scan`).then(r => r.json()),
+      ]);
+      if (h.status === 'fulfilled') setHealth(h.value);
+      if (d.status === 'fulfilled') setDomain(d.value);
+      setLastUpdate(new Date().toLocaleTimeString('es-CL'));
+      setError(null);
     } catch (e) {
-      setError("No se pudo conectar con la API")
+      setError('No se pudo conectar con la API');
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   useEffect(() => {
-    fetchData()
-    const interval = setInterval(fetchData, 30000)
-    return () => clearInterval(interval)
-  }, [])
+    fetchData();
+    const interval = setInterval(fetchData, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   if (loading) return (
-    <div className="flex items-center justify-center h-64 text-gray-400">
-      Cargando estado del sistema...
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 256 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, fontFamily: "'Space Mono', monospace", fontSize: 12, color: 'var(--muted)' }}>
+        <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--cyan)', animation: 'blink-dot 1s infinite' }} />
+        Cargando estado del sistema...
+      </div>
     </div>
-  )
+  );
 
-  if (error) return (
-    <div className="flex items-center justify-center h-64 text-red-400">
-      {error}
-    </div>
-  )
-
-  const services = health?.services || {}
-  const circuits = health?.circuit_breakers || {}
-  const openCircuits = circuits?.open_circuits || []
+  const services = health?.services || {};
+  const circuits = health?.circuit_breakers || {};
+  const openCircuits = circuits?.open_circuits || [];
 
   return (
-    <div className="p-6 max-w-4xl mx-auto">
-
+    <div style={{ maxWidth: 1100 }}>
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 32 }}>
         <div>
-          <h1 className="text-white text-xl font-medium">
-            NEXO SOBERANO
-          </h1>
-          <p className="text-gray-400 text-sm">
-            elanarcocapital.com
+          <h1 style={{ fontSize: 22, fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--text)', marginBottom: 4 }}>Command Center</h1>
+          <p style={{ fontFamily: "'Space Mono', monospace", fontSize: 11, color: 'var(--muted)' }}>
+            elanarcocapital.com · {lastUpdate ? `Actualizado ${lastUpdate}` : 'Cargando...'}
           </p>
         </div>
-        <div className="text-right">
-          <p className="text-gray-500 text-xs">
-            Actualizado: {lastUpdate}
-          </p>
-          <button
-            onClick={fetchData}
-            className="text-indigo-400 text-xs hover:text-indigo-300 mt-1"
-          >
-            Actualizar
-          </button>
-        </div>
+        <button onClick={fetchData} style={{
+          display: 'flex', alignItems: 'center', gap: 8, padding: '8px 16px',
+          background: 'transparent', border: '1px solid var(--border)',
+          color: 'var(--muted)', cursor: 'pointer', fontFamily: "'Space Mono', monospace",
+          fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase', transition: 'all 0.2s'
+        }}
+          onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--cyan)'; e.currentTarget.style.color = 'var(--cyan)'; }}
+          onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--muted)'; }}
+        >
+          <RefreshCw size={12} />
+          Actualizar
+        </button>
       </div>
 
-      {/* Metrics */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        <MetricCard
-          label="Agentes"
-          value={health?.agents?.total_registered || 10}
-          sub="activos 24/7"
-        />
-        <MetricCard
-          label="SSL"
-          value={domain?.ssl_days_left ? `${domain.ssl_days_left}d` : "—"}
-          sub={domain?.ssl_valid ? "válido" : "revisar"}
-        />
-        <MetricCard
-          label="Circuit Breakers"
-          value={openCircuits.length === 0 ? "OK" : `${openCircuits.length} abiertos`}
-          sub={openCircuits.length === 0 ? "sin alertas" : openCircuits.join(", ")}
-        />
-        <MetricCard
-          label="API"
-          value={health ? "Online" : "Offline"}
-          sub={health?.version || "NEXO v1.0"}
-        />
-      </div>
-
-      {/* Services */}
-      <div className="bg-gray-800 rounded-lg p-4 border border-gray-700 mb-4">
-        <h2 className="text-gray-300 text-sm font-medium mb-3">
-          Servicios
-        </h2>
-        <div className="space-y-2">
-          {Object.entries(services).map(([name, status]) => (
-            <div key={name} className="flex items-center justify-between">
-              <span className="text-gray-400 text-sm flex items-center">
-                <StatusBadge status={status} />
-                {name}
-              </span>
-              <span className="text-gray-500 text-xs">{status}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Domain */}
-      {domain && (
-        <div className="bg-gray-800 rounded-lg p-4 border border-gray-700">
-          <h2 className="text-gray-300 text-sm font-medium mb-3">
-            Dominio
-          </h2>
-          <div className="space-y-1 text-sm">
-            <div className="flex justify-between">
-              <span className="text-gray-400">elanarcocapital.com</span>
-              <span className={domain.ssl_valid
-                ? "text-green-400" : "text-red-400"}>
-                {domain.ssl_valid ? "SSL OK" : "SSL Error"}
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-400">DNS</span>
-              <span className={domain.dns_resolved
-                ? "text-green-400" : "text-red-400"}>
-                {domain.dns_resolved
-                  ? domain.ips?.[0] : "No resuelve"}
-              </span>
-            </div>
-            {domain.alerts?.length > 0 && domain.alerts.map((a, i) => (
-              <div key={i} className="text-yellow-400 text-xs">
-                ⚠ {a}
-              </div>
-            ))}
-          </div>
+      {error && (
+        <div style={{
+          background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)',
+          padding: '12px 20px', marginBottom: 24, fontFamily: "'Space Mono', monospace",
+          fontSize: 12, color: '#ef4444'
+        }}>
+          ⚠ {error} — Mostrando datos en caché
         </div>
       )}
 
+      {/* Metrics */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 1, background: 'var(--border)', border: '1px solid var(--border)', marginBottom: 24 }}>
+        <MetricCard icon={Activity} label="Agentes" value={health?.agents?.total_registered || 10} sub="activos 24/7" color="#10b981" />
+        <MetricCard icon={Shield} label="SSL" value={domain?.ssl_days_left ? `${domain.ssl_days_left}d` : '—'} sub={domain?.ssl_valid ? 'Certificado válido' : 'Revisar certificado'} color="#00e5ff" />
+        <MetricCard icon={Cpu} label="Circuit Breakers" value={openCircuits.length === 0 ? 'OK' : `${openCircuits.length} abiertos`} sub={openCircuits.length === 0 ? 'Sin alertas activas' : openCircuits.join(', ')} color={openCircuits.length === 0 ? '#10b981' : '#f59e0b'} />
+        <MetricCard icon={Globe} label="API Status" value={health ? 'Online' : 'Offline'} sub={health?.version || 'NEXO v3.0.0'} color={health ? '#10b981' : '#ef4444'} />
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+        {/* Services */}
+        <div style={{ background: 'var(--bg2)', border: '1px solid var(--border)', padding: '24px 28px' }}>
+          <h2 style={{ fontFamily: "'Space Mono', monospace", fontSize: 11, color: 'var(--cyan)', letterSpacing: '0.15em', textTransform: 'uppercase', marginBottom: 20 }}>
+            Servicios del Sistema
+          </h2>
+          {Object.keys(services).length > 0 ? (
+            Object.entries(services).map(([name, status]) => (
+              <ServiceRow key={name} name={name} status={status} />
+            ))
+          ) : (
+            <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 12, color: 'var(--dim)', padding: '20px 0' }}>
+              Sin datos de servicios disponibles
+            </div>
+          )}
+        </div>
+
+        {/* Domain */}
+        <div style={{ background: 'var(--bg2)', border: '1px solid var(--border)', padding: '24px 28px' }}>
+          <h2 style={{ fontFamily: "'Space Mono', monospace", fontSize: 11, color: 'var(--cyan)', letterSpacing: '0.15em', textTransform: 'uppercase', marginBottom: 20 }}>
+            Estado del Dominio
+          </h2>
+          {domain ? (
+            <div>
+              <ServiceRow name="elanarcocapital.com" status={domain.ssl_valid ? 'ok' : 'error'} />
+              <ServiceRow name="DNS Resolution" status={domain.dns_resolved ? 'ok' : 'error'} />
+              {domain.ips?.length > 0 && (
+                <div style={{ padding: '10px 0', borderBottom: '1px solid rgba(0,229,255,0.06)' }}>
+                  <span style={{ fontFamily: "'Space Mono', monospace", fontSize: 11, color: 'var(--muted)' }}>
+                    IP: {domain.ips[0]}
+                  </span>
+                </div>
+              )}
+              {domain.alerts?.map((a, i) => (
+                <div key={i} style={{ fontFamily: "'Space Mono', monospace", fontSize: 11, color: '#f59e0b', padding: '6px 0' }}>
+                  ⚠ {a}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div>
+              <ServiceRow name="elanarcocapital.com" status="loading" />
+              <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 12, color: 'var(--dim)', padding: '16px 0' }}>
+                Verificando dominio...
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
-  )
+  );
 }
