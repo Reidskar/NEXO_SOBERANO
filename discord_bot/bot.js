@@ -5,7 +5,7 @@
  * Conecta a canales de voz, responde preguntas y ejecuta comandos
  */
 
-require('dotenv').config({ path: '../.env' });
+require('dotenv').config({ path: './.env' });
 
 const {
   Client,
