@@ -64,3 +64,4 @@ beautifulsoup4
 websockets
 websocket-client
 EOF
+ 
