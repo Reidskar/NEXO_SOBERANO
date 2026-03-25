@@ -170,6 +170,13 @@ try:
 except ImportError as e:
     logger.error(f"Falla importando endpoints de API: {e}")
 
+try:
+    from NEXO_CORE.api.drive import router as drive_router
+    app.include_router(drive_router)
+    logger.info("Drive API (/api/drive) registrada.")
+except ImportError as e:
+    logger.warning(f"Drive API no disponible: {e}")
+
 import os as _os
 if _os.path.isdir("frontend/dist"):
     from starlette.staticfiles import StaticFiles

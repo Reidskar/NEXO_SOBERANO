@@ -1,582 +1,272 @@
-#!/usr/bin/env node
-
-/**
- * NEXO Discord Bot - Bot de Discord con soporte de voz, soundboard y webhooks
- * Conecta a canales de voz, reproduce sonidos y responde preguntas
- */
-
-require('dotenv').config({ path: './.env' });
-
-const {
-  Client,
-  GatewayIntentBits,
-  REST,
-  Routes,
-  SlashCommandBuilder,
-  ChannelType,
-  PermissionFlagsBits,
-  ButtonBuilder,
-  ButtonStyle,
-  ActionRowBuilder,
-  EmbedBuilder
+require('dotenv').config();
+const { 
+  Client, 
+  GatewayIntentBits, 
+  EmbedBuilder, 
+  SlashCommandBuilder, 
+  Partials 
 } = require('discord.js');
-
-const {
-  joinVoiceChannel,
-  getVoiceConnection,
-  createAudioPlayer,
-  createAudioResource,
-  AudioPlayerStatus,
-  VoiceConnectionStatus,
+const { 
+  joinVoiceChannel, 
+  getVoiceConnection, 
+  VoiceConnectionStatus, 
   entersState,
-  NoSubscriberError
+  EndBehaviorType 
 } = require('@discordjs/voice');
-
+const axios = require('axios');
 const fs = require('fs');
 const path = require('path');
+const { spawn } = require('child_process');
+const prism = require('prism-media');
 
-// ==================== CONFIGURACIÓN ====================
+const FASTAPI_URL = (process.env.FASTAPI_URL || 'http://127.0.0.1:8000').replace(/\/$/, '');
 
-const DISCORD_TOKEN = process.env.DISCORD_TOKEN;
-const DISCORD_CLIENT_ID = process.env.DISCORD_CLIENT_ID;
-const NEXO_BACKEND = process.env.NEXO_BACKEND || 'http://127.0.0.1:8000';
-const NEXO_API_KEY = process.env.NEXO_API_KEY || 'NEXO_LOCAL_2026_OK';
-
-// Validar variables de entorno
-if (!DISCORD_TOKEN) {
-  console.error('❌ ERROR: DISCORD_TOKEN no está configurado en .env');
+if (!process.env.DISCORD_TOKEN) {
+  console.error('[NEXO ERROR] DISCORD_TOKEN no encontrada');
   process.exit(1);
 }
-
-if (!DISCORD_CLIENT_ID) {
-  console.error('❌ ERROR: DISCORD_CLIENT_ID no está configurado en .env');
-  process.exit(1);
-}
-
-console.log('✅ Configuración cargada:');
-console.log(`   - Backend: ${NEXO_BACKEND}`);
-console.log(`   - Client ID: ${DISCORD_CLIENT_ID}`);
-
-// ==================== SONIDOS DISPONIBLES ====================
-
-const SOUNDS = {
-  'nexo': { name: '🤖 NEXO', file: 'sounds/nexo.mp3', emoji: '🤖' },
-  'alerta': { name: '🚨 Alerta', file: 'sounds/alert.mp3', emoji: '🚨' },
-  'exito': { name: '✅ Éxito', file: 'sounds/success.mp3', emoji: '✅' },
-  'error': { name: '❌ Error', file: 'sounds/error.mp3', emoji: '❌' },
-  'risa': { name: '😂 Risa', file: 'sounds/laugh.mp3', emoji: '😂' },
-  'aplausos': { name: '👏 Aplausos', file: 'sounds/applause.mp3', emoji: '👏' },
-  'campana': { name: '🔔 Campana', file: 'sounds/bell.mp3', emoji: '🔔' },
-  'silbido': { name: '🎵 Silbido', file: 'sounds/whistle.mp3', emoji: '🎵' }
-};
-
-// ==================== CLIENTE DISCORD ====================
 
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
-    GatewayIntentBits.GuildVoiceStates,
     GatewayIntentBits.GuildMessages,
-    GatewayIntentBits.DirectMessages,
-    GatewayIntentBits.MessageContent
-  ]
+    GatewayIntentBits.MessageContent,
+    GatewayIntentBits.GuildVoiceStates,
+    GatewayIntentBits.GuildMembers,
+  ],
+  partials: [Partials.Channel]
 });
-
-// Almacenar conexiones de voz
-const voiceConnections = new Map();
-const audioPlayers = new Map();
-
-// ==================== COMANDOS SLASH ====================
 
 const commands = [
+  new SlashCommandBuilder().setName('nexo').setDescription('Pregunta general').addStringOption(o => o.setName('query').setDescription('Pregunta').setRequired(true)),
+  new SlashCommandBuilder().setName('status').setDescription('Métricas del sistema'),
+  new SlashCommandBuilder().setName('unirse').setDescription('NEXO entra al canal de voz'),
+  new SlashCommandBuilder().setName('salir').setDescription('NEXO sale del canal de voz'),
   new SlashCommandBuilder()
-    .setName('unirse')
-    .setDescription('Conecta NEXO a tu canal de voz')
-    .setDefaultMemberPermissions(PermissionFlagsBits.Connect),
-
-  new SlashCommandBuilder()
-    .setName('salir')
-    .setDescription('Desconecta NEXO del canal de voz'),
-
-  new SlashCommandBuilder()
-    .setName('nexo')
-    .setDescription('Consulta a NEXO una pregunta')
-    .addStringOption(option =>
-      option
-        .setName('pregunta')
-        .setDescription('Tu pregunta para NEXO')
-        .setRequired(true)
+    .setName('drive')
+    .setDescription('Busca información en el Drive de NEXO')
+    .addStringOption(opt =>
+      opt.setName('consulta').setDescription('Qué quieres buscar o preguntar').setRequired(true)
     ),
-
   new SlashCommandBuilder()
-    .setName('estado')
-    .setDescription('Muestra el estado actual de NEXO'),
-
-  new SlashCommandBuilder()
-    .setName('soundboard')
-    .setDescription('Abre la botonera de sonidos'),
-
-  new SlashCommandBuilder()
-    .setName('ayuda')
-    .setDescription('Muestra la ayuda de comandos disponibles')
+    .setName('geopolitica')
+    .setDescription('Consulta la carpeta Geopolítica del Drive')
+    .addStringOption(opt =>
+      opt.setName('tema').setDescription('Tema geopolítico a consultar').setRequired(false)
+    ),
 ];
 
-// ==================== REGISTRAR COMANDOS ====================
-
-async function registerCommands() {
+client.once('clientReady', async (c) => {
+  console.log(`[NEXO] Bot conectado como ${c.user.tag}`);
   try {
-    console.log('🔄 Registrando comandos slash...');
-    const rest = new REST({ version: '10' }).setToken(DISCORD_TOKEN);
-
-    const commandsData = commands.map(cmd => cmd.toJSON());
-
-    const data = await rest.put(
-      Routes.applicationCommands(DISCORD_CLIENT_ID),
-      { body: commandsData }
-    );
-
-    console.log(`✅ ${data.length} comandos registrados exitosamente`);
-  } catch (error) {
-    console.error('❌ Error registrando comandos:', error.message);
+    const guildId = process.env.DISCORD_GUILD_ID;
+    if (guildId) {
+      const guild = await client.guilds.fetch(guildId);
+      await guild.commands.set(commands);
+      console.log(`Comandos registrados en guild ${guildId}`);
+    } else {
+      await client.application.commands.set(commands);
+      console.log('Comandos globales registrados');
+    }
+  } catch (err) {
+    console.error('Error registrando comandos:', err.message);
   }
-}
-
-// ==================== FUNCIONES DE VOZ ====================
-
-async function connectToVoiceChannel(member, guild) {
-  try {
-    const voiceChannel = member.voice.channel;
-
-    if (!voiceChannel) {
-      throw new Error('No estás en un canal de voz');
-    }
-
-    // Verificar permisos
-    const botMember = guild.members.me;
-    if (!botMember.permissionsIn(voiceChannel).has('Connect')) {
-      throw new Error('No tengo permiso para conectarme a este canal');
-    }
-
-    if (!botMember.permissionsIn(voiceChannel).has('Speak')) {
-      throw new Error('No tengo permiso para hablar en este canal');
-    }
-
-    // Desconectar si ya estaba conectado
-    const existingConnection = getVoiceConnection(guild.id);
-    if (existingConnection) {
-      existingConnection.destroy();
-    }
-
-    // Crear nueva conexión
-    const connection = joinVoiceChannel({
-      channelId: voiceChannel.id,
-      guildId: guild.id,
-      adapterCreator: guild.voiceAdapterCreator,
-      selfDeaf: false,
-      selfMute: false
-    });
-
-    // Crear reproductor de audio
-    const player = createAudioPlayer({
-      behaviors: {
-        noSubscriber: NoSubscriberError.Ignore
-      }
-    });
-
-    // Suscribir el reproductor a la conexión
-    connection.subscribe(player);
-
-    // Esperar a que esté listo
-    await entersState(connection, VoiceConnectionStatus.Ready, 30_000);
-
-    // Guardar referencias
-    voiceConnections.set(guild.id, connection);
-    audioPlayers.set(guild.id, player);
-
-    // Manejo de desconexión
-    connection.on(VoiceConnectionStatus.Disconnected, async () => {
-      try {
-        await entersState(connection, VoiceConnectionStatus.Connecting, 5_000);
-      } catch (error) {
-        connection.destroy();
-        voiceConnections.delete(guild.id);
-        audioPlayers.delete(guild.id);
-        console.log(`🔌 Desconectado de ${voiceChannel.name}`);
-      }
-    });
-
-    connection.on('error', error => {
-      console.error(`❌ Error de conexión de voz:`, error.message);
-    });
-
-    console.log(`🎙️ Conectado a: ${voiceChannel.name}`);
-    return connection;
-  } catch (error) {
-    console.error('❌ Error conectando a voz:', error.message);
-    throw error;
-  }
-}
-
-function disconnectFromVoiceChannel(guildId) {
-  try {
-    const connection = voiceConnections.get(guildId);
-    if (connection) {
-      connection.destroy();
-      voiceConnections.delete(guildId);
-      audioPlayers.delete(guildId);
-      return true;
-    }
-    return false;
-  } catch (error) {
-    console.error('❌ Error desconectando:', error.message);
-    return false;
-  }
-}
-
-async function playSound(guildId, soundKey) {
-  try {
-    const player = audioPlayers.get(guildId);
-    if (!player) {
-      throw new Error('No hay reproductor de audio disponible');
-    }
-
-    const sound = SOUNDS[soundKey];
-    if (!sound) {
-      throw new Error(`Sonido no encontrado: ${soundKey}`);
-    }
-
-    const soundPath = path.join(__dirname, sound.file);
-
-    // Si el archivo no existe, crear un sonido de prueba
-    if (!fs.existsSync(soundPath)) {
-      console.warn(`⚠️ Archivo de sonido no encontrado: ${soundPath}`);
-      // Continuar sin error - el bot no se caerá
-      return;
-    }
-
-    const resource = createAudioResource(soundPath);
-    player.play(resource);
-
-    console.log(`🔊 Reproduciendo: ${sound.name}`);
-
-    return new Promise((resolve) => {
-      player.once(AudioPlayerStatus.Idle, () => {
-        resolve();
-      });
-
-      player.once('error', (error) => {
-        console.error(`❌ Error reproduciendo sonido:`, error.message);
-        resolve();
-      });
-
-      // Timeout de 30 segundos
-      setTimeout(resolve, 30000);
-    });
-  } catch (error) {
-    console.error('❌ Error reproduciendo sonido:', error.message);
-    throw error;
-  }
-}
-
-// ==================== BOTONERA DE SONIDOS ====================
-
-function createSoundboardButtons() {
-  const rows = [];
-  const soundKeys = Object.keys(SOUNDS);
-
-  // Crear filas de botones (máximo 5 botones por fila)
-  for (let i = 0; i < soundKeys.length; i += 5) {
-    const row = new ActionRowBuilder();
-    const soundsInRow = soundKeys.slice(i, i + 5);
-
-    for (const soundKey of soundsInRow) {
-      const sound = SOUNDS[soundKey];
-      row.addComponents(
-        new ButtonBuilder()
-          .setCustomId(`sound_${soundKey}`)
-          .setLabel(sound.name)
-          .setStyle(ButtonStyle.Primary)
-          .setEmoji(sound.emoji)
-      );
-    }
-
-    rows.push(row);
-  }
-
-  return rows;
-}
-
-// ==================== EVENT HANDLERS ====================
-
-client.once('ready', () => {
-  console.log(`\n✅ Bot conectado como: ${client.user.tag}`);
-  console.log(`📊 Servidores: ${client.guilds.cache.size}`);
-  client.user.setActivity('🎙️ NEXO Control Hub', { type: 'LISTENING' });
 });
-
-client.on('error', error => {
-  console.error('❌ Error del cliente Discord:', error);
-});
-
-process.on('unhandledRejection', error => {
-  console.error('❌ Promise rejection no manejada:', error);
-});
-
-// ==================== INTERACCIONES ====================
 
 client.on('interactionCreate', async interaction => {
-  try {
-    // Manejo de comandos slash
-    if (interaction.isChatInputCommand()) {
-      const { commandName, user, member, guild } = interaction;
-      console.log(`\n📨 Comando: /${commandName} | Usuario: ${user.tag}`);
+  if (!interaction.isChatInputCommand()) return;
+  await interaction.deferReply();
+  const { commandName, options, user, guildId, channel } = interaction;
 
-      // -------- COMANDO: unirse --------
-      if (commandName === 'unirse') {
-        await interaction.deferReply();
+  if (commandName === 'nexo') {
+    const query = options.getString('query');
+    try {
+      const resp = await axios.post(`${FASTAPI_URL}/api/agente/`, { query, user_id: user.id });
+      await interaction.editReply(resp.data.respuesta || 'Sin respuesta');
+    } catch (err) { await interaction.editReply(`Error: ${err.message}`); }
+  }
 
-        if (!member?.voice?.channel) {
-          return interaction.editReply({
-            content: '❌ Debes estar en un canal de voz primero',
-            ephemeral: true
-          });
-        }
+  if (commandName === 'status') {
+    try {
+      const resp = await axios.get(`${FASTAPI_URL}/api/metrics/`);
+      const sys = resp.data.sistema || resp.data.system || {};
+      const embed = new EmbedBuilder()
+        .setTitle('NEXO Status')
+        .setColor(0x00AE86)
+        .addFields(
+          { name: 'CPU', value: `${sys.cpu_percent || sys.uso_pct || '?'}%`, inline: true },
+          { name: 'RAM', value: `${sys.memory_percent || '?'}%`, inline: true },
+          { name: 'Uptime', value: `${resp.data.uptime_legible || '?'}`, inline: true }
+        );
+      await interaction.editReply({ embeds: [embed] });
+    } catch (err) { await interaction.editReply('Error al rescatar métricas.'); }
+  }
 
+  if (commandName === 'unirse') {
+    const voiceChannel = interaction.member?.voice?.channel;
+    if (!voiceChannel) return interaction.editReply('❌ Debes estar en un canal de voz.');
+    
+    try {
+      const connection = joinVoiceChannel({
+        channelId: voiceChannel.id,
+        guildId: guildId,
+        adapterCreator: voiceChannel.guild.voiceAdapterCreator,
+        selfDeaf: false,
+      });
+
+      connection.on(VoiceConnectionStatus.Disconnected, async () => {
         try {
-          await connectToVoiceChannel(member, guild);
-          const voiceChannel = member.voice.channel;
-
-          return interaction.editReply({
-            content: `🎙️ **NEXO conectado a ${voiceChannel.name}**\n\nUsa \`/soundboard\` para reproducir sonidos`,
-            ephemeral: false
-          });
-        } catch (error) {
-          console.error('❌ Error conectando a voz:', error.message);
-          return interaction.editReply({
-            content: `❌ Error al conectar: ${error.message}`,
-            ephemeral: true
-          });
-        }
-      }
-
-      // -------- COMANDO: salir --------
-      else if (commandName === 'salir') {
-        await interaction.deferReply();
-
-        const disconnected = disconnectFromVoiceChannel(guild.id);
-
-        if (!disconnected) {
-          return interaction.editReply({
-            content: '❌ No estoy en ningún canal de voz',
-            ephemeral: true
-          });
-        }
-
-        return interaction.editReply({
-          content: '👋 **NEXO desconectado**',
-          ephemeral: false
-        });
-      }
-
-      // -------- COMANDO: nexo --------
-      else if (commandName === 'nexo') {
-        await interaction.deferReply();
-
-        const query = interaction.options.getString('pregunta');
-        console.log(`🤖 Consultando backend: "${query}"`);
-
-        try {
-          const response = await fetch(`${NEXO_BACKEND}/api/ai/ask`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'X-NEXO-API-KEY': NEXO_API_KEY,
-              'User-Agent': 'NEXO-Discord-Bot/1.0'
-            },
-            body: JSON.stringify({ question: query }),
-            timeout: 10000
-          });
-
-          if (!response.ok) {
-            throw new Error(`Backend error: ${response.status} ${response.statusText}`);
-          }
-
-          const data = await response.json();
-          const answer = data.answer || data.respuesta || data.response || 'Sin respuesta disponible';
-
-          console.log('✅ Respuesta recibida del backend');
-
-          return interaction.editReply({
-            content: `🤖 **NEXO:** ${answer.substring(0, 2000)}`,
-            ephemeral: false
-          });
-        } catch (error) {
-          console.error('❌ Error consultando backend:', error.message);
-          return interaction.editReply({
-            content: `❌ Error de conexión: ${error.message}`,
-            ephemeral: true
-          });
-        }
-      }
-
-      // -------- COMANDO: estado --------
-      else if (commandName === 'estado') {
-        await interaction.deferReply();
-
-        const connection = voiceConnections.get(guild.id);
-        const voiceState = connection ? '🟢 Conectado' : '🔴 Desconectado';
-
-        // Verificar backend
-        let backendStatus = '⚠️ Desconocido';
-        try {
-          const response = await fetch(`${NEXO_BACKEND}/health`, {
-            timeout: 5000
-          });
-          backendStatus = response.ok ? '🟢 Online' : '🔴 Offline';
+          await Promise.race([
+            entersState(connection, VoiceConnectionStatus.Signalling, 5_000),
+            entersState(connection, VoiceConnectionStatus.Connecting, 5_000),
+          ]);
         } catch {
-          backendStatus = '🔴 Offline';
+          connection.destroy();
+          console.log('[NEXO VOICE] Conexión de voz cerrada limpiamente');
         }
+      });
 
-        const embed = new EmbedBuilder()
-          .setColor(0x00D9FF)
-          .setTitle('🤖 Estado de NEXO')
-          .addFields(
-            { name: '🎙️ Voz', value: voiceState, inline: true },
-            { name: '🧠 Backend', value: backendStatus, inline: true },
-            { name: '📊 Servidores', value: `${client.guilds.cache.size}`, inline: true },
-            { name: '👥 Usuarios', value: `${client.users.cache.size}`, inline: true }
-          )
-          .setTimestamp();
-
-        return interaction.editReply({ embeds: [embed] });
-      }
-
-      // -------- COMANDO: soundboard --------
-      else if (commandName === 'soundboard') {
-        await interaction.deferReply();
-
-        const connection = voiceConnections.get(guild.id);
-        if (!connection) {
-          return interaction.editReply({
-            content: '❌ Primero debes conectarme a un canal de voz con `/unirse`',
-            ephemeral: true
-          });
-        }
-
-        const buttons = createSoundboardButtons();
-
-        return interaction.editReply({
-          content: '🎵 **Botonera de Sonidos**\n\nHaz clic en un botón para reproducir un sonido:',
-          components: buttons,
-          ephemeral: false
-        });
-      }
-
-      // -------- COMANDO: ayuda --------
-      else if (commandName === 'ayuda') {
-        await interaction.deferReply();
-
-        const embed = new EmbedBuilder()
-          .setColor(0xFF006E)
-          .setTitle('📚 Ayuda de NEXO')
-          .setDescription('Comandos disponibles:')
-          .addFields(
-            { name: '/unirse', value: 'Conecta NEXO a tu canal de voz', inline: false },
-            { name: '/salir', value: 'Desconecta NEXO del canal de voz', inline: false },
-            { name: '/nexo <pregunta>', value: 'Consulta una pregunta a NEXO', inline: false },
-            { name: '/soundboard', value: 'Abre la botonera de sonidos', inline: false },
-            { name: '/estado', value: 'Muestra el estado actual de NEXO', inline: false },
-            { name: '/ayuda', value: 'Muestra este mensaje', inline: false }
-          )
-          .setFooter({ text: 'El Anarcocapital - NEXO Control Hub' });
-
-        return interaction.editReply({ embeds: [embed] });
-      }
+      setupVoiceHandler(connection, channel);
+      await interaction.editReply(`✅ Conectado a **${voiceChannel.name}**. Escuchando...`);
+    } catch (err) {
+      await interaction.editReply(`Error al unir: ${err.message}`);
     }
+  }
 
-    // Manejo de botones
-    else if (interaction.isButton()) {
-      const customId = interaction.customId;
-
-      if (customId.startsWith('sound_')) {
-        await interaction.deferReply({ ephemeral: true });
-
-        const soundKey = customId.replace('sound_', '');
-        const sound = SOUNDS[soundKey];
-
-        if (!sound) {
-          return interaction.editReply({
-            content: '❌ Sonido no encontrado',
-            ephemeral: true
-          });
-        }
-
-        try {
-          await playSound(interaction.guildId, soundKey);
-          return interaction.editReply({
-            content: `✅ Reproduciendo: ${sound.name}`,
-            ephemeral: true
-          });
-        } catch (error) {
-          return interaction.editReply({
-            content: `❌ Error reproduciendo sonido: ${error.message}`,
-            ephemeral: true
-          });
-        }
-      }
+  if (commandName === 'salir') {
+    const conn = getVoiceConnection(guildId);
+    if (conn) {
+      conn.destroy();
+      await interaction.editReply('👋 He salido del canal.');
+    } else {
+      await interaction.editReply('No estoy en un canal de voz.');
     }
-  } catch (error) {
-    console.error('❌ Error procesando interacción:', error);
-    if (interaction.replied || interaction.deferred) {
-      return interaction.editReply({
-        content: `❌ Error: ${error.message}`,
-        ephemeral: true
-      }).catch(() => {});
+  }
+
+  if (commandName === 'drive') {
+    const consulta = options.getString('consulta');
+    try {
+      const ctxRes = await axios.post(
+        `${FASTAPI_URL}/api/drive/contexto`,
+        { mensaje_usuario: consulta, folder_id: '10pn6Zo5_SUTf2jlWaH98rs0wtF3W0Trx' },
+        { timeout: 15000 }
+      );
+      const ctx = ctxRes.data;
+      let promptConContexto = consulta;
+      if (ctx.contexto_encontrado && ctx.contexto_raw) {
+        promptConContexto = `El usuario pregunta: "${consulta}"\n\nContexto desde Drive (${ctx.archivos.join(', ')}):\n${ctx.contexto_raw}\n\nResponde de forma clara y directa usando este contexto.`;
+      }
+      const resp = await axios.post(
+        `${FASTAPI_URL}/api/agente/`,
+        { query: promptConContexto, user_id: user.id },
+        { timeout: 30000 }
+      );
+      const respuesta = resp.data?.respuesta || resp.data?.mensaje || 'Sin respuesta';
+      const fuentes = ctx.archivos?.length ? `\n\n*Fuentes: ${ctx.archivos.join(', ')}*` : '';
+      await interaction.editReply(respuesta.substring(0, 1900) + fuentes);
+    } catch (err) {
+      const msg = (err.code === 'ECONNREFUSED' || err.code === 'ETIMEDOUT')
+        ? '⚠️ El sistema NEXO está iniciando. Intenta en 30 segundos.'
+        : `⚠️ Error consultando Drive: ${err.message}`;
+      await interaction.editReply(msg);
+    }
+  }
+
+  if (commandName === 'geopolitica') {
+    const tema = options.getString('tema') || 'situación actual';
+    try {
+      const ctxRes = await axios.post(
+        `${FASTAPI_URL}/api/drive/contexto`,
+        { mensaje_usuario: tema, folder_id: '10pn6Zo5_SUTf2jlWaH98rs0wtF3W0Trx' },
+        { timeout: 15000 }
+      );
+      const ctx = ctxRes.data;
+      if (!ctx.contexto_encontrado) {
+        await interaction.editReply('No encontré archivos relevantes en la carpeta Geopolítica para ese tema.');
+        return;
+      }
+      const prompt = `Analiza y resume la siguiente información geopolítica sobre "${tema}":\n\n${ctx.contexto_raw}\n\nDa un análisis directo, objetivo y estructurado.`;
+      const resp = await axios.post(
+        `${FASTAPI_URL}/api/agente/`,
+        { query: prompt, user_id: user.id },
+        { timeout: 30000 }
+      );
+      const respuesta = resp.data?.respuesta || resp.data?.mensaje || 'Sin respuesta';
+      await interaction.editReply(
+        `**Análisis Geopolítico: ${tema}**\n\n${respuesta.substring(0, 1800)}\n\nFuentes: ${ctx.archivos.join(', ')}`
+      );
+    } catch (err) {
+      const msg = (err.code === 'ECONNREFUSED' || err.code === 'ETIMEDOUT')
+        ? '⚠️ El sistema NEXO está iniciando. Intenta en 30 segundos.'
+        : `⚠️ Error: ${err.message}`;
+      await interaction.editReply(msg);
     }
   }
 });
 
-// ==================== INICIAR BOT ====================
-
-async function start() {
-  try {
-    console.log('🚀 Iniciando NEXO Discord Bot...\n');
-
-    // Registrar comandos
-    await registerCommands();
-
-    // Conectar a Discord
-    await client.login(DISCORD_TOKEN);
-    console.log('✅ Bot iniciado correctamente\n');
-  } catch (error) {
-    console.error('❌ Error iniciando bot:', error);
-    process.exit(1);
-  }
+function setupVoiceHandler(connection, textChannel) {
+  connection.receiver.speaking.on('start', userId => {
+    handleUserVoice(connection, userId, textChannel);
+  });
 }
 
-// Graceful shutdown
-process.on('SIGINT', async () => {
-  console.log('\n👋 Apagando bot...');
-  
-  // Desconectar de todos los canales de voz
-  for (const [guildId] of voiceConnections) {
-    disconnectFromVoiceChannel(guildId);
-  }
-  
-  await client.destroy();
-  process.exit(0);
-});
+function handleUserVoice(connection, userId, textChannel) {
+  const receiver = connection.receiver;
+  const audioStream = receiver.subscribe(userId, {
+    end: { behavior: EndBehaviorType.AfterSilence, duration: 1500 }
+  });
 
-process.on('SIGTERM', async () => {
-  console.log('\n👋 Apagando bot...');
-  
-  // Desconectar de todos los canales de voz
-  for (const [guildId] of voiceConnections) {
-    disconnectFromVoiceChannel(guildId);
-  }
-  
-  await client.destroy();
-  process.exit(0);
-});
+  const opusDecoder = new prism.opus.Decoder({ rate: 48000, channels: 2, frameSize: 960 });
+  const pcmPath = path.join(__dirname, `tmp_${userId}.pcm`);
+  const writeStream = fs.createWriteStream(pcmPath);
 
-start();
+  audioStream.pipe(opusDecoder).pipe(writeStream);
+
+  audioStream.on('end', async () => {
+    writeStream.end();
+    const text = await transcribirWhisper(pcmPath);
+    if (text && text.length > 3) {
+      const user = client.users.cache.get(userId);
+      await textChannel.send(`🎙️ **${user?.username || userId}:** ${text}`);
+      try {
+        const resp = await axios.post(`${FASTAPI_URL}/api/agente/`, {
+          query: text, user_id: userId, canal: textChannel.id
+        });
+        await textChannel.send(`🤖 **NEXO:** ${resp.data.respuesta}`);
+      } catch (err) {
+        console.error('Error IA voz:', err.message);
+      }
+    }
+    if (fs.existsSync(pcmPath)) fs.unlinkSync(pcmPath);
+  });
+}
+
+async function transcribirWhisper(pcmPath) {
+  return new Promise(resolve => {
+    const wavPath = pcmPath.replace('.pcm', '.wav');
+    const ffmpegProc = spawn('ffmpeg', [
+      '-y', '-f', 's16le', '-ar', '48000', '-ac', '2', '-i', pcmPath,
+      '-ar', '16000', '-ac', '1', wavPath
+    ]);
+
+    ffmpegProc.on('close', () => {
+      const py = spawn('python', ['-c', `
+import whisper, sys
+model = whisper.load_model('base')
+result = model.transcribe('${wavPath.replace(/\\/g, '/')}', language='es')
+print(result['text'].strip())
+      `]);
+      let output = '';
+      py.stdout.on('data', d => output += d);
+      py.on('close', () => {
+        if (fs.existsSync(wavPath)) fs.unlinkSync(wavPath);
+        resolve(output.trim());
+      });
+      setTimeout(() => { py.kill(); resolve(''); }, 45000);
+    });
+  });
+}
+
+const token = process.env.DISCORD_TOKEN.trim();
+console.log(`[NEXO INFO] Iniciando login (Token length: ${token.length})`);
+client.login(token);
