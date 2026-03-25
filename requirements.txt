@@ -26,20 +26,13 @@ google-auth-oauthlib
 openai
 google-generativeai
 google-genai
-sentence-transformers
 tiktoken
 tokenizers
-torch
-transformers
 numpy
 pandas
-matplotlib
-scipy
-scikit-learn
 SpeechRecognition
 PyMuPDF
 python-docx
-moviepy
 yt-dlp
 youtube-transcript-api
 
