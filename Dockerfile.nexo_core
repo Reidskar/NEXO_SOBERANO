@@ -2,19 +2,26 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-RUN apt-get update && apt-get install -y \
+# Install only essential system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     sqlite3 \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
+# Copy and install Python dependencies in a single layer
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt \
+    && find /usr/local/lib/python3.11 -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true \
+    && find /usr/local/lib/python3.11 -name "*.pyc" -delete 2>/dev/null || true
 
+# Copy application code
 COPY . .
 
+# Create required runtime directories
 RUN mkdir -p /app/logs /app/data
 
+# Expose port
 EXPOSE 8000
 
 HEALTHCHECK --interval=30s --timeout=15s --start-period=60s --retries=5 \

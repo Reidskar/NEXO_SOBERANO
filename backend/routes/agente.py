@@ -26,6 +26,8 @@ from backend.services.rag_service import get_rag_service
 from backend.services.cost_manager import get_cost_manager
 from backend.services.unified_cost_tracker import get_cost_tracker
 
+from NEXO_CORE.services.ai_router import ai_router, AIRequest
+
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/agente", tags=["agente"])
@@ -372,21 +374,23 @@ async def consultar(request: QueryRequest) -> QueryResponse:
             )
 
         # Ejecutar consulta RAG
-        rag = get_rag_service()
-        resultado = rag.consultar(request.query, request.categoria)
+        consulta_texto = request.query or request.pregunta or ""
+        resultado = await ai_router.consultar(AIRequest(
+            prompt=consulta_texto,
+            tipo="rag"
+        ))
+        respuesta = resultado.texto
 
         # Mapear a respuesta unificada
-        tokens_aproximado = (len(request.query) + len(resultado.get("respuesta", ""))) // 4
-
         return QueryResponse(
-            answer=resultado.get("respuesta", ""),
-            sources=resultado.get("fuentes"),
-            tokens_used=tokens_aproximado,
-            chunks_used=resultado.get("chunks_usados"),
-            execution_time_ms=resultado.get("ms"),
-            total_docs=resultado.get("total_docs"),
-            presupuesto=resultado.get("presupuesto"),
-            error=resultado.get("error", False),
+            answer=respuesta,
+            sources=[resultado.fuente],
+            tokens_used=resultado.tokens,
+            chunks_used=0,
+            execution_time_ms=0,
+            total_docs=0,
+            presupuesto={},
+            error=not resultado.success,
         )
 
     except HTTPException:

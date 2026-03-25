@@ -2,17 +2,15 @@
   "$schema": "https://railway.com/railway.schema.json",
   "build": {
     "builder": "DOCKERFILE",
-    "dockerfilePath": "Dockerfile.nexo_core"
+    "dockerfilePath": "Dockerfile"
   },
   "deploy": {
     "runtime": "V2",
     "numReplicas": 1,
-    "startCommand": "uvicorn NEXO_CORE.main:app --host 0.0.0.0 --port $PORT",
     "sleepApplication": false,
     "useLegacyStacker": false,
     "ipv6EgressEnabled": false,
     "restartPolicyType": "ON_FAILURE",
-    "restartPolicyMaxRetries": 10,
-    "healthcheckPath": "/health"
+    "restartPolicyMaxRetries": 10
   }
 }

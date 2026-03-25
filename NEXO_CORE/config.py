@@ -4,26 +4,26 @@ import os
 from pathlib import Path
 from typing import List
 
+try:
+    from dotenv import load_dotenv
+except ImportError:
+    def load_dotenv(path=None):
+        pass
+
 ROOT_DIR = Path(__file__).resolve().parent.parent
 LOG_DIR = ROOT_DIR / "logs"
 LOG_DIR.mkdir(parents=True, exist_ok=True)
 
+# Load environment variables from .env file
+env_file = ROOT_DIR / ".env"
+if env_file.exists():
+    load_dotenv(env_file)
+else:
+    load_dotenv(ROOT_DIR.parent / ".env")
 
 def load_env() -> None:
-    env_file = ROOT_DIR / ".env"
-    if not env_file.exists():
-        return
-    for line in env_file.read_text(encoding="utf-8", errors="replace").splitlines():
-        text = line.strip()
-        if not text or text.startswith("#") or "=" not in text:
-            continue
-        key, value = text.split("=", 1)
-        env_key = key.strip()
-        env_value = value.strip()
-        current = os.environ.get(env_key)
-        if current is None or current == "":
-            os.environ[env_key] = env_value
-
+    """Legacy function for backward compatibility"""
+    pass
 
 load_env()
 

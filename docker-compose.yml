@@ -81,8 +81,31 @@ services:
     volumes:
       - nexo-qdrant:/qdrant/storage
 
+  nexo_n8n:
+    image: n8nio/n8n:latest
+    container_name: nexo_n8n
+    profiles: ["prod", "dev"]
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:5678:5678"
+    environment:
+      - N8N_HOST=localhost
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=http
+      - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY:-nexo_n8n_key_2026}
+      - DB_TYPE=sqlite
+      - N8N_LOG_LEVEL=info
+    volumes:
+      - nexo-n8n:/home/node/.n8n
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:5678/healthz || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
 volumes:
   nexo-data:
   nexo-logs:
   nexo-pgdata:
   nexo-qdrant:
+  nexo-n8n:
