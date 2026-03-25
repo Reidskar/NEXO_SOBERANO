@@ -177,6 +177,20 @@ try:
 except ImportError as e:
     logger.warning(f"Drive API no disponible: {e}")
 
+try:
+    from NEXO_CORE.api.social import router as social_router
+    app.include_router(social_router)
+    logger.info("Social API (/api/social) registrada.")
+except ImportError as e:
+    logger.warning(f"Social API no disponible: {e}")
+
+try:
+    from NEXO_CORE.api.files import router as files_api_router
+    app.include_router(files_api_router)
+    logger.info("Files API (/api/files) registrada.")
+except ImportError as e:
+    logger.warning(f"Files API no disponible: {e}")
+
 import os as _os
 if _os.path.isdir("frontend/dist"):
     from starlette.staticfiles import StaticFiles

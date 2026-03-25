@@ -54,6 +54,23 @@ const commands = [
     .addStringOption(opt =>
       opt.setName('tema').setDescription('Tema geopolítico a consultar').setRequired(false)
     ),
+  new SlashCommandBuilder()
+    .setName('social')
+    .setDescription('Monitorea o analiza redes sociales')
+    .addStringOption(opt =>
+      opt.setName('accion')
+        .setDescription('monitor, analizar, estado')
+        .setRequired(true)
+        .addChoices(
+          { name: 'Ver estado social media', value: 'estado' },
+          { name: 'Analizar sentimiento', value: 'analizar' }
+        )
+    )
+    .addStringOption(opt =>
+      opt.setName('texto')
+        .setDescription('Texto o keywords para analizar')
+        .setRequired(false)
+    ),
 ];
 
 client.once('clientReady', async (c) => {
@@ -195,6 +212,35 @@ client.on('interactionCreate', async interaction => {
       await interaction.editReply(
         `**Análisis Geopolítico: ${tema}**\n\n${respuesta.substring(0, 1800)}\n\nFuentes: ${ctx.archivos.join(', ')}`
       );
+    } catch (err) {
+      const msg = (err.code === 'ECONNREFUSED' || err.code === 'ETIMEDOUT')
+        ? '⚠️ El sistema NEXO está iniciando. Intenta en 30 segundos.'
+        : `⚠️ Error: ${err.message}`;
+      await interaction.editReply(msg);
+    }
+  }
+
+  if (commandName === 'social') {
+    const accion = options.getString('accion');
+    const texto = options.getString('texto') || '';
+    try {
+      if (accion === 'estado') {
+        const res = await axios.get(`${FASTAPI_URL}/api/social/health`, { timeout: 10000 });
+        const s = res.data.status;
+        const lines = Object.entries(s).map(([k, v]) => `**${k}**: ${v}`).join('\n');
+        await interaction.editReply(`**Estado Social Media**\n${lines}`);
+      } else if (accion === 'analizar' && texto) {
+        const res = await axios.post(
+          `${FASTAPI_URL}/api/social/analizar-sentimiento`,
+          { texto, pais: 'Chile' },
+          { timeout: 15000 }
+        );
+        const s = res.data.sentimiento;
+        const heatScore = s?.heat_score !== undefined ? `Heat score: ${s.heat_score}` : JSON.stringify(s);
+        await interaction.editReply(`**Análisis de sentimiento**\n"${texto}"\n→ ${heatScore}`);
+      } else {
+        await interaction.editReply('Especifica un texto para analizar.');
+      }
     } catch (err) {
       const msg = (err.code === 'ECONNREFUSED' || err.code === 'ETIMEDOUT')
         ? '⚠️ El sistema NEXO está iniciando. Intenta en 30 segundos.'
