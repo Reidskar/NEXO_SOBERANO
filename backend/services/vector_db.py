@@ -5,7 +5,13 @@ import logging
 from typing import List, Dict, Any, Optional
 
 import asyncpg
-from sentence_transformers import SentenceTransformer
+
+try:
+    from sentence_transformers import SentenceTransformer
+    EMBEDDINGS_DISPONIBLE = True
+except ImportError:
+    EMBEDDINGS_DISPONIBLE = False
+    SentenceTransformer = None  # type: ignore
 
 # Configurar logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s [%(levelname)s] %(message)s')
@@ -15,7 +21,7 @@ log = logging.getLogger(__name__)
 # Leer desde variables de entorno. Usa DATABASE_URL de Supabase.
 DATABASE_URL = os.getenv("DATABASE_URL")
 if not DATABASE_URL:
-    raise ValueError("❌ DATABASE_URL no encontrada en el entorno. Asegúrate de tenerla configurada.")
+    log.warning("DATABASE_URL no encontrada — vector_db en modo degradado (sin PostgreSQL)")
 
 # Asegurar formato postgresql://
 if DATABASE_URL.startswith("postgres://"):
@@ -35,11 +41,17 @@ _embed_model = None
 
 def get_embed_model():
     global _embed_model
+    if not EMBEDDINGS_DISPONIBLE:
+        log.warning("sentence_transformers no disponible - usando Gemini embeddings")
+        return None
     if _embed_model is None:
         _embed_model = SentenceTransformer("all-MiniLM-L6-v2")
     return _embed_model
 
 def get_embedding(text: str) -> List[float]:
+    if not EMBEDDINGS_DISPONIBLE:
+        log.warning("sentence_transformers no disponible - usando Gemini embeddings")
+        return []
     model = get_embed_model()
     return model.encode(text[:2000]).tolist()
 

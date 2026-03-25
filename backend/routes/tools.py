@@ -3,14 +3,17 @@
 # © 2026 elanarcocapital.com
 # ============================================================
 from __future__ import annotations
-from fastapi import APIRouter
-from NEXO_CORE.tools.domain_intel import domain_intel_service
+from fastapi import APIRouter, HTTPException
 
 router = APIRouter(prefix="/api/tools", tags=["tools"])
 
 @router.get("/domain-scan")
 async def scan_domain(domain: str = "elanarcocapital.com"):
     """Escaneo de inteligencia de dominio para nexo-sentinel."""
+    try:
+        from NEXO_CORE.tools.domain_intel import domain_intel_service
+    except ImportError:
+        raise HTTPException(503, "domain_intel no disponible en este entorno")
     result = await domain_intel_service.scan(domain)
     return {
         "domain":        result.domain,
