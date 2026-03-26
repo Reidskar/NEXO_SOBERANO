@@ -33,7 +33,12 @@ APP_DESCRIPTION = "Backend consolidado para El Anarcocapital"
 MAX_TOKENS_DIA = int(os.getenv("NEXO_MAX_TOKENS_DIA", "900000"))
 
 HOST = os.getenv("NEXO_HOST", "0.0.0.0")
-PORT = int(os.getenv("NEXO_PORT", "8000"))
+# Permite PORT (Railway, Vercel) o NEXO_PORT (custom), fallback a 8000
+_port_env = os.getenv("PORT") or os.getenv("NEXO_PORT") or "8000"
+try:
+    PORT = int(_port_env)
+except Exception:
+    PORT = 8000
 LOG_LEVEL = os.getenv("NEXO_LOG_LEVEL", "INFO").upper()
 LOG_FILE_NAME = os.getenv("NEXO_LOG_FILE", "nexo_core.log")
 
