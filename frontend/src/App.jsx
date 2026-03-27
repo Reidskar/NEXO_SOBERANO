@@ -7,6 +7,7 @@ import Documents from './pages/Documents';
 import DocumentDetail from './pages/DocumentDetail';
 import Timeline from './pages/Timeline';
 import SystemControl from './pages/SystemControl';
+import Escenarios from './pages/Escenarios';
 
 function App() {
   return (
@@ -15,6 +16,9 @@ function App() {
         {/* Public landing page */}
         <Route path="/" element={<Landing />} />
 
+        {/* Scenario debate (Drive-powered) */}
+        <Route path="/escenarios" element={<Escenarios />} />
+
         {/* Internal control panel */}
         <Route path="/control" element={<MainLayout />}>
           <Route index element={<StatusDashboard />} />
@@ -22,6 +26,7 @@ function App() {
           <Route path="documents/:id" element={<DocumentDetail />} />
           <Route path="timeline/:country" element={<Timeline />} />
           <Route path="system" element={<SystemControl />} />
+          <Route path="escenarios" element={<Escenarios />} />
         </Route>
       </Routes>
     </BrowserRouter>

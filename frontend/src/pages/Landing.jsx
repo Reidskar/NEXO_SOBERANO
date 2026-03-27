@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
+import Globe3D from '../components/Globe3D';
 
 // ─── Neural Canvas Background ─────────────────────────────────────────────────
 function NeuralCanvas() {
@@ -235,6 +236,15 @@ export default function Landing() {
         position: 'relative', padding: '130px 48px 100px', overflow: 'hidden'
       }}>
         <NeuralCanvas />
+
+        {/* Globe 3D flotante */}
+        <div style={{
+          position: 'absolute', right: '5vw', top: '50%', transform: 'translateY(-50%)',
+          zIndex: 2, opacity: 0.85, display: 'flex', alignItems: 'center', justifyContent: 'center',
+          pointerEvents: 'none',
+        }}>
+          <Globe3D size={420} color="#00e5ff" speed={0.004} />
+        </div>
 
         <div style={{ maxWidth: 860, position: 'relative', zIndex: 3 }}>
           <div style={{
