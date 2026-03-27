@@ -7,6 +7,7 @@ requests
 httpx
 python-multipart
 pydantic[email]>=2.0.0
+pydantic-settings
 slowapi>=0.1.9
 psutil>=5.9.0
 
