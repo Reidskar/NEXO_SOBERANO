@@ -191,11 +191,6 @@ try:
 except ImportError as e:
     logger.warning(f"Files API no disponible: {e}")
 
-import os as _os
-if _os.path.isdir("frontend/dist"):
-    from starlette.staticfiles import StaticFiles
-    app.mount("/", StaticFiles(directory="frontend/dist", html=True), name="frontend")
-
 @app.get("/health")
 async def health():
     db_status = await check_db_connection()
@@ -204,6 +199,12 @@ async def health():
         "db": "connected" if db_status else "error",
         "system": "running" if nexo.running else "stopped"
     }
+
+# StaticFiles SIEMPRE al final — si se monta antes captura /health y /api/*
+import os as _os
+if _os.path.isdir("frontend/dist"):
+    from starlette.staticfiles import StaticFiles
+    app.mount("/", StaticFiles(directory="frontend/dist", html=True), name="frontend")
 
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 8000))

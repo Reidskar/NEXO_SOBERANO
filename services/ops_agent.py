@@ -83,19 +83,17 @@ class OpsAgent:
                     self.state["last_decisions"].append(f"ALERTA DNS: {d} caído (NXDOMAIN)")
 
         # DB Metrics: Queue Load + Error Rate
-        async with SessionLocal() as db:
-            # Queue Load
-            stmt_queue = select(func.count()).where(Document.status == "pending")
-            q_res = await db.execute(stmt_queue)
-            self.state["queue_load"] = q_res.scalar_one_or_none() or 0
-            
-            # Error Rate (últimos errores / total docs recientes) pseudo-calculado
-            stmt_errors = select(func.count()).where(SystemErrorLog.resolved == False)
-            e_res = await db.execute(stmt_errors)
-            e_count = e_res.scalar_one_or_none() or 0
-            
-            # Si hay más de 5 errores sin resolver, el error rate sube agresivamente
-            self.state["error_rate"] = e_count / 10.0 if e_count > 0 else 0.0
+        try:
+            async with SessionLocal() as db:
+                stmt_queue = select(func.count()).where(Document.status == "pending")
+                q_res = await db.execute(stmt_queue)
+                self.state["queue_load"] = q_res.scalar_one_or_none() or 0
+                stmt_errors = select(func.count()).where(SystemErrorLog.resolved == False)
+                e_res = await db.execute(stmt_errors)
+                e_count = e_res.scalar_one_or_none() or 0
+                self.state["error_rate"] = e_count / 10.0 if e_count > 0 else 0.0
+        except Exception as e:
+            logger.warning(f"[OPS AGENT] DB metrics no disponibles: {e}")
 
     async def _evaluate_and_act(self):
         actions_taken = []
