@@ -36,6 +36,7 @@ python-docx
 
 # Integration & Services
 discord.py
+PyNaCl
 obsws-python
 tweepy
 gunicorn
