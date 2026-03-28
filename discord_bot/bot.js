@@ -1,10 +1,12 @@
 require('dotenv').config();
-const { 
-  Client, 
-  GatewayIntentBits, 
-  EmbedBuilder, 
-  SlashCommandBuilder, 
-  Partials 
+const { playTTS } = require('./tts_service');
+const { transcribeFile } = require('./stt_service');
+const {
+  Client,
+  GatewayIntentBits,
+  EmbedBuilder,
+  SlashCommandBuilder,
+  Partials
 } = require('discord.js');
 const { 
   joinVoiceChannel, 
@@ -263,53 +265,76 @@ function handleUserVoice(connection, userId, textChannel) {
   });
 
   const opusDecoder = new prism.opus.Decoder({ rate: 48000, channels: 2, frameSize: 960 });
-  const pcmPath = path.join(__dirname, `tmp_${userId}.pcm`);
-  const writeStream = fs.createWriteStream(pcmPath);
+  const wavPath = path.join(__dirname, `tmp_${userId}.wav`);
 
-  audioStream.pipe(opusDecoder).pipe(writeStream);
+  // Convertir Opus → PCM → WAV 16kHz mono directamente con ffmpeg-static
+  const ffmpegStatic = require('ffmpeg-static');
+  const { spawn } = require('child_process');
+  const ffProc = spawn(ffmpegStatic, [
+    '-f', 's16le', '-ar', '48000', '-ac', '2', '-i', 'pipe:0',
+    '-af', 'volume=3.0',
+    '-ar', '16000', '-ac', '1', wavPath, '-y'
+  ]);
 
-  audioStream.on('end', async () => {
-    writeStream.end();
-    const text = await transcribirWhisper(pcmPath);
-    if (text && text.length > 3) {
-      const user = client.users.cache.get(userId);
-      await textChannel.send(`🎙️ **${user?.username || userId}:** ${text}`);
-      try {
-        const resp = await axios.post(`${FASTAPI_URL}/api/agente/`, {
-          query: text, user_id: userId, canal: textChannel.id
-        });
-        await textChannel.send(`🤖 **NEXO:** ${resp.data.respuesta}`);
-      } catch (err) {
-        console.error('Error IA voz:', err.message);
+  audioStream.pipe(opusDecoder).pipe(ffProc.stdin);
+
+  ffProc.on('close', async () => {
+    if (!fs.existsSync(wavPath)) return;
+
+    try {
+      // STT: Groq Whisper (rápido) con fallback a Whisper local
+      let text = '';
+      if (process.env.GROQ_API_KEY) {
+        text = await transcribeFile(wavPath);
+      } else {
+        text = await transcribirWhisper(wavPath);
       }
+      if (fs.existsSync(wavPath)) fs.unlinkSync(wavPath);
+
+      if (!text || text.trim().length < 3) return;
+
+      // Filtrar alucinaciones comunes de Whisper
+      const lowered = text.toLowerCase().trim();
+      const hallucinations = ['gracias.', 'gracias', 'subtitles by', 'mushrooms', 'amara.org'];
+      if (hallucinations.some(h => lowered.includes(h)) && lowered.length < 15) return;
+
+      console.log(`[NEXO VOICE] STT: "${text}"`);
+      const user = client.users.cache.get(userId);
+      textChannel.send(`🎙️ **${user?.username || userId}:** ${text}`).catch(() => {});
+
+      // Consultar IA
+      const resp = await axios.post(`${FASTAPI_URL}/api/agente/`, {
+        query: text, user_id: userId, canal: textChannel.id
+      }, { timeout: 20000 });
+
+      const iaText = resp.data?.respuesta || 'No pude procesar tu solicitud.';
+      console.log(`[NEXO VOICE] IA: "${iaText.substring(0, 80)}"`);
+
+      // Responder por texto Y por voz
+      textChannel.send(`🤖 **NEXO:** ${iaText}`).catch(() => {});
+      await playTTS(connection, iaText);
+
+    } catch (err) {
+      console.error('[NEXO VOICE] Error pipeline:', err.response?.data || err.message);
+      if (fs.existsSync(wavPath)) fs.unlinkSync(wavPath);
     }
-    if (fs.existsSync(pcmPath)) fs.unlinkSync(pcmPath);
   });
 }
 
-async function transcribirWhisper(pcmPath) {
+async function transcribirWhisper(wavPath) {
+  // Fallback: Whisper local Python (requiere: pip install openai-whisper)
   return new Promise(resolve => {
-    const wavPath = pcmPath.replace('.pcm', '.wav');
-    const ffmpegProc = spawn('ffmpeg', [
-      '-y', '-f', 's16le', '-ar', '48000', '-ac', '2', '-i', pcmPath,
-      '-ar', '16000', '-ac', '1', wavPath
-    ]);
-
-    ffmpegProc.on('close', () => {
-      const py = spawn('python', ['-c', `
-import whisper, sys
+    const py = spawn('python', ['-c', `
+import whisper
 model = whisper.load_model('base')
 result = model.transcribe('${wavPath.replace(/\\/g, '/')}', language='es')
 print(result['text'].strip())
-      `]);
-      let output = '';
-      py.stdout.on('data', d => output += d);
-      py.on('close', () => {
-        if (fs.existsSync(wavPath)) fs.unlinkSync(wavPath);
-        resolve(output.trim());
-      });
-      setTimeout(() => { py.kill(); resolve(''); }, 45000);
-    });
+    `]);
+    let output = '';
+    py.stdout.on('data', d => { output += d; });
+    py.stderr.on('data', () => {}); // silenciar warnings de pytorch
+    py.on('close', () => resolve(output.trim()));
+    setTimeout(() => { py.kill(); resolve(''); }, 60000);
   });
 }
 
