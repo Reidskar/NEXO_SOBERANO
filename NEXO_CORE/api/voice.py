@@ -1,11 +1,13 @@
-from fastapi import APIRouter, UploadFile, File, Form, HTTPException
+from fastapi import APIRouter, UploadFile, File, Form, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.responses import Response, JSONResponse
 import logging
 import tempfile
 import os
 import subprocess
 from pathlib import Path
+from pydantic import BaseModel
 from backend.services.rag_service import get_rag_service
+from NEXO_CORE.services.gemini_live_service import get_live_service
 
 router = APIRouter(prefix="/api/voice", tags=["voice"])
 logger = logging.getLogger(__name__)
@@ -77,3 +79,87 @@ async def speech_to_text(
         logger.error(f"[VOZ] Error procesando STT/TTS: {e}")
         if os.path.exists(tmp_path): os.unlink(tmp_path)
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ── Gemini Live — conversación en tiempo real ─────────────────────────────────
+
+@router.get("/live/status")
+async def live_status() -> dict:
+    """Estado del servicio Gemini Live (voz/texto en tiempo real)."""
+    svc = get_live_service()
+    return {
+        "available": svc.available,
+        "model": svc.model,
+        "modalities": ["TEXT", "AUDIO"],
+        "ws_endpoint": "/api/voice/live/stream",
+    }
+
+
+class LiveAskRequest(BaseModel):
+    text: str
+    modality: str = "TEXT"
+
+
+@router.post("/live/ask")
+async def live_ask(body: LiveAskRequest):
+    """
+    Pregunta rápida texto→texto via Gemini Live (sin WebSocket).
+    Para respuesta en audio usa el WebSocket /api/voice/live/stream.
+    """
+    svc = get_live_service()
+    if not svc.available:
+        return JSONResponse(
+            status_code=503,
+            content={"error": "Gemini Live no disponible — revisa GEMINI_API_KEY"},
+        )
+    parts: list[str] = []
+    async for chunk in svc.chat(body.text, modality="TEXT"):
+        if chunk["type"] == "text":
+            parts.append(chunk["content"])
+        elif chunk["type"] == "error":
+            return JSONResponse(status_code=500, content={"error": chunk["content"]})
+    return {"response": "".join(parts), "model": svc.model}
+
+
+@router.websocket("/live/stream")
+async def live_stream(websocket: WebSocket) -> None:
+    """
+    Sesión de voz en tiempo real con Gemini Live.
+
+    Cliente → servidor:  {"text": "pregunta", "modality": "TEXT"|"AUDIO"}
+    Servidor → cliente:  {"type": "text",  "content": "..."}
+                         {"type": "audio", "data": "<base64 PCM 16-bit 24kHz mono>"}
+                         {"type": "done"}
+                         {"type": "error", "content": "..."}
+    """
+    await websocket.accept()
+    svc = get_live_service()
+
+    if not svc.available:
+        await websocket.send_json(
+            {"type": "error", "content": "Gemini Live no disponible — revisa GEMINI_API_KEY"}
+        )
+        await websocket.close(code=1011)
+        return
+
+    logger.info("[Live WS] Cliente conectado")
+    try:
+        while True:
+            data = await websocket.receive_json()
+            text: str = data.get("text", "").strip()
+            modality: str = data.get("modality", "TEXT").upper()
+            if not text:
+                continue
+            if modality not in ("TEXT", "AUDIO"):
+                modality = "TEXT"
+            logger.info(f"[Live WS] [{modality}] {text[:80]}")
+            async for chunk in svc.chat(text, modality=modality):
+                await websocket.send_json(chunk)
+    except WebSocketDisconnect:
+        logger.info("[Live WS] Cliente desconectado")
+    except Exception as exc:
+        logger.error(f"[Live WS] Error: {exc}")
+        try:
+            await websocket.send_json({"type": "error", "content": str(exc)})
+        except Exception:
+            pass
