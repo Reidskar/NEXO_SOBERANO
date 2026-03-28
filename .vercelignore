@@ -1,8 +1,57 @@
-# Evitar que Vercel intente compilar Python como Serverless Functions
-api/**
-core/**
-services/**
-local_worker/**
-main.py
-requirements.txt
-Dockerfile
+# Python — no deployar
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.py
+requirements*.txt
+Dockerfile*
+docker-compose*
+alembic/
+migrations/
+
+# Node modules de subdirectorios (no el del frontend)
+discord_bot/node_modules/
+sandbox/node_modules/
+
+# Datos, logs, outputs
+logs/
+cache/
+exports/
+output/
+*.log
+*.zip
+
+# Directorios que no son frontend
+backend/
+discord_bot/
+sandbox/
+agents/
+workers/
+services/
+core/
+api/
+local_worker/
+inter_agent/
+mobile-admin/
+mobile-user/
+mobile_agent/
+scripts/
+sql/
+docs/
+mcp_servers/
+monitoring/
+network/
+obs_control/
+ngrok/
+kindle_dashboard/
+kindle_sync/
+n8n_nexo_workflows/
+supabase/
+AI-INTELLIGENCE-SYSTEM/
+agente_postulaciones/
+assets/
+
+# Sensibles
+.env*
+credenciales_*.json
