@@ -80,9 +80,15 @@ client.once('clientReady', async (c) => {
   try {
     const guildId = process.env.DISCORD_GUILD_ID;
     if (guildId) {
-      const guild = await client.guilds.fetch(guildId);
-      await guild.commands.set(commands);
-      console.log(`Comandos registrados en guild ${guildId}`);
+      try {
+        const guild = await client.guilds.fetch(guildId);
+        await guild.commands.set(commands);
+        console.log(`Comandos registrados en guild ${guildId}`);
+      } catch (guildErr) {
+        console.warn(`[NEXO] Guild ${guildId} no accesible (${guildErr.message}), usando comandos globales`);
+        await client.application.commands.set(commands);
+        console.log('Comandos globales registrados (fallback)');
+      }
     } else {
       await client.application.commands.set(commands);
       console.log('Comandos globales registrados');
@@ -145,7 +151,9 @@ client.on('interactionCreate', async interaction => {
         }
       });
 
-      setupVoiceHandler(connection, channel);
+      const textCh = interaction.channel || channel;
+      console.log(`[NEXO VOICE] Conectando a ${voiceChannel.name}, texto en ${textCh?.id}`);
+      setupVoiceHandler(connection, textCh);
       await interaction.editReply(`✅ Conectado a **${voiceChannel.name}**. Escuchando...`);
     } catch (err) {
       await interaction.editReply(`Error al unir: ${err.message}`);
@@ -253,65 +261,113 @@ client.on('interactionCreate', async interaction => {
 });
 
 function setupVoiceHandler(connection, textChannel) {
+  console.log(`[NEXO VOICE] setupVoiceHandler activo. Canal texto: ${textChannel?.id || 'NINGUNO'}`);
+
   connection.receiver.speaking.on('start', userId => {
+    console.log(`[NEXO VOICE] Usuario ${userId} empezó a hablar`);
     handleUserVoice(connection, userId, textChannel);
+  });
+
+  connection.on(VoiceConnectionStatus.Ready, () => {
+    console.log('[NEXO VOICE] Conexión READY - escuchando audio');
   });
 }
 
+const activeUsers = new Map();
+
 function handleUserVoice(connection, userId, textChannel) {
+  if (activeUsers.has(userId)) return;
+  activeUsers.set(userId, true);
+
   const receiver = connection.receiver;
   const audioStream = receiver.subscribe(userId, {
-    end: { behavior: EndBehaviorType.AfterSilence, duration: 1500 }
+    end: { behavior: EndBehaviorType.Manual }
   });
 
   const opusDecoder = new prism.opus.Decoder({ rate: 48000, channels: 2, frameSize: 960 });
-  const wavPath = path.join(__dirname, `tmp_${userId}.wav`);
+  const wavPath = path.join(__dirname, `tmp_${userId}_${Date.now()}.wav`);
 
-  // Convertir Opus → PCM → WAV 16kHz mono directamente con ffmpeg-static
   const ffmpegStatic = require('ffmpeg-static');
-  const { spawn } = require('child_process');
   const ffProc = spawn(ffmpegStatic, [
     '-f', 's16le', '-ar', '48000', '-ac', '2', '-i', 'pipe:0',
     '-af', 'volume=3.0',
     '-ar', '16000', '-ac', '1', wavPath, '-y'
   ]);
 
+  let chunkCount = 0;
+  let lastDataTime = Date.now();
+
+  // Detector de silencio manual (1.5s sin datos = fin)
+  const silenceCheck = setInterval(() => {
+    if (Date.now() - lastDataTime > 1500 && chunkCount > 0) {
+      console.log(`[NEXO VOICE] Silencio detectado (${chunkCount} chunks). Cerrando grabación.`);
+      cleanup();
+    }
+  }, 500);
+
+  const cleanup = () => {
+    activeUsers.delete(userId);
+    clearInterval(silenceCheck);
+    try {
+      audioStream.unpipe(opusDecoder);
+      opusDecoder.unpipe(ffProc.stdin);
+      ffProc.stdin.end();
+    } catch (e) {}
+  };
+
+  opusDecoder.on('data', () => {
+    chunkCount++;
+    lastDataTime = Date.now();
+    if (chunkCount === 10) console.log(`[NEXO VOICE] Grabando audio de ${userId}...`);
+  });
+
   audioStream.pipe(opusDecoder).pipe(ffProc.stdin);
 
   ffProc.on('close', async () => {
+    if (chunkCount < 40) {
+      console.log(`[NEXO VOICE] Audio muy corto (${chunkCount} chunks). Ignorando.`);
+      if (fs.existsSync(wavPath)) fs.unlinkSync(wavPath);
+      return;
+    }
     if (!fs.existsSync(wavPath)) return;
 
+    console.log(`[NEXO VOICE] Procesando ${chunkCount} chunks de audio...`);
+
     try {
-      // STT: Groq Whisper (rápido) con fallback a Whisper local
       let text = '';
       if (process.env.GROQ_API_KEY) {
+        console.log('[NEXO VOICE] STT via Groq...');
         text = await transcribeFile(wavPath);
       } else {
+        console.log('[NEXO VOICE] STT via Whisper local (puede tardar 30s)...');
         text = await transcribirWhisper(wavPath);
       }
       if (fs.existsSync(wavPath)) fs.unlinkSync(wavPath);
 
-      if (!text || text.trim().length < 3) return;
+      if (!text || text.trim().length < 3) {
+        console.log('[NEXO VOICE] STT vacío, ignorando.');
+        return;
+      }
 
-      // Filtrar alucinaciones comunes de Whisper
       const lowered = text.toLowerCase().trim();
       const hallucinations = ['gracias.', 'gracias', 'subtitles by', 'mushrooms', 'amara.org'];
-      if (hallucinations.some(h => lowered.includes(h)) && lowered.length < 15) return;
+      if (hallucinations.some(h => lowered.includes(h)) && lowered.length < 15) {
+        console.log(`[NEXO VOICE] Alucinación filtrada: "${text}"`);
+        return;
+      }
 
       console.log(`[NEXO VOICE] STT: "${text}"`);
       const user = client.users.cache.get(userId);
-      textChannel.send(`🎙️ **${user?.username || userId}:** ${text}`).catch(() => {});
+      if (textChannel) textChannel.send(`🎙️ **${user?.username || userId}:** ${text}`).catch(() => {});
 
-      // Consultar IA
       const resp = await axios.post(`${FASTAPI_URL}/api/agente/`, {
-        query: text, user_id: userId, canal: textChannel.id
+        query: text, user_id: userId, canal: textChannel?.id
       }, { timeout: 20000 });
 
       const iaText = resp.data?.respuesta || 'No pude procesar tu solicitud.';
       console.log(`[NEXO VOICE] IA: "${iaText.substring(0, 80)}"`);
 
-      // Responder por texto Y por voz
-      textChannel.send(`🤖 **NEXO:** ${iaText}`).catch(() => {});
+      if (textChannel) textChannel.send(`🤖 **NEXO:** ${iaText}`).catch(() => {});
       await playTTS(connection, iaText);
 
     } catch (err) {
