@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import Globe3D from '../components/Globe3D';
 
-// ─── Neural Canvas Background ─────────────────────────────────────────────────
+// ─── Neural Canvas ─────────────────────────────────────────────────────────────
 function NeuralCanvas() {
   const canvasRef = useRef(null);
   useEffect(() => {
@@ -10,405 +10,330 @@ function NeuralCanvas() {
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     let W, H, pts = [], animId;
-    const resize = () => {
-      W = canvas.width = window.innerWidth;
-      H = canvas.height = window.innerHeight;
-    };
+    const resize = () => { W = canvas.width = window.innerWidth; H = canvas.height = window.innerHeight; };
     resize();
     window.addEventListener('resize', resize);
     class P {
-      constructor() {
-        this.x = Math.random() * W;
-        this.y = Math.random() * H;
-        this.r = Math.random() * 2 + 0.8;
-        this.vx = (Math.random() - 0.5) * 0.5;
-        this.vy = (Math.random() - 0.5) * 0.5;
-      }
-      move() {
-        this.x += this.vx; this.y += this.vy;
-        if (this.x < 0 || this.x > W) this.vx *= -1;
-        if (this.y < 0 || this.y > H) this.vy *= -1;
-      }
+      constructor() { this.x = Math.random() * W; this.y = Math.random() * H; this.r = Math.random() * 1.5 + 0.5; this.vx = (Math.random() - 0.5) * 0.4; this.vy = (Math.random() - 0.5) * 0.4; }
+      move() { this.x += this.vx; this.y += this.vy; if (this.x < 0 || this.x > W) this.vx *= -1; if (this.y < 0 || this.y > H) this.vy *= -1; }
     }
-    for (let i = 0; i < 90; i++) pts.push(new P());
+    for (let i = 0; i < 80; i++) pts.push(new P());
     const draw = () => {
       ctx.clearRect(0, 0, W, H);
-      pts.forEach(p => {
-        p.move();
-        ctx.fillStyle = 'rgba(0,229,255,0.65)';
-        ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.fill();
-      });
-      for (let a = 0; a < pts.length; a++) {
-        for (let b = a + 1; b < pts.length; b++) {
-          const dx = pts[a].x - pts[b].x, dy = pts[a].y - pts[b].y;
-          const d = Math.sqrt(dx * dx + dy * dy);
-          if (d < 140) {
-            ctx.strokeStyle = `rgba(0,229,255,${(1 - d / 140) * 0.45})`;
-            ctx.lineWidth = 0.7;
-            ctx.beginPath(); ctx.moveTo(pts[a].x, pts[a].y); ctx.lineTo(pts[b].x, pts[b].y); ctx.stroke();
-          }
-        }
+      pts.forEach(p => { p.move(); ctx.fillStyle = 'rgba(0,229,255,0.5)'; ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.fill(); });
+      for (let a = 0; a < pts.length; a++) for (let b = a + 1; b < pts.length; b++) {
+        const dx = pts[a].x - pts[b].x, dy = pts[a].y - pts[b].y, d = Math.sqrt(dx * dx + dy * dy);
+        if (d < 130) { ctx.strokeStyle = `rgba(0,229,255,${(1 - d / 130) * 0.3})`; ctx.lineWidth = 0.6; ctx.beginPath(); ctx.moveTo(pts[a].x, pts[a].y); ctx.lineTo(pts[b].x, pts[b].y); ctx.stroke(); }
       }
       animId = requestAnimationFrame(draw);
     };
     draw();
     return () => { window.removeEventListener('resize', resize); cancelAnimationFrame(animId); };
   }, []);
-  return <canvas ref={canvasRef} style={{ position: 'absolute', inset: 0, opacity: 0.45, zIndex: 1 }} />;
+  return <canvas ref={canvasRef} style={{ position: 'absolute', inset: 0, opacity: 0.35, zIndex: 1, pointerEvents: 'none' }} />;
 }
 
-// ─── Status Dot ───────────────────────────────────────────────────────────────
-function StatusDot({ color = '#10b981', pulse = true }) {
+// ─── Live ticker ──────────────────────────────────────────────────────────────
+const SIGNALS = [
+  '🛩  ADS-B · 847 aeronaves militares activas',
+  '🚢  AIS · 23 portaaviones en tránsito',
+  '📡  SIGINT · Actividad RF elevada — Mar de China',
+  '📊  MERCADOS · S&P -1.4% · Petróleo +2.1%',
+  '🔴  BREAKING · Movimiento de tropas — frontera bielorrusa',
+  '🛰  Starlink · 412 satélites sobre zona de conflicto',
+  '🌐  NEXO · 78 consultas procesadas hoy',
+  '⚠️  ALERTA · Tensión geopolítica DEFCON-4 — región APAC',
+  '🔵  IA · Línea de tiempo generada — Conflicto Sudán',
+  '📰  FEED · 2.4k fuentes OSINT activas',
+];
+
+function LiveTicker() {
+  const [idx, setIdx] = useState(0);
+  useEffect(() => { const iv = setInterval(() => setIdx(i => (i + 1) % SIGNALS.length), 3500); return () => clearInterval(iv); }, []);
   return (
-    <span style={{
-      display: 'inline-block', width: 8, height: 8, borderRadius: '50%',
-      background: color, boxShadow: `0 0 10px ${color}`,
-      animation: pulse ? 'blink-dot 1.8s ease-in-out infinite' : 'none'
-    }} />
+    <div style={{
+      position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 100,
+      background: 'rgba(3,7,18,0.97)', borderTop: '1px solid var(--border)',
+      padding: '10px 32px', display: 'flex', alignItems: 'center', gap: 16
+    }}>
+      <span style={{ fontFamily: "'Space Mono', monospace", fontSize: 9, color: 'var(--cyan)', letterSpacing: '0.2em', textTransform: 'uppercase', whiteSpace: 'nowrap', borderRight: '1px solid var(--border)', paddingRight: 16 }}>SEÑALES EN VIVO</span>
+      <span key={idx} style={{ fontFamily: "'Space Mono', monospace", fontSize: 11, color: 'var(--muted)', animation: 'fade-up 0.4s var(--ease-out) both' }}>{SIGNALS[idx]}</span>
+      <span style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6, fontFamily: "'Space Mono', monospace", fontSize: 9, color: 'var(--green)' }}>
+        <span style={{ width: 5, height: 5, borderRadius: '50%', background: 'var(--green)', animation: 'blink-dot 1.5s infinite' }} />
+        LIVE
+      </span>
+    </div>
   );
 }
 
-// ─── Feature Card ─────────────────────────────────────────────────────────────
-function FeatureCard({ icon, title, desc, num }) {
+// ─── Capability Card ──────────────────────────────────────────────────────────
+function CapCard({ icon, title, desc, tag, accent = 'var(--cyan)' }) {
   return (
     <div className="card-hover" style={{
       background: 'var(--bg2)', border: '1px solid var(--border)',
-      padding: '36px 28px', position: 'relative', overflow: 'hidden'
+      padding: '32px 28px', position: 'relative', overflow: 'hidden',
+      display: 'flex', flexDirection: 'column', gap: 14
     }}>
-      <span style={{
-        position: 'absolute', top: 16, right: 16,
-        fontFamily: "'Space Mono', monospace", fontSize: 10,
-        color: 'rgba(0,229,255,0.25)', letterSpacing: '0.15em'
-      }}>{num}</span>
-      <span style={{ fontSize: 28, display: 'block', marginBottom: 18, color: 'var(--dim)' }}>{icon}</span>
-      <h3 style={{ fontSize: 15, fontWeight: 700, marginBottom: 10, letterSpacing: '-0.01em', color: 'var(--text)' }}>{title}</h3>
-      <p style={{ fontFamily: "'Space Mono', monospace", fontSize: 11.5, color: 'var(--muted)', lineHeight: 1.72 }}>{desc}</p>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <span style={{ fontSize: 26 }}>{icon}</span>
+        <span style={{ fontFamily: "'Space Mono', monospace", fontSize: 9, color: accent, letterSpacing: '0.18em', textTransform: 'uppercase', border: `1px solid ${accent}30`, padding: '3px 8px' }}>{tag}</span>
+      </div>
+      <h3 style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', letterSpacing: '-0.01em' }}>{title}</h3>
+      <p style={{ fontFamily: "'Space Mono', monospace", fontSize: 11, color: 'var(--muted)', lineHeight: 1.75, flex: 1 }}>{desc}</p>
+      <div style={{ height: 1, background: `linear-gradient(90deg, ${accent}40, transparent)` }} />
     </div>
   );
 }
 
-// ─── Stat ─────────────────────────────────────────────────────────────────────
-function Stat({ value, label }) {
-  return (
-    <div style={{ borderLeft: '2px solid var(--cyan)', paddingLeft: 24 }}>
-      <div style={{ fontSize: 38, fontWeight: 800, color: 'var(--cyan)', letterSpacing: '-0.04em', lineHeight: 1 }}>{value}</div>
-      <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 11, color: 'var(--muted)', marginTop: 6 }}>{label}</div>
-    </div>
-  );
-}
-
-// ─── Live Activity Feed ───────────────────────────────────────────────────────
-const EVENTS = [
-  { col: '#10b981', msg: 'Backend heartbeat OK' },
-  { col: '#00e5ff', msg: 'Celery task procesado' },
-  { col: '#a5b4fc', msg: 'Embedding almacenado en Qdrant' },
-  { col: '#f59e0b', msg: 'Agente móvil ping recibido' },
-  { col: '#10b981', msg: 'Webhook ingest procesado' },
-  { col: '#00e5ff', msg: 'Discord supervisor activo' },
-  { col: '#10b981', msg: 'Supabase RLS validado' },
-  { col: '#a5b4fc', msg: 'RAG query ejecutada' },
-  { col: '#00e5ff', msg: 'n8n workflow completado' },
-  { col: '#10b981', msg: 'Health check OK — 12ms' },
+// ─── Timeline preview ─────────────────────────────────────────────────────────
+const TL_EVENTS = [
+  { date: '2024-10-07', label: 'Ataque Hamas — Gaza', type: 'militar', col: '#ef4444' },
+  { date: '2024-11-05', label: 'Elecciones EE.UU. — Trump vence', type: 'político', col: '#f59e0b' },
+  { date: '2025-01-20', label: 'Inaugaración — Nuevo gabinete', type: 'político', col: '#f59e0b' },
+  { date: '2025-03-12', label: 'Crisis aranceles — Mercados caen 8%', type: 'económico', col: '#10b981' },
+  { date: '2025-06-01', label: 'Tensión APAC — Maniobras navales', type: 'militar', col: '#ef4444' },
+  { date: '2026-01-15', label: 'Cumbre G20 — Acuerdo energético', type: 'económico', col: '#10b981' },
 ];
 
-function ActivityFeed() {
-  const [items, setItems] = useState([]);
-  const idxRef = useRef(0);
-  useEffect(() => {
-    const add = () => {
-      const ev = EVENTS[idxRef.current++ % EVENTS.length];
-      const now = new Date();
-      const t = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
-      setItems(prev => [{ t, col: ev.col, msg: ev.msg, id: Date.now() }, ...prev].slice(0, 10));
-    };
-    add();
-    const iv = setInterval(add, 3200);
-    return () => clearInterval(iv);
-  }, []);
+function TimelinePreview() {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-      {items.map(item => (
-        <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: 10, animation: 'fade-up 0.3s ease both' }}>
-          <span style={{ fontFamily: "'Space Mono', monospace", fontSize: 10, color: 'var(--dim)', minWidth: 60 }}>{item.t}</span>
-          <span style={{ width: 6, height: 6, borderRadius: '50%', background: item.col, flexShrink: 0 }} />
-          <span style={{ fontFamily: "'Space Mono', monospace", fontSize: 11, color: 'var(--muted)' }}>{item.msg}</span>
+    <div style={{ position: 'relative', paddingLeft: 28 }}>
+      <div style={{ position: 'absolute', left: 10, top: 0, bottom: 0, width: 1, background: 'var(--border)' }} />
+      {TL_EVENTS.map((e, i) => (
+        <div key={i} style={{ display: 'flex', gap: 16, marginBottom: 20, alignItems: 'flex-start', animation: `fade-up 0.4s var(--ease-out) ${i * 80}ms both` }}>
+          <div style={{ position: 'absolute', left: 6, width: 9, height: 9, borderRadius: '50%', background: e.col, boxShadow: `0 0 8px ${e.col}`, marginTop: 3 }} />
+          <div>
+            <span style={{ fontFamily: "'Space Mono', monospace", fontSize: 9, color: 'var(--dim)', letterSpacing: '0.1em' }}>{e.date}</span>
+            <p style={{ fontFamily: "'Space Mono', monospace", fontSize: 11, color: 'var(--text)', marginTop: 2 }}>{e.label}</p>
+            <span style={{ fontFamily: "'Space Mono', monospace", fontSize: 9, color: e.col, textTransform: 'uppercase', letterSpacing: '0.1em' }}>{e.type}</span>
+          </div>
         </div>
       ))}
+      <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 10, color: 'var(--cyan)', display: 'flex', alignItems: 'center', gap: 8 }}>
+        <span style={{ width: 5, height: 5, borderRadius: '50%', background: 'var(--cyan)', animation: 'blink-dot 1.5s infinite' }} />
+        IA generando eventos en tiempo real...
+      </div>
     </div>
   );
 }
 
-// ─── Main Landing Component ───────────────────────────────────────────────────
+// ─── Main ─────────────────────────────────────────────────────────────────────
 export default function Landing() {
   const [scrolled, setScrolled] = useState(false);
-  const [backendStatus, setBackendStatus] = useState('loading');
+  const [query, setQuery] = useState('');
+  const SUGGESTIONS = ['Guerra en Ucrania', 'Crisis económica China', 'Movimientos navales OTAN', 'Elecciones Latinoamérica'];
 
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 80);
-    window.addEventListener('scroll', onScroll);
-    return () => window.removeEventListener('scroll', onScroll);
+    const fn = () => setScrolled(window.scrollY > 60);
+    window.addEventListener('scroll', fn);
+    return () => window.removeEventListener('scroll', fn);
   }, []);
 
   useEffect(() => {
-    const check = async () => {
-      try {
-        const r = await fetch('/api/health/', { signal: AbortSignal.timeout(4000) });
-        setBackendStatus(r.ok ? 'online' : 'degraded');
-      } catch {
-        setBackendStatus('offline');
-      }
-    };
-    check();
-    const iv = setInterval(check, 15000);
-    return () => clearInterval(iv);
-  }, []);
-
-  // Scroll reveal
-  useEffect(() => {
-    const obs = new IntersectionObserver(entries => {
-      entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('on'); });
-    }, { threshold: 0.1 });
+    const obs = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) e.target.classList.add('on'); }), { threshold: 0.1 });
     document.querySelectorAll('.reveal').forEach(el => obs.observe(el));
     return () => obs.disconnect();
   }, []);
 
-  const statusColor = backendStatus === 'online' ? '#10b981' : backendStatus === 'degraded' ? '#f59e0b' : '#ef4444';
-  const statusLabel = backendStatus === 'online' ? 'Sistema Operacional' : backendStatus === 'degraded' ? 'Degradado' : 'Backend Offline';
-
   return (
-    <div style={{ background: 'var(--bg)', minHeight: '100vh', position: 'relative', zIndex: 2 }}>
-
-      {/* ── PROGRESS BAR ── */}
-      <div id="pbar" style={{
-        position: 'fixed', top: 0, left: 0, height: 2,
-        background: 'linear-gradient(90deg,var(--cyan),var(--indigo),var(--purple))',
-        zIndex: 99999, width: '0%', transition: 'width 0.08s linear'
-      }} />
+    <div style={{ background: 'var(--bg)', minHeight: '100vh', paddingBottom: 48 }}>
 
       {/* ── NAV ── */}
       <nav style={{
         position: 'fixed', top: 0, left: 0, right: 0, zIndex: 1000,
-        padding: scrolled ? '14px 48px' : '20px 48px',
+        padding: scrolled ? '12px 48px' : '18px 48px',
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         borderBottom: '1px solid var(--border)',
-        background: scrolled ? 'rgba(3,7,18,0.97)' : 'rgba(3,7,18,0.88)',
+        background: scrolled ? 'rgba(3,7,18,0.98)' : 'rgba(3,7,18,0.85)',
         backdropFilter: 'blur(24px)',
-        boxShadow: scrolled ? '0 8px 40px -12px var(--cyan-glow)' : 'none',
-        transition: 'all 0.3s'
+        transition: 'padding 0.3s var(--ease-out)'
       }}>
-        <a href="#hero" style={{
-          fontFamily: "'Space Mono', monospace", fontSize: 13, fontWeight: 700,
-          color: 'var(--cyan)', letterSpacing: '0.18em', textTransform: 'uppercase',
-          textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 10
-        }}>
-          <StatusDot />
-          EL ANARCOCAPITAL
-        </a>
-        <div style={{ display: 'flex', gap: 32, alignItems: 'center' }}>
-          {['Sistema', 'Capacidades', 'Arquitectura', 'Estado'].map(item => (
-            <a key={item} href={`#${item.toLowerCase()}`} style={{
-              fontFamily: "'Space Mono', monospace", fontSize: 11,
-              color: 'var(--dim)', textDecoration: 'none', letterSpacing: '0.12em',
-              textTransform: 'uppercase', transition: 'color 0.2s'
-            }}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <span style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--cyan)', boxShadow: '0 0 10px var(--cyan)', animation: 'blink-dot 2s infinite' }} />
+          <span style={{ fontFamily: "'Space Mono', monospace", fontSize: 13, fontWeight: 700, color: 'var(--cyan)', letterSpacing: '0.2em', textTransform: 'uppercase' }}>El Anarcocapital</span>
+        </div>
+        <div style={{ display: 'flex', gap: 28, alignItems: 'center' }}>
+          {[['#inteligencia', 'Inteligencia'], ['#rastreo', 'Rastreo'], ['#ia', 'IA'], ['#comunidad', 'Comunidad']].map(([href, label]) => (
+            <a key={href} href={href} style={{ fontFamily: "'Space Mono', monospace", fontSize: 10, color: 'var(--dim)', textDecoration: 'none', letterSpacing: '0.12em', textTransform: 'uppercase', transition: 'color 0.2s' }}
               onMouseEnter={e => e.target.style.color = 'var(--cyan)'}
               onMouseLeave={e => e.target.style.color = 'var(--dim)'}
-            >{item}</a>
+            >{label}</a>
           ))}
           <Link to="/control" style={{
-            fontFamily: "'Space Mono', monospace", fontSize: 11,
-            padding: '9px 22px', border: '1px solid var(--border-hi)',
-            color: 'var(--cyan)', textDecoration: 'none', letterSpacing: '0.1em',
-            textTransform: 'uppercase', transition: 'all 0.25s',
-            background: 'transparent'
-          }}
-            onMouseEnter={e => { e.target.style.background = 'var(--cyan)'; e.target.style.color = 'var(--bg)'; }}
-            onMouseLeave={e => { e.target.style.background = 'transparent'; e.target.style.color = 'var(--cyan)'; }}
-          >
-            Warroom →
-          </Link>
+            fontFamily: "'Space Mono', monospace", fontSize: 10,
+            padding: '8px 20px', background: 'var(--cyan)', color: 'var(--bg)',
+            textDecoration: 'none', letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: 700
+          }}>Warroom →</Link>
         </div>
       </nav>
 
       {/* ── HERO ── */}
-      <section id="hero" style={{
+      <section style={{
         minHeight: '100vh', display: 'flex', alignItems: 'center',
-        position: 'relative', padding: '130px 48px 100px', overflow: 'hidden'
+        position: 'relative', padding: '140px 48px 120px', overflow: 'hidden'
       }}>
         <NeuralCanvas />
-
-        {/* Globe 3D flotante */}
-        <div style={{
-          position: 'absolute', right: '5vw', top: '50%', transform: 'translateY(-50%)',
-          zIndex: 2, opacity: 0.85, display: 'flex', alignItems: 'center', justifyContent: 'center',
-          pointerEvents: 'none',
-        }}>
-          <Globe3D size={420} color="#00e5ff" speed={0.004} />
+        <div style={{ position: 'absolute', right: '3vw', top: '50%', transform: 'translateY(-50%)', zIndex: 2, opacity: 0.7, pointerEvents: 'none' }}>
+          <Globe3D size={460} color="#00e5ff" speed={0.003} />
         </div>
 
-        <div style={{ maxWidth: 860, position: 'relative', zIndex: 3 }}>
-          <div style={{
-            display: 'inline-flex', alignItems: 'center', gap: 9,
-            fontFamily: "'Space Mono', monospace", fontSize: 11,
-            color: 'var(--cyan)', letterSpacing: '0.18em', textTransform: 'uppercase',
-            border: '1px solid var(--border-hi)', padding: '7px 18px',
-            marginBottom: 40, background: 'rgba(0,229,255,0.05)',
-            animation: 'fade-up 0.6s ease 0.1s both'
-          }}>
-            <StatusDot color={statusColor} />
-            {statusLabel} — v3.0.0
+        <div style={{ maxWidth: 820, position: 'relative', zIndex: 3 }}>
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontFamily: "'Space Mono', monospace", fontSize: 10, color: 'var(--cyan)', letterSpacing: '0.2em', textTransform: 'uppercase', border: '1px solid var(--border-hi)', padding: '6px 16px', marginBottom: 36, background: 'rgba(0,229,255,0.05)', animation: 'fade-up 0.5s var(--ease-out) 0.1s both' }}>
+            <span style={{ width: 5, height: 5, borderRadius: '50%', background: 'var(--cyan)', animation: 'blink-dot 1.5s infinite' }} />
+            Plataforma de Inteligencia Soberana · OSINT · Tiempo Real
           </div>
 
-          <h1 style={{
-            fontSize: 'clamp(52px,9vw,104px)', fontWeight: 800,
-            lineHeight: 0.93, letterSpacing: '-0.04em', marginBottom: 28,
-            animation: 'fade-up 0.7s ease 0.3s both'
-          }}>
-            <span className="gradient-text">NEXO</span><br />
-            <span style={{ color: 'var(--text)' }}>SOBERANO</span>
+          <h1 style={{ fontSize: 'clamp(48px,8vw,96px)', fontWeight: 800, lineHeight: 0.92, letterSpacing: '-0.04em', marginBottom: 24, animation: 'fade-up 0.6s var(--ease-out) 0.25s both' }}>
+            <span style={{ color: 'var(--text)' }}>VE LO QUE</span><br />
+            <span className="gradient-text">EL MUNDO</span><br />
+            <span style={{ color: 'var(--text)' }}>NO VE.</span>
           </h1>
 
-          <p style={{
-            fontFamily: "'Space Mono', monospace", fontSize: 14,
-            lineHeight: 1.82, color: 'var(--muted)', maxWidth: 560,
-            marginBottom: 52, animation: 'fade-up 0.7s ease 0.5s both'
-          }}>
-            Infraestructura de inteligencia híbrida soberana. RAG vectorial,
-            agentes autónomos, orquestación n8n y memoria persistente.
-            Tu sistema. Tu control. Sin intermediarios.
+          <p style={{ fontFamily: "'Space Mono', monospace", fontSize: 13, lineHeight: 1.85, color: 'var(--muted)', maxWidth: 520, marginBottom: 44, animation: 'fade-up 0.6s var(--ease-out) 0.4s both' }}>
+            Inteligencia geopolítica, económica y militar en tiempo real. Rastreo de activos globales, análisis con IA y líneas de tiempo construidas con evidencia. Todo en un solo lugar.
           </p>
 
-          <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', animation: 'fade-up 0.7s ease 0.7s both' }}>
-            <Link to="/control" style={{
-              fontFamily: "'Space Mono', monospace", fontSize: 12,
-              padding: '15px 38px', background: 'var(--cyan)', color: 'var(--bg)',
-              letterSpacing: '0.09em', textTransform: 'uppercase', fontWeight: 700,
-              textDecoration: 'none', transition: 'all 0.3s'
-            }}
-              onMouseEnter={e => { e.target.style.boxShadow = '0 0 50px rgba(0,229,255,0.45)'; e.target.style.transform = 'translateY(-2px)'; }}
-              onMouseLeave={e => { e.target.style.boxShadow = 'none'; e.target.style.transform = 'none'; }}
-            >
-              Abrir Warroom
-            </Link>
-            <a href="#sistema" style={{
-              fontFamily: "'Space Mono', monospace", fontSize: 12,
-              padding: '15px 38px', border: '1px solid var(--border-hi)',
-              color: 'var(--muted)', letterSpacing: '0.09em', textTransform: 'uppercase',
-              textDecoration: 'none', transition: 'all 0.25s'
-            }}
-              onMouseEnter={e => { e.target.style.borderColor = 'var(--cyan)'; e.target.style.color = 'var(--cyan)'; }}
-              onMouseLeave={e => { e.target.style.borderColor = 'var(--border-hi)'; e.target.style.color = 'var(--muted)'; }}
-            >
-              Ver Sistema
-            </a>
-            <a href="https://github.com/Reidskar/NEXO_SOBERANO" target="_blank" rel="noreferrer" style={{
-              fontFamily: "'Space Mono', monospace", fontSize: 12,
-              padding: '15px 38px', border: '1px solid var(--border)',
-              color: 'var(--dim)', letterSpacing: '0.09em', textTransform: 'uppercase',
-              textDecoration: 'none', transition: 'all 0.25s'
-            }}
-              onMouseEnter={e => { e.target.style.borderColor = 'var(--indigo)'; e.target.style.color = 'var(--indigo)'; }}
-              onMouseLeave={e => { e.target.style.borderColor = 'var(--border)'; e.target.style.color = 'var(--dim)'; }}
-            >
-              GitHub ↗
-            </a>
+          {/* Search bar */}
+          <div style={{ animation: 'fade-up 0.6s var(--ease-out) 0.55s both', marginBottom: 20 }}>
+            <div style={{ display: 'flex', gap: 0, maxWidth: 560, border: '1px solid var(--border-hi)', background: 'rgba(7,15,26,0.95)' }}>
+              <span style={{ padding: '14px 16px', color: 'var(--cyan)', fontSize: 14, display: 'flex', alignItems: 'center' }}>🔍</span>
+              <input
+                value={query}
+                onChange={e => setQuery(e.target.value)}
+                placeholder="Consulta un evento, conflicto o mercado..."
+                style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', fontFamily: "'Space Mono', monospace", fontSize: 12, color: 'var(--text)', padding: '14px 0' }}
+              />
+              <Link to="/control" style={{ padding: '14px 24px', background: 'var(--cyan)', color: 'var(--bg)', fontFamily: "'Space Mono', monospace", fontSize: 11, fontWeight: 700, textDecoration: 'none', display: 'flex', alignItems: 'center', letterSpacing: '0.1em', whiteSpace: 'nowrap' }}>ANALIZAR →</Link>
+            </div>
+            <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
+              {SUGGESTIONS.map(s => (
+                <button key={s} onClick={() => setQuery(s)} style={{ fontFamily: "'Space Mono', monospace", fontSize: 9, color: 'var(--dim)', border: '1px solid var(--border)', background: 'transparent', padding: '4px 10px', cursor: 'pointer', letterSpacing: '0.08em', transition: 'color 0.2s, border-color 0.2s' }}
+                  onMouseEnter={e => { e.target.style.color = 'var(--cyan)'; e.target.style.borderColor = 'var(--cyan)'; }}
+                  onMouseLeave={e => { e.target.style.color = 'var(--dim)'; e.target.style.borderColor = 'var(--border)'; }}
+                >{s}</button>
+              ))}
+            </div>
           </div>
         </div>
 
-        {/* Status Bar */}
-        <div style={{
-          position: 'absolute', bottom: 0, left: 0, right: 0, zIndex: 4,
-          borderTop: '1px solid var(--border)',
-          background: 'rgba(7,15,26,0.96)', backdropFilter: 'blur(16px)',
-          display: 'flex', overflow: 'hidden'
-        }}>
+        {/* Status strip */}
+        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, zIndex: 4, borderTop: '1px solid var(--border)', background: 'rgba(7,15,26,0.97)', backdropFilter: 'blur(16px)', display: 'flex', overflow: 'hidden' }}>
           {[
-            { dot: '#10b981', label: 'Backend', val: 'FastAPI · NEXO_CORE' },
-            { dot: '#00e5ff', label: 'Agentes IA', val: 'Discord + Web Supervisor' },
-            { dot: '#a5b4fc', label: 'RAG Engine', val: 'Qdrant + ChromaDB' },
-            { dot: '#f59e0b', label: 'Orquestación', val: 'n8n + Make' },
+            { icon: '✈️', label: 'Aeronaves rastreadas', val: '847' },
+            { icon: '🚢', label: 'Buques en tránsito', val: '23,412' },
+            { icon: '📡', label: 'Fuentes OSINT activas', val: '2,400+' },
+            { icon: '🧠', label: 'Consultas IA hoy', val: '78' },
           ].map((s, i) => (
-            <div key={i} style={{
-              flex: 1, padding: '16px 22px', borderRight: i < 3 ? '1px solid var(--border)' : 'none',
-              display: 'flex', alignItems: 'center', gap: 12
-            }}>
-              <span style={{ width: 8, height: 8, borderRadius: '50%', background: s.dot, boxShadow: `0 0 8px ${s.dot}`, animation: 'blink-dot 2s infinite', flexShrink: 0 }} />
+            <div key={i} style={{ flex: 1, padding: '14px 22px', borderRight: i < 3 ? '1px solid var(--border)' : 'none', display: 'flex', alignItems: 'center', gap: 12 }}>
+              <span style={{ fontSize: 18 }}>{s.icon}</span>
               <div>
-                <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 10, color: 'var(--dim)', letterSpacing: '0.09em', textTransform: 'uppercase' }}>{s.label}</div>
-                <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 12, color: 'var(--muted)', marginTop: 2 }}>{s.val}</div>
+                <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 9, color: 'var(--dim)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>{s.label}</div>
+                <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 15, color: 'var(--cyan)', fontWeight: 700, marginTop: 1 }}>{s.val}</div>
               </div>
             </div>
           ))}
         </div>
       </section>
 
-      {/* ── SISTEMA / FEATURES ── */}
-      <section id="sistema" style={{ position: 'relative', zIndex: 2, padding: '120px 48px', borderTop: '1px solid var(--border)' }}>
+      {/* ── CAPACIDADES ── */}
+      <section id="inteligencia" style={{ padding: '120px 48px', borderTop: '1px solid var(--border)', position: 'relative', zIndex: 2 }}>
         <div style={{ maxWidth: 1240, margin: '0 auto' }}>
-          <div className="reveal" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 80, alignItems: 'end', marginBottom: 64 }}>
-            <div>
-              <div className="section-tag">Sistema</div>
-              <h2 style={{ fontSize: 'clamp(32px,4.5vw,54px)', fontWeight: 800, letterSpacing: '-0.025em', lineHeight: 1.08, marginBottom: 18 }}>
-                Infraestructura<br /><span className="gradient-text">Soberana</span>
-              </h2>
-            </div>
-            <p style={{ fontFamily: "'Space Mono', monospace", fontSize: 13, color: 'var(--muted)', lineHeight: 1.78 }}>
-              Un backend unificado construido sobre FastAPI, con agentes autónomos, memoria vectorial y orquestación de flujos. Diseñado para operar 24/7 sin intervención manual.
-            </p>
+          <div className="reveal" style={{ marginBottom: 56 }}>
+            <div className="section-tag">Capacidades</div>
+            <h2 style={{ fontSize: 'clamp(30px,4vw,52px)', fontWeight: 800, letterSpacing: '-0.025em', lineHeight: 1.1, maxWidth: 640 }}>
+              Una plataforma.<br /><span className="gradient-text">Inteligencia sin límites.</span>
+            </h2>
           </div>
-
           <div className="reveal" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 1, background: 'var(--border)', border: '1px solid var(--border)' }}>
-            <FeatureCard icon="🧠" num="01" title="RAG Vectorial" desc="Memoria persistente con ChromaDB y Qdrant. Consultas semánticas sobre tu base de conocimiento." />
-            <FeatureCard icon="🤖" num="02" title="Agentes Autónomos" desc="Supervisores de Discord y Web IA que operan en segundo plano, detectan anomalías y actúan." />
-            <FeatureCard icon="⚡" num="03" title="Orquestación n8n" desc="Flujos de automatización complejos con n8n y Make. Webhooks, triggers y pipelines de datos." />
-            <FeatureCard icon="🎙️" num="04" title="Pipeline de Voz" desc="Integración con ElevenLabs para síntesis de voz y procesamiento de audio en tiempo real." />
-            <FeatureCard icon="📡" num="05" title="Discord Integration" desc="Bot de Discord con comandos slash, gestión de canales de voz y moderación automática." />
-            <FeatureCard icon="🔒" num="06" title="Seguridad Soberana" desc="Rate limiting, API key protection, CORS configurado y headers de seguridad en todas las rutas." />
+            <CapCard icon="🧠" tag="IA" title="Análisis con IA" desc="Pregunta sobre cualquier evento mundial. La IA consulta miles de fuentes, construye contexto y te entrega un análisis con evidencia verificable." accent="#a5b4fc" />
+            <CapCard icon="🗓" tag="Línea de tiempo" title="Timelines con Evidencia" desc="Visualiza la evolución de cualquier conflicto, crisis o evento con una línea de tiempo generada automáticamente desde fuentes abiertas." accent="var(--cyan)" />
+            <CapCard icon="📡" tag="OSINT" title="Fuentes Omnicanal" desc="Tweets, cámaras en vivo, boletines gubernamentales, filtraciones, datos satelitales y foros — todo integrado en un solo feed." accent="#10b981" />
+            <CapCard icon="✈️" tag="Rastreo" title="Rastreo de Activos Globales" desc="Seguimiento ADS-B de aeronaves militares y civiles, AIS de buques, movimientos logísticos y posicionamiento de tropas en tiempo real." accent="#f59e0b" />
+            <CapCard icon="📊" tag="Mercados" title="Inteligencia de Mercado" desc="Indicadores macro, precios de commodities, flujos de capital, alertas de volatilidad y correlación con eventos geopolíticos." accent="#10b981" />
+            <CapCard icon="🗂" tag="Base de Conocimiento" title="Bóveda de Inteligencia" desc="Todo el conocimiento acumulado, documentos del Drive, análisis previos y evidencia indexada con búsqueda vectorial semántica." accent="#a5b4fc" />
           </div>
         </div>
       </section>
 
-      {/* ── ARQUITECTURA / STATS ── */}
-      <section id="arquitectura" style={{ position: 'relative', zIndex: 2, padding: '120px 48px', borderTop: '1px solid var(--border)' }}>
-        <div style={{ maxWidth: 1240, margin: '0 auto' }}>
-          <div className="reveal section-tag">Arquitectura</div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1.1fr 1fr', gap: 72, alignItems: 'center', marginTop: 16 }}>
-            <div>
-              <h2 className="reveal" style={{ fontSize: 'clamp(32px,4.5vw,54px)', fontWeight: 800, letterSpacing: '-0.025em', lineHeight: 1.08, marginBottom: 40 }}>
-                Stack Técnico<br /><span className="gradient-text">de Producción</span>
-              </h2>
-              <div className="reveal" style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-                <Stat value="FastAPI" label="Backend unificado NEXO_CORE" />
-                <Stat value="React" label="Frontend Vite + TailwindCSS" />
-                <Stat value="Celery" label="Worker asíncrono de tareas" />
-                <Stat value="Docker" label="Contenedores de producción" />
-              </div>
-            </div>
-            <div className="reveal" style={{
-              background: 'var(--bg2)', border: '1px solid var(--border)',
-              padding: '28px', fontFamily: "'Space Mono', monospace"
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20, paddingBottom: 16, borderBottom: '1px solid var(--border)' }}>
-                <div style={{ display: 'flex', gap: 6 }}>
-                  {['#ef4444', '#f59e0b', '#10b981'].map((c, i) => (
-                    <div key={i} style={{ width: 10, height: 10, borderRadius: '50%', background: c }} />
-                  ))}
+      {/* ── TIMELINE DEMO ── */}
+      <section id="ia" style={{ padding: '120px 48px', borderTop: '1px solid var(--border)', position: 'relative', zIndex: 2 }}>
+        <div style={{ maxWidth: 1240, margin: '0 auto', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 72, alignItems: 'center' }}>
+          <div className="reveal">
+            <div className="section-tag">IA + Evidencia</div>
+            <h2 style={{ fontSize: 'clamp(30px,4vw,50px)', fontWeight: 800, letterSpacing: '-0.025em', lineHeight: 1.1, marginBottom: 20 }}>
+              Cualquier evento.<br /><span className="gradient-text">Toda la historia.</span>
+            </h2>
+            <p style={{ fontFamily: "'Space Mono', monospace", fontSize: 12, color: 'var(--muted)', lineHeight: 1.82, marginBottom: 32 }}>
+              Escribe el nombre de un conflicto, crisis o evento. NEXO recupera fuentes primarias, las ordena cronológicamente y genera una línea de tiempo con cada pieza de evidencia vinculada.
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {['Fuentes primarias verificadas', 'Correlación con eventos simultáneos', 'Contexto histórico automático', 'Exportable a PDF / JSON'].map((f, i) => (
+                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, fontFamily: "'Space Mono', monospace", fontSize: 11, color: 'var(--muted)' }}>
+                  <span style={{ color: 'var(--cyan)', fontSize: 14 }}>◆</span> {f}
                 </div>
-                <span style={{ fontSize: 11, color: 'var(--cyan)', letterSpacing: '0.15em', marginLeft: 8 }}>NEXO_CORE — stack</span>
+              ))}
+            </div>
+            <Link to="/control" style={{ display: 'inline-block', marginTop: 36, fontFamily: "'Space Mono', monospace", fontSize: 11, padding: '12px 28px', background: 'var(--cyan)', color: 'var(--bg)', textDecoration: 'none', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+              Crear Línea de Tiempo →
+            </Link>
+          </div>
+
+          <div className="reveal" style={{ background: 'var(--bg2)', border: '1px solid var(--border)', padding: 32 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 24, paddingBottom: 16, borderBottom: '1px solid var(--border)' }}>
+              <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--cyan)', animation: 'blink-dot 1.5s infinite' }} />
+              <span style={{ fontFamily: "'Space Mono', monospace", fontSize: 10, color: 'var(--cyan)', letterSpacing: '0.15em', textTransform: 'uppercase' }}>Timeline · Generado por IA</span>
+              <span style={{ marginLeft: 'auto', fontFamily: "'Space Mono', monospace", fontSize: 9, padding: '2px 8px', border: '1px solid var(--green)', color: 'var(--green)' }}>LIVE</span>
+            </div>
+            <TimelinePreview />
+          </div>
+        </div>
+      </section>
+
+      {/* ── RASTREO ── */}
+      <section id="rastreo" style={{ padding: '120px 48px', borderTop: '1px solid var(--border)', position: 'relative', zIndex: 2 }}>
+        <div style={{ maxWidth: 1240, margin: '0 auto' }}>
+          <div className="reveal" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 72, alignItems: 'center' }}>
+            <div style={{ background: 'var(--bg2)', border: '1px solid var(--border)', padding: 32 }}>
+              <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 10, color: 'var(--dim)', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 20, paddingBottom: 14, borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between' }}>
+                <span>Activos Globales en Tiempo Real</span>
+                <span style={{ color: '#ef4444', animation: 'blink-dot 1.5s infinite' }}>● LIVE</span>
               </div>
               {[
-                { k: 'backend', v: 'FastAPI + Uvicorn', c: '#00e5ff' },
-                { k: 'database', v: 'PostgreSQL + Redis', c: '#a5b4fc' },
-                { k: 'vector_db', v: 'Qdrant + ChromaDB', c: '#10b981' },
-                { k: 'ai_models', v: 'GPT-4 + Gemini + Claude', c: '#f59e0b' },
-                { k: 'workers', v: 'Celery + Beat', c: '#a5b4fc' },
-                { k: 'deploy', v: 'Railway + Vercel + CF', c: '#00e5ff' },
-                { k: 'mobile', v: 'React Native / Expo', c: '#10b981' },
-                { k: 'automation', v: 'n8n + Make + Zapier', c: '#f59e0b' },
-              ].map((row, i) => (
-                <div key={i} style={{ display: 'flex', gap: 16, marginBottom: 10, fontSize: 12 }}>
-                  <span style={{ color: 'var(--dim)', minWidth: 100 }}>{row.k}:</span>
-                  <span style={{ color: row.c }}>{row.v}</span>
+                { icon: '✈️', type: 'Aeronave Militar', id: 'RQ-4B USAF', pos: 'Mar Negro — 34,000 ft', col: '#ef4444' },
+                { icon: '🚢', type: 'Portaaviones', id: 'USS Gerald R. Ford', pos: 'Mediterráneo Oriental', col: '#f59e0b' },
+                { icon: '🛰', type: 'Satélite ISR', id: 'KH-13 USA-290', pos: 'Órbita baja — paso 14min', col: '#a5b4fc' },
+                { icon: '✈️', type: 'Avión de Carga', id: 'C-17A 97-0046', pos: 'Ramstein AB → Rzeszów', col: '#f59e0b' },
+                { icon: '🚢', type: 'Submarino Nuclear', id: 'SSBN-740 Maine', pos: 'Atlántico Norte [clasificado]', col: '#ef4444' },
+              ].map((a, i) => (
+                <div key={i} style={{ display: 'flex', gap: 14, alignItems: 'center', padding: '10px 0', borderBottom: i < 4 ? '1px solid rgba(255,255,255,0.04)' : 'none' }}>
+                  <span style={{ fontSize: 18, flexShrink: 0 }}>{a.icon}</span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontFamily: "'Space Mono', monospace", fontSize: 11, color: 'var(--text)', fontWeight: 700 }}>{a.id}</span>
+                      <span style={{ width: 5, height: 5, borderRadius: '50%', background: a.col, animation: 'blink-dot 2s infinite', flexShrink: 0 }} />
+                    </div>
+                    <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 10, color: 'var(--dim)', marginTop: 2 }}>{a.type} · {a.pos}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div>
+              <div className="section-tag">Rastreo Global</div>
+              <h2 style={{ fontSize: 'clamp(30px,4vw,50px)', fontWeight: 800, letterSpacing: '-0.025em', lineHeight: 1.1, marginBottom: 20 }}>
+                Ve los activos<br /><span className="gradient-text">antes que los medios.</span>
+              </h2>
+              <p style={{ fontFamily: "'Space Mono', monospace", fontSize: 12, color: 'var(--muted)', lineHeight: 1.82, marginBottom: 28 }}>
+                ADS-B en tiempo real, AIS marítimo, movimientos de carga militar y logística de conflictos. Cuando algo se mueve en el mundo, NEXO lo detecta primero.
+              </p>
+              {[
+                ['✈️', 'Aeronaves militares y civiles (ADS-B)'],
+                ['🚢', 'Flota naval global (AIS)'],
+                ['🛰', 'Cobertura satelital ISR'],
+                ['📦', 'Logística de conflictos activos'],
+                ['🏗', 'Infraestructura crítica'],
+              ].map(([icon, label], i) => (
+                <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'center', fontFamily: "'Space Mono', monospace", fontSize: 11, color: 'var(--muted)', marginBottom: 10 }}>
+                  <span>{icon}</span> {label}
                 </div>
               ))}
             </div>
@@ -416,109 +341,43 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* ── ESTADO EN VIVO ── */}
-      <section id="estado" style={{ position: 'relative', zIndex: 2, padding: '120px 48px', borderTop: '1px solid var(--border)' }}>
+      {/* ── COMUNIDAD ── */}
+      <section id="comunidad" style={{ padding: '120px 48px', borderTop: '1px solid var(--border)', position: 'relative', zIndex: 2 }}>
         <div style={{ maxWidth: 1240, margin: '0 auto' }}>
-          <div className="reveal section-tag">Estado en Vivo</div>
-          <h2 className="reveal" style={{ fontSize: 'clamp(32px,4.5vw,54px)', fontWeight: 800, letterSpacing: '-0.025em', lineHeight: 1.08, marginBottom: 48 }}>
-            Sistema<br /><span className="gradient-text">Activo 24/7</span>
-          </h2>
-
-          <div className="reveal" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 28 }}>
-            {/* Activity Feed */}
-            <div style={{ background: 'var(--bg2)', border: '1px solid var(--border)', padding: 28 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20, paddingBottom: 14, borderBottom: '1px solid var(--border)' }}>
-                <StatusDot />
-                <span style={{ fontFamily: "'Space Mono', monospace", fontSize: 11, color: 'var(--cyan)', letterSpacing: '0.15em', textTransform: 'uppercase' }}>Activity Feed</span>
-                <span style={{ marginLeft: 'auto', fontFamily: "'Space Mono', monospace", fontSize: 10, padding: '2px 8px', border: '1px solid var(--green)', color: 'var(--green)' }}>LIVE</span>
-              </div>
-              <ActivityFeed />
-            </div>
-
-            {/* System Metrics */}
-            <div style={{ background: 'var(--bg2)', border: '1px solid var(--border)', padding: 28 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20, paddingBottom: 14, borderBottom: '1px solid var(--border)' }}>
-                <StatusDot color="#a5b4fc" />
-                <span style={{ fontFamily: "'Space Mono', monospace", fontSize: 11, color: 'var(--cyan)', letterSpacing: '0.15em', textTransform: 'uppercase' }}>Módulos del Sistema</span>
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1, background: 'var(--border)' }}>
-                {[
-                  { label: 'NEXO_CORE', status: 'ok', val: 'FastAPI v3' },
-                  { label: 'Discord Bot', status: 'ok', val: 'Node.js + PM2' },
-                  { label: 'RAG Engine', status: 'ok', val: 'Qdrant Online' },
-                  { label: 'AI Router', status: 'ok', val: 'Multi-model' },
-                  { label: 'Celery Worker', status: 'ok', val: 'Beat activo' },
-                  { label: 'Voice Pipeline', status: 'ok', val: 'ElevenLabs' },
-                ].map((m, i) => (
-                  <div key={i} style={{ background: 'var(--bg2)', padding: '18px 20px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                      <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#10b981', boxShadow: '0 0 6px #10b981' }} />
-                      <span style={{ fontFamily: "'Space Mono', monospace", fontSize: 10, color: 'var(--muted)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>{m.label}</span>
-                    </div>
-                    <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 12, color: 'var(--text)' }}>{m.val}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ── CTA ── */}
-      <section style={{ position: 'relative', zIndex: 2, padding: '120px 48px', borderTop: '1px solid var(--border)', textAlign: 'center' }}>
-        <div style={{ maxWidth: 700, margin: '0 auto' }}>
-          <div className="reveal">
-            <h2 style={{ fontSize: 'clamp(40px,6vw,72px)', fontWeight: 800, letterSpacing: '-0.03em', lineHeight: 1, marginBottom: 24 }}>
-              El sistema<br />está <span className="gradient-text">vivo.</span>
+          <div className="reveal" style={{ textAlign: 'center', maxWidth: 640, margin: '0 auto' }}>
+            <div className="section-tag" style={{ justifyContent: 'center' }}>Comunidad</div>
+            <h2 style={{ fontSize: 'clamp(32px,5vw,64px)', fontWeight: 800, letterSpacing: '-0.03em', lineHeight: 1, marginBottom: 20 }}>
+              Inteligencia<br /><span className="gradient-text">colectiva.</span>
             </h2>
-            <p style={{ fontFamily: "'Space Mono', monospace", fontSize: 13, color: 'var(--muted)', lineHeight: 1.78, marginBottom: 48 }}>
-              Warroom, API, agentes y toda la infraestructura soberana lista para operar ahora mismo.
+            <p style={{ fontFamily: "'Space Mono', monospace", fontSize: 12, color: 'var(--muted)', lineHeight: 1.85, marginBottom: 44 }}>
+              Únete a analistas, periodistas y ciudadanos que usan NEXO para entender el mundo real. Comparte hallazgos, colabora en investigaciones y accede a la bóveda de inteligencia colectiva.
             </p>
-            <div style={{ display: 'flex', gap: 14, justifyContent: 'center', flexWrap: 'wrap' }}>
-              <Link to="/control" style={{
-                fontFamily: "'Space Mono', monospace", fontSize: 12,
-                padding: '15px 38px', background: 'var(--cyan)', color: 'var(--bg)',
-                letterSpacing: '0.09em', textTransform: 'uppercase', fontWeight: 700,
-                textDecoration: 'none', transition: 'all 0.3s'
-              }}>Abrir Warroom</Link>
-              <a href="/api/docs" style={{
-                fontFamily: "'Space Mono', monospace", fontSize: 12,
-                padding: '15px 38px', border: '1px solid var(--border-hi)',
-                color: 'var(--muted)', letterSpacing: '0.09em', textTransform: 'uppercase',
-                textDecoration: 'none', transition: 'all 0.25s'
-              }}>API Docs</a>
-              <a href="https://github.com/Reidskar/NEXO_SOBERANO" target="_blank" rel="noreferrer" style={{
-                fontFamily: "'Space Mono', monospace", fontSize: 12,
-                padding: '15px 38px', border: '1px solid var(--border)',
-                color: 'var(--dim)', letterSpacing: '0.09em', textTransform: 'uppercase',
-                textDecoration: 'none', transition: 'all 0.25s'
-              }}>GitHub ↗</a>
+            <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
+              <Link to="/control" style={{ fontFamily: "'Space Mono', monospace", fontSize: 11, padding: '14px 36px', background: 'var(--cyan)', color: 'var(--bg)', textDecoration: 'none', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+                Acceder al Sistema
+              </Link>
+              <a href="https://github.com/Reidskar/NEXO_SOBERANO" target="_blank" rel="noreferrer" style={{ fontFamily: "'Space Mono', monospace", fontSize: 11, padding: '14px 36px', border: '1px solid var(--border-hi)', color: 'var(--muted)', textDecoration: 'none', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+                GitHub ↗
+              </a>
             </div>
           </div>
         </div>
       </section>
 
       {/* ── FOOTER ── */}
-      <footer style={{
-        position: 'relative', zIndex: 2,
-        borderTop: '1px solid var(--border)',
-        padding: '24px 48px',
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        background: 'rgba(7,15,26,0.8)'
-      }}>
-        <span style={{ fontFamily: "'Space Mono', monospace", fontSize: 11, color: 'var(--dim)' }}>
-          El Anarcocapital v3.0.0 · © 2026 Camilo Estefano
-        </span>
-        <div style={{ display: 'flex', gap: 24 }}>
-          {['elanarcocapital.com', 'GitHub', 'API Docs'].map((item, i) => (
-            <a key={i} href={i === 0 ? '#' : i === 1 ? 'https://github.com/Reidskar/NEXO_SOBERANO' : '/api/docs'}
-              style={{ fontFamily: "'Space Mono', monospace", fontSize: 11, color: 'var(--dim)', textDecoration: 'none', transition: 'color 0.2s' }}
+      <footer style={{ borderTop: '1px solid var(--border)', padding: '20px 48px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(7,15,26,0.8)', position: 'relative', zIndex: 2 }}>
+        <span style={{ fontFamily: "'Space Mono', monospace", fontSize: 10, color: 'var(--dim)' }}>El Anarcocapital · © 2026 Camilo Estefano · Inteligencia Soberana</span>
+        <div style={{ display: 'flex', gap: 20 }}>
+          {[['#inteligencia', 'Capacidades'], ['#ia', 'IA'], ['#rastreo', 'Rastreo'], ['/control', 'Warroom']].map(([href, label]) => (
+            <a key={href} href={href} style={{ fontFamily: "'Space Mono', monospace", fontSize: 10, color: 'var(--dim)', textDecoration: 'none', transition: 'color 0.2s' }}
               onMouseEnter={e => e.target.style.color = 'var(--cyan)'}
               onMouseLeave={e => e.target.style.color = 'var(--dim)'}
-            >{item}</a>
+            >{label}</a>
           ))}
         </div>
       </footer>
+
+      <LiveTicker />
     </div>
   );
 }
