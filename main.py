@@ -191,6 +191,27 @@ try:
 except ImportError as e:
     logger.warning(f"Files API no disponible: {e}")
 
+try:
+    from backend.routes.sesiones import router as sesiones_router
+    app.include_router(sesiones_router)
+    logger.info("Sesiones API (/api/sesiones) registrada.")
+except ImportError as e:
+    logger.warning(f"Sesiones API no disponible: {e}")
+
+try:
+    from backend.routes.video import router as video_router
+    app.include_router(video_router, prefix="/api")
+    logger.info("Video API (/api/agente/analizar-video, /api/agente/exportar-docx) registrada.")
+except ImportError as e:
+    logger.warning(f"Video API no disponible: {e}")
+
+try:
+    from backend.routes.video_studio import router as video_studio_router
+    app.include_router(video_studio_router, prefix="/api")
+    logger.info("Video Studio (/api/video/*) registrado.")
+except ImportError as e:
+    logger.warning(f"Video Studio no disponible: {e}")
+
 @app.get("/health")
 async def health():
     db_status = await check_db_connection()

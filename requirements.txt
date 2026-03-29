@@ -44,6 +44,11 @@ kombu
 vine
 amqp
 
+# Video / Audio processing
+yt-dlp
+pydub
+moviepy
+
 # Utilities
 rich
 typer
