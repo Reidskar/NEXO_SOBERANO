@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, FileText, Clock, Settings, Zap, ArrowLeft, BrainCircuit, Globe, Users, Map, Database, BarChart2, Network, Film } from 'lucide-react';
+import { LayoutDashboard, FileText, Clock, Settings, Zap, ArrowLeft, BrainCircuit, Globe, Users, Map, Database, BarChart2, Network, Film, Radar, Wifi, Activity } from 'lucide-react';
 import AIPanel from '../components/AIPanel';
 
 const NAV = [
@@ -9,7 +9,10 @@ const NAV = [
   { name:'Sesión de Análisis',path:'/control/sesion',      icon:BrainCircuit    },
   { name:'Memoria Visual',    path:'/control/memoria',     icon:Network         },
   { name:'Mapa Global',       path:'/control/mapa',        icon:Map             },
+  { name:'OmniGlobe 3D',      path:'/control/omniglobe',   icon:Activity        },
   { name:'Escenarios',        path:'/control/escenarios',  icon:Globe           },
+  { name:'OSINT Engine',       path:'/control/osint',       icon:Radar           },
+  { name:'Wireless Intel',     path:'/control/wireless',    icon:Wifi            },
   { section: 'EVIDENCIAS' },
   { name:'Bóveda OSINT',      path:'/control/boveda',      icon:Database        },
   { name:'Bóveda Drive',      path:'/control/documents',   icon:FileText        },

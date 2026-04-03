@@ -2,6 +2,10 @@ import os
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 from sqlalchemy.orm import DeclarativeBase
 
+# Debug placeholders to trap rogue imports (REMOVE LATER)
+core_webhook_router = None
+core_health_router = None
+
 DATABASE_URL = os.getenv("DATABASE_URL")
 if not DATABASE_URL:
     raise ValueError("DATABASE_URL no encontrada")

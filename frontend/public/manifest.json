@@ -1,0 +1,19 @@
+{
+  "name": "El Anarcocapital — Inteligencia Soberana",
+  "short_name": "ElAnarcocapital",
+  "description": "Plataforma de inteligencia OSINT, rastreo global y análisis geopolítico en tiempo real.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#030712",
+  "theme_color": "#00e5ff",
+  "orientation": "portrait-primary",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ],
+  "screenshots": [
+    { "src": "/screenshot-mobile.png", "sizes": "390x844", "type": "image/png", "form_factor": "narrow" }
+  ],
+  "categories": ["news", "politics", "productivity"],
+  "lang": "es"
+}

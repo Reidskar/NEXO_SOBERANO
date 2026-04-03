@@ -61,21 +61,20 @@ body::after {
 
 /* Animations */
 @keyframes blink-dot {
+  /* Very subtle — just a light breath to confirm LIVE status */
   0%, 100% { opacity: 1; }
-  50% { opacity: 0.4; }
+  50% { opacity: 0.72; }
 }
 @keyframes fade-up {
   from { opacity: 0; transform: translateY(20px); }
   to { opacity: 1; transform: translateY(0); }
 }
-@keyframes pulse-glow {
-  0%, 100% { box-shadow: 0 0 10px rgba(0,229,255,0.3); }
-  50% { box-shadow: 0 0 30px rgba(0,229,255,0.7); }
-}
+/* pulse-glow removed — replaced with static glow */
 
 .animate-fade-up { animation: fade-up 0.7s ease both; }
-.animate-blink { animation: blink-dot 1.8s ease-in-out infinite; }
-.animate-pulse-glow { animation: pulse-glow 2s ease-in-out infinite; }
+/* Blink only for critical LIVE indicators, very slow and subtle */
+.animate-blink { animation: blink-dot 4s ease-in-out infinite; }
+/* .animate-pulse-glow disabled for monitoring — use .glow-cyan for static glow */
 
 /* Utilities */
 .glow-cyan { box-shadow: 0 0 20px rgba(0,229,255,0.3); }

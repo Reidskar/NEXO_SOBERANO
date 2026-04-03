@@ -7,6 +7,9 @@ from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, Tex
 from core.config import settings
 
 # Parche para Railway / Producción: SQLAlchemy async exige dialecto asyncpg explícito
+core_webhook_router = None
+core_health_router = None
+
 db_url = settings.DATABASE_URL
 if db_url.startswith("postgres://"):
     db_url = db_url.replace("postgres://", "postgresql+asyncpg://", 1)

@@ -18,6 +18,12 @@
       "runtimeExecutable": "node",
       "runtimeArgs": ["discord_bot/bot.js"],
       "port": null
+    },
+    {
+      "name": "NEXO_CORE Standalone",
+      "runtimeExecutable": ".venv/Scripts/python.exe",
+      "runtimeArgs": ["-m", "uvicorn", "NEXO_CORE.main:app", "--host", "0.0.0.0", "--port", "8001", "--reload"],
+      "port": 8001
     }
   ]
 }

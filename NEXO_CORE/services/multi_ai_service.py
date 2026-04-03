@@ -55,6 +55,10 @@ def consultar_ia(query: str) -> str:
     # --- FALLBACK FINAL A GEMINI DIRECTO ---
     # Si el motor RAG falló o no devolvió una respuesta válida, usamos Gemini directamente
     try:
+        force_local = os.getenv("FORCE_LOCAL_AI", "false").lower() == "true"
+        if force_local:
+             return "Error IA SOBERANA: El motor RAG local falló y las APIs en la nube están deshabilitadas por seguridad (FORCE_LOCAL_AI=true)."
+
         if not config.GEMINI_API_KEY:
              return "Error: GEMINI_API_KEY no configurada y el motor RAG falló."
              

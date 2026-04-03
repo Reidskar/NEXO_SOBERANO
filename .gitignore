@@ -155,10 +155,3 @@ test_*.py
 sandbox/
 .vercel/
 inter_agent/mensajes/
-
-# Claude Code
-.claude/worktrees/
-.claude/settings.local.json
-debug_routes.json
-*.py.bak
-discord_bot/*.bak

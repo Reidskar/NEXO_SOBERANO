@@ -80,16 +80,52 @@ async def lifespan(app: FastAPI):
     # 🛡️ Iniciar Supervisor Constante
     from services.connection_supervisor import connection_supervisor
     from services.ops_agent import ops_agent
-    
+
     bg_task_conn = asyncio.create_task(connection_supervisor.start_monitoring())
     bg_task_ops = asyncio.create_task(ops_agent.start_operations())
-    
+
+    # 🌐 Iniciar OSINT Engine (sweep cada 15 min en background)
+    try:
+        from backend.services.osint_feeds import osint_engine
+        osint_engine.start_background_loop()
+        logger.info("OSINT Engine background loop iniciado (sweep cada 15 min).")
+    except Exception as e:
+        logger.warning(f"OSINT Engine no pudo arrancar: {e}")
+
+    # 🤖 Warm-up Ollama (precargar modelo en VRAM para evitar cold-start)
+    try:
+        import asyncio as _aio, threading as _thr
+        def _warmup():
+            import asyncio
+            from NEXO_CORE.services.ollama_service import ollama_service
+            async def _ping():
+                ok = await ollama_service.is_available()
+                if ok:
+                    await ollama_service.consultar("ping", modelo="general", temperature=0)
+                    logger.info("Ollama warm-up completado — qwen3.5 en VRAM.")
+            asyncio.run(_ping())
+        _thr.Thread(target=_warmup, daemon=True, name="ollama-warmup").start()
+    except Exception as e:
+        logger.warning(f"Ollama warm-up falló: {e}")
+
+    # 🏭 Iniciar Agent Factory (agentes autónomos con schedule)
+    bg_task_agents = None
+    try:
+        from backend.services.agent_factory import agent_factory
+        bg_task_agents = asyncio.create_task(agent_factory.start_loop())
+        logger.info("Agent Factory iniciado — agentes autónomos activos.")
+    except Exception as e:
+        logger.warning(f"Agent Factory no pudo arrancar: {e}")
+
     yield
-    
+
     # Shutdown Events
     logger.info("=== NEXO SOBERANO SYSTEM SHUTTING DOWN ===")
     connection_supervisor.running = False
     ops_agent.running = False
+    if bg_task_agents:
+        agent_factory.running = False
+        bg_task_agents.cancel()
     bg_task_conn.cancel()
     bg_task_ops.cancel()
     await nexo.shutdown()
@@ -163,10 +199,12 @@ try:
     from api.endpoints import router as endpoint_router
     from backend.routes.agente import router as agente_router
     from backend.routes.tools import router as tools_router
+    from NEXO_CORE.api.webhooks import router as core_webhook_router
     app.include_router(endpoint_router, prefix="/api")
     app.include_router(agente_router, prefix="/api")
     app.include_router(tools_router)
-    logger.info("Endpoints API (/api), Agente y Tools importados correctamente.")
+    app.include_router(core_webhook_router)
+    logger.info("Endpoints API (/api), Agente, Tools y Webhooks importados correctamente.")
 except ImportError as e:
     logger.error(f"Falla importando endpoints de API: {e}")
 
@@ -211,6 +249,48 @@ try:
     logger.info("Video Studio (/api/video/*) registrado.")
 except ImportError as e:
     logger.warning(f"Video Studio no disponible: {e}")
+
+try:
+    from backend.routes.device import router as device_router
+    app.include_router(device_router)
+    logger.info("Device Control API (/api/device/*) registrada.")
+except ImportError as e:
+    logger.warning(f"Device Control no disponible: {e}")
+
+try:
+    from backend.routes.content import router as content_router
+    app.include_router(content_router)
+    logger.info("Content Pipeline + Research Guide (/api/content/*, /api/research/*) registrados.")
+except ImportError as e:
+    logger.warning(f"Content Pipeline no disponible: {e}")
+
+try:
+    from backend.routes.osint import router as osint_router
+    app.include_router(osint_router)
+    logger.info("OSINT Engine (/api/osint/*) registrado.")
+except ImportError as e:
+    logger.warning(f"OSINT Engine no disponible: {e}")
+
+try:
+    from backend.routes.topics import router as topics_router
+    app.include_router(topics_router)
+    logger.info("Topic Tracker (/api/topics/*) registrado.")
+except ImportError as e:
+    logger.warning(f"Topic Tracker no disponible: {e}")
+
+try:
+    from backend.routes.cognitive import router as cognitive_router
+    app.include_router(cognitive_router)
+    logger.info("Motor Cognitivo (/api/cognitive/*) registrado.")
+except ImportError as e:
+    logger.warning(f"Motor Cognitivo no disponible: {e}")
+
+try:
+    from backend.routes.mcp import router as mcp_router
+    app.include_router(mcp_router)
+    logger.info("MCP Gateway + Agent Factory (/api/mcp/*, /api/agents/*) registrados.")
+except ImportError as e:
+    logger.warning(f"MCP/Agents no disponible: {e}")
 
 @app.get("/health")
 async def health():

@@ -2,14 +2,16 @@
 // NEXO SOBERANO — Status Dashboard Component
 // © 2026 elanarcocapital.com
 // ============================================================
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { RefreshCw, Activity, Shield, Cpu, Globe } from 'lucide-react';
+import { useGSAP } from '@gsap/react';
+import gsap from 'gsap';
 
 const API_BASE = import.meta.env.VITE_API_URL || '';
 
 function MetricCard({ icon: Icon, label, value, sub, color = '#00e5ff' }) {
   return (
-    <div style={{
+    <div className="nexo-metric-card" style={{
       background: 'var(--bg2)', border: '1px solid var(--border)',
       padding: '20px 24px', transition: 'all 0.3s'
     }}
@@ -30,7 +32,7 @@ function ServiceRow({ name, status }) {
   const color = status === 'ok' || status === 'online' ? '#10b981'
     : status === 'degraded' ? '#f59e0b' : '#ef4444';
   return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid rgba(0,229,255,0.06)' }}>
+    <div className="nexo-service-row" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid rgba(0,229,255,0.06)' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
         <span style={{ width: 6, height: 6, borderRadius: '50%', background: color, boxShadow: `0 0 6px ${color}` }} />
         <span style={{ fontFamily: "'Space Mono', monospace", fontSize: 12, color: 'var(--muted)' }}>{name}</span>
@@ -46,6 +48,26 @@ export default function StatusDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [lastUpdate, setLastUpdate] = useState(null);
+  const dashRef = useRef(null);
+
+  // GSAP — entrada del dashboard con stagger (gsap-skills pattern)
+  useGSAP(() => {
+    if (loading) return;
+    gsap.fromTo(dashRef.current,
+      { opacity: 0 },
+      { opacity: 1, duration: 0.4, ease: 'power2.out' }
+    );
+    // MetricCards pop in
+    gsap.fromTo('.nexo-metric-card',
+      { opacity: 0, y: 24, scale: 0.96 },
+      { opacity: 1, y: 0, scale: 1, duration: 0.5, ease: 'power3.out', stagger: 0.07, delay: 0.1 }
+    );
+    // Service rows slide in
+    gsap.fromTo('.nexo-service-row',
+      { opacity: 0, x: -16 },
+      { opacity: 1, x: 0, duration: 0.4, ease: 'power2.out', stagger: 0.05, delay: 0.3 }
+    );
+  }, { scope: dashRef, dependencies: [loading] });
 
   const fetchData = async () => {
     try {
@@ -84,7 +106,7 @@ export default function StatusDashboard() {
   const openCircuits = circuits?.open_circuits || [];
 
   return (
-    <div style={{ maxWidth: 1100 }}>
+    <div ref={dashRef} style={{ maxWidth: 1100 }}>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 32 }}>
         <div>

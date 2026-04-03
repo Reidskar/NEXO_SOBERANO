@@ -63,7 +63,7 @@ export default function DynamicCommandPalette() {
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center pt-[20vh] bg-slate-900/80 backdrop-blur-sm p-4">
-      <div className="w-full max-w-2xl bg-slate-800 rounded-xl shadow-[0_0_30px_rgba(34,211,238,0.15)] border border-cyan-500/30 overflow-hidden transform transition-all">
+      <div className="w-full max-w-2xl bg-slate-800 rounded-xl shadow-[0_0_30px_rgba(34,211,238,0.15)] border border-cyan-500/30 overflow-hidden">
         {/* Input Area */}
         <div className="flex items-center px-4 py-4 border-b border-slate-700">
           <span className="text-cyan-400 text-xl mr-3">⚡</span>
@@ -90,7 +90,7 @@ export default function DynamicCommandPalette() {
             <button
               key={cmd.id}
               onClick={() => executeCommand(cmd.id)}
-              className="w-full flex items-center px-4 py-3 text-left text-slate-300 hover:bg-slate-700/50 hover:text-cyan-300 rounded-lg group transition-colors"
+              className="w-full flex items-center px-4 py-3 text-left text-slate-300 hover:bg-slate-700/50 hover:text-cyan-300 rounded-lg group transition-colors active:scale-[0.98]"
             >
               <span className="mr-3 text-xl">{cmd.icon}</span>
               <span className="flex-grow font-medium">{cmd.label}</span>

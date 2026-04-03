@@ -4,6 +4,10 @@ from sqlalchemy.pool import NullPool
 import os
 from dotenv import load_dotenv
 
+# Debug placeholders to trap rogue imports (REMOVE LATER)
+core_webhook_router = None
+core_health_router = None
+
 load_dotenv()
 
 DATABASE_URL = os.getenv("DATABASE_URL")

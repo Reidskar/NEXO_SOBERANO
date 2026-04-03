@@ -15,10 +15,11 @@ from pydantic import BaseModel
 
 logger = logging.getLogger("NEXO.ollama_service")
 
-OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434")
-MODEL_RAG  = os.getenv("OLLAMA_MODEL_RAG", "gemma2:9b")
-MODEL_CODE = os.getenv("OLLAMA_MODEL_CODE", "qwen2.5-coder:7b")
-ENABLED    = os.getenv("OLLAMA_ENABLED", "true").lower() == "true"
+OLLAMA_URL      = os.getenv("OLLAMA_URL", "http://localhost:11434")
+MODEL_RAG       = os.getenv("OLLAMA_MODEL_RAG", "qwen3.5:latest")
+MODEL_CODE      = os.getenv("OLLAMA_MODEL_CODE", "qwen2.5-coder:7b")
+MODEL_GENERAL   = os.getenv("OLLAMA_MODEL_GENERAL", "qwen3.5:latest")
+ENABLED         = os.getenv("OLLAMA_ENABLED", "true").lower() == "true"
 
 
 class OllamaRequest(BaseModel):
@@ -112,8 +113,9 @@ class OllamaService:
 
         # Resolver modelo
         model_name = {
-            "rag":  MODEL_RAG,
-            "code": MODEL_CODE
+            "rag":     MODEL_RAG,
+            "code":    MODEL_CODE,
+            "general": MODEL_GENERAL,
         }.get(modelo, modelo)
 
         payload = {
@@ -130,7 +132,7 @@ class OllamaService:
                 async with session.post(
                     f"{self.base_url}/api/generate",
                     json=payload,
-                    timeout=aiohttp.ClientTimeout(total=120)
+                    timeout=aiohttp.ClientTimeout(total=180)
                 ) as resp:
                     if resp.status != 200:
                         error_text = await resp.text()

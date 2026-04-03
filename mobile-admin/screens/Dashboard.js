@@ -1,9 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import axios from 'axios';
-
-const API_URL = 'https://api.elanarcocapital.com';
-const ADMIN_KEY = 'super-secret-key-nexo';
+import { API_URL, ADMIN_KEY } from '../config';
 
 export default function Dashboard() {
   const [opsData, setOpsData] = useState(null);

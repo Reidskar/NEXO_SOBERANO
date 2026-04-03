@@ -3,7 +3,11 @@ NEXO_CORE/core/database.py
 ===========================
 Motor de base de datos PostgreSQL con:
   - SQLAlchemy sync (compatible con FastAPI sync/async y Celery)
-  - Inyección de dependencias para FastAPI (get_db)
+# Debug placeholders to trap rogue imports (REMOVE LATER)
+core_webhook_router = None
+core_health_router = None
+
+# Inyección de dependencias para FastAPI (get_db)
   - Aislamiento por tenant via SET search_path
   - Helper para crear schemas nuevos al registrar tenants
 

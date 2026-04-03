@@ -49,6 +49,11 @@ yt-dlp
 pydub
 moviepy
 
+# OSINT + Content Pipeline
+yfinance
+faster-whisper
+google-generativeai
+
 # Utilities
 rich
 typer
