@@ -1,6 +1,11 @@
 import os
+import uvicorn
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 from sqlalchemy.orm import DeclarativeBase
+
+# Debug placeholders to trap rogue imports (REMOVE LATER)
+core_webhook_router = None
+core_health_router = None
 
 DATABASE_URL = os.getenv("DATABASE_URL")
 if not DATABASE_URL:

@@ -1,29 +1,34 @@
-# Python — no deployar
+# ── node_modules everywhere ──────────────────────────────────────────────────
+**/node_modules/
+
+# ── Python ────────────────────────────────────────────────────────────────────
 .venv/
 __pycache__/
 *.pyc
 *.pyo
 *.py
 requirements*.txt
+*.egg-info/
+
+# ── Docker / infra ────────────────────────────────────────────────────────────
 Dockerfile*
 docker-compose*
-alembic/
-migrations/
+kubernetes/
+docker/
 
-# Node modules de subdirectorios (no el del frontend)
-discord_bot/node_modules/
-sandbox/node_modules/
+# ── Personal / export files (NO deben ser públicos) ──────────────────────────
+camilo_el_bkn/
+camilo_extract/
+camilo el bkn/
+nexo_soberano_para_notebooklm.txt
+tree_output.txt
+*.txt
 
-# Datos, logs, outputs
-logs/
-cache/
-exports/
-output/
-*.log
-*.zip
-
-# Directorios que no son frontend
+# ── Backend / services (no se despliegan en Vercel) ──────────────────────────
 backend/
+NEXO_CORE/
+NEXO_SOBERANO/
+nexo_backend/
 discord_bot/
 sandbox/
 agents/
@@ -51,7 +56,35 @@ supabase/
 AI-INTELLIGENCE-SYSTEM/
 agente_postulaciones/
 assets/
+supervisor/
+security/
+migrations/
+alembic/
 
-# Sensibles
+# ── Logs / cache / exports ────────────────────────────────────────────────────
+logs/
+cache/
+exports/
+output/
+*.log
+*.zip
+*.tar.gz
+*.bak
+dist/
+
+# ── Credenciales y secretos ───────────────────────────────────────────────────
 .env*
+*.json
+!frontend/package.json
+!frontend/public/manifest.json
 credenciales_*.json
+*.pem
+*.key
+*.p12
+*.pfx
+
+# ── Claude / IDE internals ────────────────────────────────────────────────────
+.claude/
+.vscode/
+.idea/
+*.cursor*

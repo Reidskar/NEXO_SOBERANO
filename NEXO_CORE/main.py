@@ -16,7 +16,6 @@ from NEXO_CORE.api.ai import router as ai_router
 from NEXO_CORE.api.knowledge import router as knowledge_router
 from NEXO_CORE.api.legacy import router as legacy_router
 from NEXO_CORE.api.stream import router as stream_router
-from NEXO_CORE.api.voice import router as voice_router
 from NEXO_CORE.core.errors import register_exception_handlers
 from NEXO_CORE.core.logger import setup_logging
 from NEXO_CORE.middleware.cors import build_cors_options
@@ -114,7 +113,6 @@ app.include_router(ai_router)
 app.include_router(knowledge_router)
 app.include_router(stream_router)
 app.include_router(legacy_router)
-app.include_router(voice_router)
 
 
 def _serve_existing_html(candidates: list[str]):

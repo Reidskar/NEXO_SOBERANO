@@ -86,7 +86,11 @@ function ChatBox() {
         )}
 
         {mensajes.map((msg, i) => (
-          <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+          <div
+            key={i}
+            className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"} animate-fade-up`}
+            style={{ animationDelay: `${Math.min(i * 40, 200)}ms` }}
+          >
             <div className={`max-w-[85%] rounded-lg px-3.5 py-2.5 text-sm ${
               msg.role === "user"
                 ? "bg-nexo-green text-white"
@@ -142,7 +146,7 @@ function ChatBox() {
           <button
             onClick={sendMessage}
             disabled={loading || !pregunta.trim()}
-            className="nexo-btn px-4 shrink-0 text-sm"
+            className="nexo-btn px-4 shrink-0 text-sm active:scale-[0.96] transition-transform disabled:active:scale-100"
           >
             {loading ? "…" : "Enviar"}
           </button>

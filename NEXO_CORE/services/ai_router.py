@@ -85,6 +85,8 @@ class AIRouter:
     def _modelo_ollama_para_tipo(self, tipo: str) -> str:
         if tipo in ["codigo", "debug", "refactor"]:
             return "code"
+        if tipo in ["general", "critico", "arquitectura", "auditoria"]:
+            return "general"
         return "rag"
 
     async def consultar(self, request: AIRequest) -> AIResponse:
@@ -119,8 +121,17 @@ class AIRouter:
                         success=True
                     )
                 logger.warning(
-                    f"Ollama falló ({resp.error}), fallback a cloud"
+                    f"Ollama falló ({resp.error})"
                 )
+                if FORCE_LOCAL:
+                    return AIResponse(
+                        texto="Error IA SOBERANA: Ollama no respondió y el fallback a Cloud está deshabilitado por seguridad (FORCE_LOCAL_AI=true).",
+                        modelo_usado="none",
+                        fuente="error_local",
+                        success=False,
+                        error=resp.error
+                    )
+                logger.warning("Intentando fallback a cloud...")
 
         # Fallback a Gemini si Ollama no disponible o falló
         logger.info(f"Router → CLOUD (gemini) tipo={request.tipo}")

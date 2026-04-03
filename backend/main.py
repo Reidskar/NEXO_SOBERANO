@@ -1,4 +1,4 @@
-This file has been removed to avoid conflicts with main.py in the root directory.
+# This file has been removed to avoid conflicts with main.py in the root directory.
 from __future__ import annotations
 
 import logging
@@ -32,8 +32,14 @@ from NEXO_CORE.services.discord_manager import discord_manager
 from NEXO_CORE.services.obs_manager import obs_manager
 from NEXO_CORE.agents.discord_supervisor import discord_supervisor
 from NEXO_CORE.agents.web_ai_supervisor import web_ai_supervisor
+from NEXO_CORE.agents.livestream_supervisor import livestream_supervisor
+from NEXO_CORE.core.websocket_manager import manager
 from NEXO_CORE.core.state_manager import state_manager
 from backend.middleware.tenant_middleware import TenantMiddleware
+
+# ── Phase 2: Imports & Core Modules ──────────────────────────────────────────
+import uvicorn
+from contextlib import asynccontextmanager
 
 # Routers
 from NEXO_CORE.api.health import router as core_health_router
@@ -43,6 +49,12 @@ from NEXO_CORE.api.legacy import router as legacy_router
 from NEXO_CORE.api.stream import router as stream_router
 from NEXO_CORE.api.dashboard import router as dashboard_router
 from NEXO_CORE.api.webhooks import router as core_webhook_router
+
+# Force-patching attributes to avoid AttributeError in some environments
+import NEXO_CORE.core.database
+NEXO_CORE.core.database.core_webhook_router = core_webhook_router
+NEXO_CORE.core.database.core_health_router = core_health_router
+
 from backend.services.worldmonitor_bridge import router as worldmonitor_router
 from backend.routes import agente as agente_router
 from backend.routes import eventos as eventos_router
@@ -50,6 +62,8 @@ from backend.routes import metrics as metrics_router
 from backend.routes import media as media_router
 from backend.routes import mobile as mobile_router
 from backend.routes import files as files_router
+from backend.routes import sesiones as sesiones_router
+from backend.routes import device as device_router
 from backend.middleware.monitoring import PerformanceMiddleware
 from backend.core import heartbeat as heartbeat_service
 
@@ -74,11 +88,21 @@ async def lifespan(app: FastAPI):
         # Solo en PC local — Railway no tiene OBS ni web supervisor
         obs_manager.start_background_reconnect()
         web_ai_supervisor.start()
-        logger.info("OBS Manager + Web AI Supervisor activados")
+        livestream_supervisor.start()
+        logger.info("OBS Manager + Web AI + Livestream Supervisors activados")
     
     # Siempre activo (Railway + local)
     discord_supervisor.start()
     logger.info("Discord Supervisor activado")
+
+    # OSINT Autonomous Scraper (Phase 12)
+    try:
+        from NEXO_CORE.workers.osint_scraper import osint_scraper
+        if not backend_app_config.IS_PRODUCTION:
+            osint_scraper.start()
+            logger.info("OSINT Autonomous Scraper activado")
+    except Exception as e:
+        logger.warning(f"[OSINT Scraper] No se pudo iniciar: {e}")
 
     # Iniciar loop del Kindle
     t = threading.Thread(target=kindle_refresh_loop, daemon=True)
@@ -86,7 +110,18 @@ async def lifespan(app: FastAPI):
 
     # Heartbeat 24/7
     heartbeat_service.start(interval=60)
-    
+
+    # Control remoto de dispositivo (Tailscale/USB)
+    try:
+        from backend.services.device_control import device_control
+        result = device_control.connect()
+        if result["ok"]:
+            logger.info(f"[DEVICE] Conectado al arranque: {result['device']} via {result['via']}")
+        else:
+            logger.warning(f"[DEVICE] Sin dispositivo en arranque (se reintentará): {result.get('error')}")
+    except Exception as e:
+        logger.warning(f"[DEVICE] Error inicializando control de dispositivo: {e}")
+
     yield
     
     # ── SHUTDOWN ──
@@ -94,55 +129,39 @@ async def lifespan(app: FastAPI):
     await obs_manager.shutdown()
     await discord_manager.shutdown()
     await discord_supervisor.shutdown()
-    logger.info(f"Panel admin React servido desde {frontend_dist}")
-    from fastapi import FastAPI
-    from fastapi.middleware.cors import CORSMiddleware
-    import uvicorn
-    import os
-    from fastapi import FastAPI
-    from fastapi.middleware.cors import CORSMiddleware
-    import uvicorn
-    import os
-    from backend.database import test_connection
-    from backend.routes.agente import router as agente_router
+    await livestream_supervisor.shutdown()
 
-    app = FastAPI(title="NEXO SOBERANO API", version="2.0")
+app = FastAPI(title="NEXO Unified Backend", lifespan=lifespan)
 
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=["https://elanarcocapital.com", "https://elanarcocapital.vercel.app"],
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
+# CORS PRO-MODE
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-    app.include_router(agente_router)
-
-    @app.on_event("startup")
-    async def startup():
-        await test_connection()
-
-    @app.get("/health")
-    async def health():
-        db_ok = await test_connection()
-        return {"status": "ok", "db": "connected" if db_ok else "fail"}
-
-    if __name__ == "__main__":
-        uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", 8000)))
-        "NEXO_SOBERANO_v3.html",
-        "warroom_v3.html",
-        "warroom_v2.html",
-        "frontend_public/warroom_v2.html",
-    ])
-
-@app.get("/landing", response_class=HTMLResponse)
-def landing_page():
-    path = Path("frontend_public/landing_nexo.html")
-    if path.exists():
-        return HTMLResponse(content=path.read_text(encoding="utf-8"))
-    return HTMLResponse(content="<h1>Landing Page Not Found</h1>", status_code=404)
+# StaticFiles SIEMPRE al final (pero lo definimos aquí para que esté disponible)
+if os.path.isdir("frontend/dist"):
+    app.mount("/dist", StaticFiles(directory="frontend/dist", html=True), name="frontend_dist")
 
 # Auth
+class LoginRequest(BaseModel):
+    username: str
+    password: str
+
+# In-memory auth store — single admin user from env
+_users: dict = {
+    os.getenv("NEXO_ADMIN_USER", "admin"): {
+        "username": os.getenv("NEXO_ADMIN_USER", "admin"),
+        "password": os.getenv("NEXO_ADMIN_PASS", "nexo2026"),
+        "email": os.getenv("ADMIN_EMAIL", "admin@elanarcocapital.com"),
+        "role": "admin",
+    }
+}
+_tokens: dict = {}
+
 @app.post("/auth/login")
 async def auth_login(payload: LoginRequest):
     user = _users.get(payload.username)
@@ -156,30 +175,7 @@ async def auth_login(payload: LoginRequest):
 # WEBSOCKET MANAGER (Alertas en tiempo real)
 # ════════════════════════════════════════════════════════════════════
 
-class ConnectionManager:
-    def __init__(self):
-        self.active_connections: Dict[str, List[WebSocket]] = {}
-
-    async def connect(self, websocket: WebSocket, tenant: str):
-        await websocket.accept()
-        if tenant not in self.active_connections:
-            self.active_connections[tenant] = []
-        self.active_connections[tenant].append(websocket)
-        logger.info(f"🔌 Cliente WS conectado a tenant: {tenant}")
-
-    def disconnect(self, websocket: WebSocket, tenant: str):
-        if tenant in self.active_connections:
-            self.active_connections[tenant].remove(websocket)
-
-    async def broadcast(self, tenant: str, message: dict):
-        if tenant in self.active_connections:
-            for connection in self.active_connections[tenant]:
-                try:
-                    await connection.send_json(message)
-                except:
-                    pass
-
-manager = ConnectionManager()
+# Shared WebSocket manager imported from NEXO_CORE.core.websocket_manager
 
 @app.websocket("/ws/alerts/{tenant_slug}")
 async def websocket_endpoint(websocket: WebSocket, tenant_slug: str):
@@ -190,34 +186,23 @@ async def websocket_endpoint(websocket: WebSocket, tenant_slug: str):
     except WebSocketDisconnect:
         manager.disconnect(websocket, tenant_slug)
 
-# ════════════════════════════════════════════════════════════════════
-# WEBHOOK INGEST (Nuevos Agentes)
-# ════════════════════════════════════════════════════════════════════
-
-class WebhookData(BaseModel):
-    tenant_slug: str = "demo"
-    type: str = "mobile_agent"
-    title: str = ""
-    body: str = ""
-    severity: float = 0.5
-
-@app.post("/api/webhooks/ingest")
-async def api_webhook_ingest(data: WebhookData, x_api_key: str = Header(None)):
-    if x_api_key != os.getenv("NEXO_API_KEY", "nexo_dev_key_2025"):
-        raise HTTPException(status_code=401, detail="API Key inválida")
-    
-    payload = {
-        "tipo": data.type,
-        "titulo": data.title,
-        "descripcion": data.body,
-        "severidad": data.severity,
-        "timestamp": datetime.now(timezone.utc).isoformat()
-    }
-    
-    state_manager.set_agent_checkin(payload)
-    
-    await manager.broadcast(data.tenant_slug, payload)
-    return {"status": "success", "received": data.type, "broadcasted": True}
+# ── Mount Routers (NEXO_CORE + Backend) ───────────────────────────────────
+app.include_router(core_webhook_router)  # Handles /api/webhooks/ingest
+app.include_router(core_health_router)
+app.include_router(ai_router)
+app.include_router(knowledge_router)
+app.include_router(legacy_router)
+app.include_router(stream_router)
+app.include_router(dashboard_router)
+app.include_router(worldmonitor_router)
+app.include_router(agente_router)
+app.include_router(eventos_router)
+app.include_router(metrics_router)
+app.include_router(media_router)
+app.include_router(mobile_router)
+app.include_router(files_router)
+app.include_router(sesiones_router)
+app.include_router(device_router)
 
 @app.get("/api/agente/status")
 def get_agente_status():

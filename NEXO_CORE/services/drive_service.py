@@ -33,12 +33,13 @@ class DriveService:
                 logger.warning(f"Drive: credenciales no encontradas en {creds_path}")
                 return
 
-            scopes = ["https://www.googleapis.com/auth/drive.readonly"]
+            # Cambiado a drive completo/file para poder crear carpetas y subir archivos
+            scopes = ["https://www.googleapis.com/auth/drive"]
             creds = service_account.Credentials.from_service_account_file(
                 creds_path, scopes=scopes
             )
             self.service = build("drive", "v3", credentials=creds, cache_discovery=False)
-            logger.info("Drive Service inicializado correctamente.")
+            logger.info("Drive Service inicializado correctamente (Lectura/Escritura).")
         except Exception as e:
             logger.warning(f"Drive Service no disponible: {e}")
 
@@ -108,6 +109,68 @@ class DriveService:
         except Exception as e:
             logger.error(f"Error buscando en Drive: {e}")
             return []
+
+    # ════════════════════════════════════════════════════════════════════
+    # OPERACIONES DE ESCRITURA (OSINT VISION)
+    # ════════════════════════════════════════════════════════════════════
+
+    async def crear_carpeta(self, nombre: str, parent_id: str = GEOPOLITICA_FOLDER_ID) -> str:
+        """Crea una carpeta si no existe y devuelve su ID."""
+        if not self.service:
+            raise RuntimeError("Drive Service no inicializado")
+        
+        # 1. Verificar si ya existe
+        query = f"name='{nombre}' and mimeType='application/vnd.google-apps.folder' and '{parent_id}' in parents and trashed=false"
+        results = self.service.files().list(q=query, fields="files(id, name)").execute()
+        files = results.get("files", [])
+        
+        if files:
+            return files[0]["id"]
+            
+        # 2. Crear nueva
+        file_metadata = {
+            'name': nombre,
+            'mimeType': 'application/vnd.google-apps.folder',
+            'parents': [parent_id]
+        }
+        folder = self.service.files().create(body=file_metadata, fields='id').execute()
+        logger.info(f"Carpeta creada en Drive: {nombre} ({folder.get('id')})")
+        return folder.get('id')
+
+    async def obtener_o_crear_carpeta_pais(self, pais: str) -> str:
+        """Devuelve el ID de la subcarpeta del país dentro de Geopolítica."""
+        nombre_limpio = pais.strip().title()
+        return await self.crear_carpeta(nombre_limpio, GEOPOLITICA_FOLDER_ID)
+
+    async def subir_archivo(self, file_path: str = None, file_bytes: bytes = None, filename: str = "archivo", mime_type: str = "text/plain", folder_id: str = GEOPOLITICA_FOLDER_ID) -> dict:
+        """Sube un archivo a Drive. Puede ser un path local o bytes directos."""
+        from googleapiclient.http import MediaFileUpload, MediaIoBaseUpload
+        import io
+        
+        if not self.service:
+            raise RuntimeError("Drive Service no inicializado")
+
+        file_metadata = {
+            'name': filename,
+            'parents': [folder_id]
+        }
+        
+        media = None
+        if file_path and os.path.exists(file_path):
+            media = MediaFileUpload(file_path, mimetype=mime_type, resumable=True)
+        elif file_bytes is not None:
+            media = MediaIoBaseUpload(io.BytesIO(file_bytes), mimetype=mime_type, resumable=True)
+        else:
+            raise ValueError("Se debe proveer file_path o file_bytes")
+
+        archivo = self.service.files().create(
+            body=file_metadata,
+            media_body=media,
+            fields='id, name, webViewLink'
+        ).execute()
+        
+        logger.info(f"Archivo subido: {filename} a carpeta {folder_id}")
+        return archivo
 
 
 drive_service = DriveService()
