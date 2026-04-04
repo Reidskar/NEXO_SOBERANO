@@ -129,39 +129,66 @@ def _generate_recommendations_with_ai(
     inactive_integrations: list[str],
     errors: list[str],
 ) -> list[str]:
-    """Genera recomendaciones usando Gemini (fallback: lista estática)."""
+    """
+    Genera recomendaciones con Gemma 4 local ($0).
+    Fallback: Gemini Flash → lista estática.
+    """
+    import asyncio
+
+    context = (
+        f"Sistema: NEXO SOBERANO (FastAPI + Gemma 4 local + Qdrant + OmniGlobe 3D + TheBigBrother OSINT).\n"
+        f"Paquetes recomendados no instalados: {missing_pkgs[:8]}\n"
+        f"Integraciones inactivas: {inactive_integrations[:5]}\n"
+        f"Errores recientes: {errors[:3]}\n\n"
+        "Lista 5 recomendaciones técnicas priorizadas (impacto alto primero). "
+        "Cada ítem en una sola línea, sin markdown. Español."
+    )
+
+    # Intentar Gemma 4 primero ($0)
+    async def _try_gemma() -> list[str]:
+        try:
+            from NEXO_CORE.services.ollama_service import ollama_service
+            resp = await ollama_service.consultar(
+                prompt=context,
+                modelo="fast",
+                system="Eres el optimizador técnico de NEXO SOBERANO. Da recomendaciones concretas.",
+                temperature=0.1,
+                max_tokens=300,
+            )
+            if resp.success and resp.text:
+                return [l.strip() for l in resp.text.strip().splitlines() if l.strip()][:5]
+        except Exception as e:
+            logger.debug(f"Gemma 4 recommendations failed: {e}")
+        return []
+
+    try:
+        recs = asyncio.run(_try_gemma())
+        if recs:
+            logger.info("Recomendaciones generadas con Gemma 4 ($0)")
+            return recs
+    except RuntimeError:
+        pass   # event loop already running
+
+    # Fallback: Gemini Flash
     try:
         gemini_key = os.getenv("GEMINI_API_KEY", "").strip()
-        if not gemini_key:
-            raise RuntimeError("GEMINI_API_KEY no configurada")
-
-        import google.generativeai as genai
-        genai.configure(api_key=gemini_key)
-        model = genai.GenerativeModel("gemini-2.5-flash-lite")
-
-        context = (
-            f"Sistema: NEXO SOBERANO (bot Discord + backend FastAPI + RAG con múltiples IAs).\n"
-            f"Paquetes recomendados no instalados: {missing_pkgs[:8]}\n"
-            f"Integraciones inactivas: {inactive_integrations[:5]}\n"
-            f"Errores recientes: {errors[:3]}\n\n"
-            "Lista 5 recomendaciones técnicas priorizadas (impacto alto primero). "
-            "Cada ítem en una sola línea, sin markdown. Español."
-        )
-
-        resp = model.generate_content(context)
-        if resp.text:
-            return [line.strip() for line in resp.text.strip().splitlines() if line.strip()][:5]
+        if gemini_key:
+            import google.generativeai as genai
+            genai.configure(api_key=gemini_key)
+            model = genai.GenerativeModel("gemini-2.0-flash")
+            resp = model.generate_content(context)
+            if resp.text:
+                logger.info("Recomendaciones generadas con Gemini Flash")
+                return [line.strip() for line in resp.text.strip().splitlines() if line.strip()][:5]
     except Exception as e:
-        logger.debug("AI recommendations failed: %s", e)
+        logger.debug(f"Gemini recommendations failed: {e}")
 
     # Fallback estático
     recs = []
     if missing_pkgs:
         recs.append(f"Instalar paquetes de alto impacto: {', '.join(missing_pkgs[:3])}")
-    if "Caché de embeddings en Redis" in inactive_integrations:
-        recs.append("Activar caché de embeddings Redis para reducir latencia del RAG en 60-80%")
-    recs.append("Ejecutar ciclo evolution-cycle para detectar deuda técnica acumulada")
-    recs.append("Revisar archivos críticos del último scan del supervisor de código")
+    recs.append("Ejecutar nexo_evolution.py para búsqueda autónoma de mejoras")
+    recs.append("Revisar logs/evolution_proposals.json para propuestas pendientes")
     if errors:
         recs.append(f"Resolver error recurrente: {errors[0][:100]}")
     return recs[:5]
@@ -230,4 +257,4 @@ def run_scout() -> dict[str, Any]:
 
 if __name__ == "__main__":
     result = run_scout()
-    log.info(json.dumps(result, ensure_ascii=False, indent=2))
+    logger.info(json.dumps(result, ensure_ascii=False, indent=2))

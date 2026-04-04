@@ -109,6 +109,62 @@
       "problemMatcher": []
     },
     {
+      "label": "── EVOLUCIÓN AUTÓNOMA ────────────────────",
+      "type": "shell",
+      "command": "echo ''",
+      "group": "none",
+      "presentation": { "reveal": "silent" },
+      "problemMatcher": []
+    },
+    {
+      "label": "🚀 Evolución: Ciclo rápido (salud + fixes)",
+      "type": "shell",
+      "command": ".\.venv\\Scripts\\python.exe scripts\\nexo_evolution.py --fast",
+      "group": "build",
+      "presentation": { "reveal": "always", "panel": "shared", "clear": true },
+      "problemMatcher": []
+    },
+    {
+      "label": "🔍 Evolución: Buscar herramientas nuevas",
+      "type": "shell",
+      "command": ".\.venv\\Scripts\\python.exe scripts\\nexo_evolution.py --search",
+      "group": "test",
+      "presentation": { "reveal": "always", "panel": "shared", "clear": true },
+      "problemMatcher": []
+    },
+    {
+      "label": "⚡ Evolución: Aplicar mejoras pendientes",
+      "type": "shell",
+      "command": ".\.venv\\Scripts\\python.exe scripts\\nexo_evolution.py --apply",
+      "group": "build",
+      "presentation": { "reveal": "always", "panel": "shared", "clear": true },
+      "problemMatcher": []
+    },
+    {
+      "label": "📈 Evolución: Reporte estratégico",
+      "type": "shell",
+      "command": ".\.venv\\Scripts\\python.exe scripts\\nexo_evolution.py --report",
+      "group": "test",
+      "presentation": { "reveal": "always", "panel": "dedicated", "clear": true },
+      "problemMatcher": []
+    },
+    {
+      "label": "♾️ Evolución: Watch autónomo (background)",
+      "type": "shell",
+      "command": ".\.venv\\Scripts\\python.exe scripts\\nexo_evolution.py --watch",
+      "isBackground": true,
+      "group": "build",
+      "presentation": { "reveal": "always", "panel": "dedicated", "clear": true },
+      "problemMatcher": {
+        "pattern": { "regexp": "^(.*)$", "message": 1 },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": "NEXO EVOLUTION",
+          "endsPattern": "EVOLUCIÓN COMPLETADA"
+        }
+      }
+    },
+    {
       "label": "── ORIGINALES ────────────────────────────",
       "type": "shell",
       "command": "echo ''",
