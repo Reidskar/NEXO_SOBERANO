@@ -5,6 +5,118 @@
   "version": "2.0.0",
   "tasks": [
     {
+      "label": "── NIVEL 1: VS Code / Auto ──────────────",
+      "type": "shell",
+      "command": "echo 'Tareas nivel 1: automáticas al guardar (formatOnSave, ruff --fix)'",
+      "group": "none",
+      "presentation": { "reveal": "silent" },
+      "problemMatcher": []
+    },
+    {
+      "label": "✨ Fix: Formatear + lint auto (ruff+black)",
+      "type": "shell",
+      "command": ".\\.venv\\Scripts\\python.exe -m ruff check --fix . && .\\.venv\\Scripts\\python.exe -m black backend/ NEXO_CORE/ --line-length 100 -q",
+      "group": { "kind": "build", "isDefault": false },
+      "presentation": { "reveal": "always", "panel": "shared", "clear": true },
+      "problemMatcher": ["$python"]
+    },
+    {
+      "label": "✨ Fix: Ordenar imports (isort)",
+      "type": "shell",
+      "command": ".\\.venv\\Scripts\\python.exe -m isort backend/ NEXO_CORE/ --profile black -q",
+      "group": "build",
+      "presentation": { "reveal": "always", "panel": "shared" },
+      "problemMatcher": []
+    },
+    {
+      "label": "✨ Fix: Ruff auto-fix (archivo activo)",
+      "type": "shell",
+      "command": ".\\.venv\\Scripts\\python.exe -m ruff check --fix ${file}",
+      "group": "build",
+      "presentation": { "reveal": "always", "panel": "shared" },
+      "problemMatcher": ["$python"]
+    },
+    {
+      "label": "── NIVEL 2: Antigravity / Autosupervisor ─",
+      "type": "shell",
+      "command": "echo 'Tareas nivel 2: nexo_autosupervisor + clasificar_tarea'",
+      "group": "none",
+      "presentation": { "reveal": "silent" },
+      "problemMatcher": []
+    },
+    {
+      "label": "🤖 Antigravity: Clasificar tarea",
+      "type": "shell",
+      "command": ".\\.venv\\Scripts\\python.exe scripts\\clasificar_tarea.py --tarea \"${input:descripcionTarea}\"",
+      "group": "test",
+      "presentation": { "reveal": "always", "panel": "shared", "clear": true },
+      "problemMatcher": []
+    },
+    {
+      "label": "🤖 Antigravity: Auto-fix archivo activo",
+      "type": "shell",
+      "command": ".\\.venv\\Scripts\\python.exe nexo_autosupervisor.py --scan --fix",
+      "group": "build",
+      "presentation": { "reveal": "always", "panel": "shared", "clear": true },
+      "problemMatcher": []
+    },
+    {
+      "label": "── NIVEL 3: Claude Code (autorización) ───",
+      "type": "shell",
+      "command": "echo 'Tareas nivel 3: requieren ejecutar Claude Code manualmente'",
+      "group": "none",
+      "presentation": { "reveal": "silent" },
+      "problemMatcher": []
+    },
+    {
+      "label": "🧠 Gemma4: Revisar código (git diff)",
+      "type": "shell",
+      "command": ".\\.venv\\Scripts\\python.exe scripts\\nexo_manager.py review",
+      "group": "test",
+      "presentation": { "reveal": "always", "panel": "shared", "clear": true },
+      "problemMatcher": []
+    },
+    {
+      "label": "🧠 Gemma4: Auditoría de seguridad",
+      "type": "shell",
+      "command": ".\\.venv\\Scripts\\python.exe scripts\\nexo_manager.py security",
+      "group": "test",
+      "presentation": { "reveal": "always", "panel": "shared", "clear": true },
+      "problemMatcher": []
+    },
+    {
+      "label": "🧠 Gemma4: Diagnóstico completo",
+      "type": "shell",
+      "command": ".\\.venv\\Scripts\\python.exe scripts\\nexo_manager.py diagnose",
+      "group": "test",
+      "presentation": { "reveal": "always", "panel": "dedicated", "clear": true },
+      "problemMatcher": []
+    },
+    {
+      "label": "🧠 Gemma4: Auto-fix archivo activo + aplicar",
+      "type": "shell",
+      "command": ".\\.venv\\Scripts\\python.exe scripts\\nexo_manager.py fix --file ${relativeFile} --apply",
+      "group": "build",
+      "presentation": { "reveal": "always", "panel": "shared", "clear": true },
+      "problemMatcher": []
+    },
+    {
+      "label": "📊 NEXO: Estado de servicios",
+      "type": "shell",
+      "command": ".\\.venv\\Scripts\\python.exe scripts\\nexo_manager.py status",
+      "group": "test",
+      "presentation": { "reveal": "always", "panel": "shared" },
+      "problemMatcher": []
+    },
+    {
+      "label": "── ORIGINALES ────────────────────────────",
+      "type": "shell",
+      "command": "echo ''",
+      "group": "none",
+      "presentation": { "reveal": "silent" },
+      "problemMatcher": []
+    },
+    {
       "label": "🎯 NEXO: Inicio Automático (Orquestador)",
       "type": "shell",
       "command": ".\\.venv\\Scripts\\python.exe INICIO_RAPIDO.py",
@@ -216,6 +328,14 @@
           "endsPattern": "Contexto IA actualizado"
         }
       }
+    }
+  ],
+  "inputs": [
+    {
+      "id": "descripcionTarea",
+      "type": "promptString",
+      "description": "Describe la tarea (Gemma 4 clasificará el nivel automáticamente)",
+      "default": "refactorizar la función X del archivo Y"
     }
   ]
 }

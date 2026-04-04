@@ -528,6 +528,11 @@ Ejemplos:
     p_sup = sub.add_parser("supervise", help="Monitoreo continuo")
     p_sup.add_argument("--interval", type=int, default=120, help="Segundos entre checks")
 
+    # classify
+    p_cls = sub.add_parser("classify", help="Clasificar complejidad de tarea (niveles 1-3)")
+    p_cls.add_argument("--tarea",  "-t", default="", help="Descripción de la tarea")
+    p_cls.add_argument("--diff",   "-d", default="", help="Git diff del cambio")
+
     args = parser.parse_args()
 
     cmd_map = {
@@ -537,6 +542,7 @@ Ejemplos:
         "fix":      cmd_fix,
         "diagnose": cmd_diagnose,
         "supervise": cmd_supervise,
+        "classify":  cmd_classify,
     }
 
     rc = asyncio.run(cmd_map[args.cmd](args))
@@ -545,3 +551,33 @@ Ejemplos:
 
 if __name__ == "__main__":
     main()
+
+
+# ── CLASSIFY (añadido al CLI) ────────────────────────────────────────────────
+
+async def cmd_classify(args):
+    """Clasifica la complejidad de una tarea y recomienda la herramienta."""
+    import importlib.util, sys
+    spec = importlib.util.spec_from_file_location('clasificar_tarea', ROOT/'scripts'/'clasificar_tarea.py')
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    clasificar = mod.clasificar
+    result = await clasificar(
+        tarea=args.tarea or "",
+        archivo=args.file or "",
+        diff=args.diff or "",
+    )
+    nivel_icons  = {1: "🟢", 2: "🟡", 3: "🔴"}
+    herr_labels  = {
+        "vscode":      "VS Code / nexo_autosupervisor (automático)",
+        "antigravity": "Antigravity skills (semiautomático)",
+        "claude_code": "Claude Code (requiere autorización del usuario)",
+    }
+    icon = nivel_icons.get(result["nivel"], "⚪")
+    herr = herr_labels.get(result["herramienta"], result["herramienta"])
+    _banner(f"NEXO MANAGER — Clasificador de Tareas")
+    print(f"  {icon}  NIVEL {result['nivel']} — {result['label'].upper()}")
+    print(f"  Herramienta recomendada: {herr}")
+    print(f"  Razón: {result['razon']}")
+    print(f"  Clasificador usado: {result.get('clasificador', '?')}\n")
+    return result["nivel"]

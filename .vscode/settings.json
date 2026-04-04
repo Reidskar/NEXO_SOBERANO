@@ -4,6 +4,22 @@
     // ═══════════════════════════════════════════════════════
     // ─── PYTHON ───
     "python.defaultInterpreterPath": "${workspaceFolder}/.venv/Scripts/python.exe",
+    // ─── AUTO-FORMAT / NIVEL 1 ───
+    "[python]": {
+        "editor.defaultFormatter": "charliermarsh.ruff",
+        "editor.formatOnSave": true,
+        "editor.codeActionsOnSave": {
+            "source.fixAll.ruff": "explicit",
+            "source.organizeImports.ruff": "explicit"
+        }
+    },
+    "ruff.fixAll": true,
+    "ruff.organizeImports": true,
+    // ─── NEXO TASK NIVEL ───
+    "nexo.agentRouting.autofix_level1": "vscode_on_save",
+    "nexo.agentRouting.autofix_level2": "antigravity_skill",
+    "nexo.agentRouting.autofix_level3": "claude_code_with_auth",
+
     "python.analysis.typeCheckingMode": "basic",
     "python.analysis.autoImportCompletions": true,
     "python.analysis.inlayHints.functionReturnTypes": true,

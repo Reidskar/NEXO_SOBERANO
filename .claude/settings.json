@@ -1,0 +1,59 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python scripts/clasificar_tarea.py --tarea \"$CLAUDE_TOOL_INPUT_description\" --archivo \"$CLAUDE_TOOL_INPUT_file_path\" --json",
+            "timeout": 8000
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python scripts/nexo_manager.py review --file \"$CLAUDE_TOOL_INPUT_file_path\" 2>/dev/null || true",
+            "timeout": 60000,
+            "blocking": false
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python scripts/nexo_manager.py status 2>/dev/null || true",
+            "timeout": 10000,
+            "blocking": false
+          }
+        ]
+      }
+    ]
+  },
+  "permissions": {
+    "allow": [
+      "Bash(python scripts/nexo_manager.py*)",
+      "Bash(python scripts/clasificar_tarea.py*)",
+      "Bash(python scripts/supervisor_osint.py*)",
+      "Bash(python nexo_autosupervisor.py*)",
+      "Bash(python -m ruff*)",
+      "Bash(python -m black*)",
+      "Bash(python -m bandit*)",
+      "Bash(python -m pytest*)",
+      "Bash(git diff*)",
+      "Bash(git status*)",
+      "Bash(git add*)",
+      "Bash(git commit*)",
+      "Bash(git push*)"
+    ],
+    "deny": []
+  }
+}
