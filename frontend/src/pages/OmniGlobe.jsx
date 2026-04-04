@@ -3,7 +3,9 @@ import Globe from 'react-globe.gl';
 import * as THREE from 'three';
 import GlobeMaplibre from '../components/GlobeMaplibre';
 import DestructionOverlay from '../components/DestructionOverlay';
-import { Plane, Ship, ShieldAlert, Flame, FileText, Wifi, WifiOff, RefreshCw, Globe2, Map } from 'lucide-react';
+import AISearchPanel from '../components/AISearchPanel';
+import { AnimatePresence, motion } from 'framer-motion';
+import { Plane, Ship, ShieldAlert, Flame, FileText, Wifi, WifiOff, RefreshCw, Globe2, Map, Search } from 'lucide-react';
 import { renderToString } from 'react-dom/server';
 import OmniGlobeHUD from '../components/OmniGlobeHUD';
 import EvidenceViewer from '../components/EvidenceViewer';
@@ -82,10 +84,49 @@ const OmniGlobe = () => {
   }, [conflictMarkers, thermalMarkers]);
 
   // AI tactical alerts
-  const { alerts: aiAlerts, connected: aiConnected, wsMode, pushAlert } = useGlobeAI(true, osintContext);
+  const { alerts: aiAlerts, connected: aiConnected, wsMode, pushAlert, discordActivity, driveActivity: aiDriveActivity } = useGlobeAI(true, osintContext);
   
   // Real-time Satellite TLE Propagation (CelesTrak)
   const { satellites } = useSatellites(true);
+
+  // ── AISearchPanel visibility ────────────────────────────────────────────
+  const [searchOpen, setSearchOpen] = useState(false);
+
+  // ── Merge Drive markers from OSINT hook + AI hook for HUD panel ────────
+  const combinedDriveActivity = useMemo(() => {
+    const osintDocs = driveMarkers.map(m => ({
+      id: m.id || `osint-${m.lat}-${m.lng}`,
+      text: m.label || m.name || 'Doc Drive',
+      label: m.label || '',
+      ts: m.ts || new Date().toISOString(),
+      prefix: '[DRIVE]',
+      color: '#a855f7',
+      webViewLink: m.webViewLink,
+    }));
+    // Merge, deduplicate by id, most recent first
+    const all = [...aiDriveActivity, ...osintDocs];
+    const seen = new Set();
+    return all.filter(d => { if (seen.has(d.id)) return false; seen.add(d.id); return true; }).slice(0, 20);
+  }, [driveMarkers, aiDriveActivity]);
+
+  // ── Auto-animate globe when NEW Drive docs arrive ───────────────────────
+  const prevDriveCountRef = useRef(combinedDriveActivity.length);
+  useEffect(() => {
+    const prev  = prevDriveCountRef.current;
+    const curr  = combinedDriveActivity.length;
+    prevDriveCountRef.current = curr;
+    if (curr > prev && curr > 0) {
+      // New document detected — fly to its location if it has coordinates
+      const newest = combinedDriveActivity[0];
+      if (newest?.lat && newest?.lng && maplibreRef.current?.flyToEvent) {
+        maplibreRef.current.flyToEvent(newest.lat, newest.lng, 5);
+      }
+      // Push alert to ticker
+      pushAlert(`📂 Nuevo documento en Drive: ${newest.text || newest.label}`, {
+        color: '#a855f7', prefix: '[DRIVE INTEL]',
+      });
+    }
+  }, [combinedDriveActivity.length]);
 
   // ── Phase 12+13: OSINT Simulation State ────────────────────────────────
   const [activeSimulations, setActiveSimulations] = useState([]); // Descending missiles
@@ -689,14 +730,31 @@ const OmniGlobe = () => {
     }, 8000);
   }, [conflictMarkers]);
 
-  // AI alert ticker — rotate through alerts
+  // AI alert ticker — rotate through alerts with smooth transition
   const [tickerIdx, setTickerIdx] = useState(0);
+  const [tickerVisible, setTickerVisible] = useState(true);
   useEffect(() => {
-    const t = setInterval(() => setTickerIdx(i => (i + 1) % Math.max(1, aiAlerts.length)), 6000);
+    const t = setInterval(() => {
+      setTickerVisible(false);
+      setTimeout(() => {
+        setTickerIdx(i => (i + 1) % Math.max(1, aiAlerts.length));
+        setTickerVisible(true);
+      }, 300);
+    }, 7000);
     return () => clearInterval(t);
   }, [aiAlerts.length]);
 
+  // When new alert arrives, jump to it
+  useEffect(() => {
+    if (aiAlerts.length > 0) {
+      setTickerVisible(false);
+      setTimeout(() => { setTickerIdx(0); setTickerVisible(true); }, 200);
+    }
+  }, [aiAlerts.length]);
+
   const currentAlert = aiAlerts[tickerIdx] || null;
+  // Globe3D alerting: pulse when there's a critical alert
+  const isAlertingCritical = currentAlert?.severity === 'critical';
 
   return (
     <div style={{ position: 'relative', width: '100%', height: '100%', minHeight: '100vh', background: 'radial-gradient(ellipse at 40% 60%, #071428 0%, #020810 100%)', overflow: 'hidden' }}>
@@ -858,7 +916,23 @@ const OmniGlobe = () => {
       <div className="crt-vignette" />
       <div className="crt-overlay" />
       
-      <OmniGlobeHUD currentAlert={currentAlert} />
+      <OmniGlobeHUD
+        currentAlert={currentAlert}
+        driveActivity={combinedDriveActivity}
+        discordActivity={discordActivity}
+        aiAlerts={aiAlerts}
+      />
+
+      {/* AI Search Panel — floating, toggled with button or "/" key */}
+      <AnimatePresence>
+        {searchOpen && (
+          <AISearchPanel
+            isOpen={searchOpen}
+            onClose={() => setSearchOpen(false)}
+            onPushAlert={pushAlert}
+          />
+        )}
+      </AnimatePresence>
 
       {/* Destruction Overlay — animación + evidencia Drive al detectar evento crítico */}
       {destructionEvent && (
@@ -870,39 +944,84 @@ const OmniGlobe = () => {
         />
       )}
 
-      {/* AI Live Ticker — Pinned directly to the bottom edge */}
+      {/* AI Live Ticker — animated transitions between alerts */}
       <div style={{
         position: 'absolute', bottom: 0, left: '50%', transform: 'translateX(-50%)',
         width: '100%',
-        borderTop: `1px solid ${currentAlert ? currentAlert.color.replace('0.9','0.4').replace('0.85','0.4') : 'rgba(239,68,68,0.4)'}`,
-        padding: '8px 40px', zIndex: 30,
-        display: 'flex', alignItems: 'center', gap: 15,
-        background: 'rgba(5,10,15,0.95)', backdropFilter: 'blur(10px)',
-        transition: 'border-color 0.6s ease',
+        borderTop: `1px solid ${currentAlert?.color ? currentAlert.color.replace(/[\d.]+\)$/, '0.35)') : 'rgba(239,68,68,0.35)'}`,
+        padding: '7px 16px', zIndex: 30,
+        display: 'flex', alignItems: 'center', gap: 12,
+        background: 'rgba(4,8,14,0.96)', backdropFilter: 'blur(12px)',
+        transition: 'border-color 0.5s ease',
+        minHeight: 40,
       }}>
-        <div style={{ width: 4, height: 20, background: currentAlert?.color || '#ef4444', borderRadius: 2, boxShadow: `0 0 10px ${currentAlert?.color || '#ef4444'}`, flexShrink: 0, transition: 'background 0.6s ease' }} />
-        <div style={{ flex: 1, color: '#f8fafc', fontFamily: "'Space Mono', monospace", fontSize: 11, letterSpacing: 0.5 }}>
-          <span style={{ color: currentAlert?.color || '#ef4444', fontWeight: 'bold', marginRight: 10, textShadow: `0 0 8px ${currentAlert?.color || '#ef4444'}88` }}>
-            {currentAlert?.prefix || '[ALERTA TÁCTICA]'}
-          </span>
-          {currentAlert
-            ? currentAlert.text
-            : 'Sistema NEXO inicializando feeds de inteligencia en tiempo real...'}
-          {lastSweep && (
-             <span style={{ color: '#64748b', marginLeft: 15, fontSize: 10 }}>
-              SWEEP {lastSweep.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-            </span>
-          )}
+        {/* Severity indicator bar */}
+        <motion.div
+          animate={{ background: currentAlert?.color || '#ef4444', boxShadow: `0 0 12px ${currentAlert?.color || '#ef4444'}` }}
+          transition={{ duration: 0.5 }}
+          style={{ width: 3, height: 22, borderRadius: 2, flexShrink: 0 }}
+        />
+
+        {/* Alert text with fade transition */}
+        <div style={{ flex: 1, overflow: 'hidden' }}>
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={tickerIdx}
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: tickerVisible ? 1 : 0, y: 0 }}
+              exit={{ opacity: 0, y: -6 }}
+              transition={{ duration: 0.28 }}
+              style={{ color: '#f1f5f9', fontFamily: "'Space Mono', monospace", fontSize: 11, letterSpacing: 0.3, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}
+            >
+              <span style={{ color: currentAlert?.color || '#ef4444', fontWeight: 700, textShadow: `0 0 10px ${currentAlert?.color || '#ef4444'}88`, flexShrink: 0 }}>
+                {currentAlert?.prefix || '[NEXO INTEL]'}
+              </span>
+              <span>
+                {currentAlert
+                  ? currentAlert.text
+                  : 'Sistema NEXO inicializando feeds de inteligencia en tiempo real...'}
+              </span>
+              {lastSweep && (
+                <span style={{ color: '#334155', fontSize: 9, flexShrink: 0 }}>
+                  SWEEP {lastSweep.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                </span>
+              )}
+            </motion.div>
+          </AnimatePresence>
         </div>
-        {aiAlerts.length > 0 && (
-          <div style={{ background: 'rgba(168,85,247,0.15)', border: '1px solid #a855f7', borderRadius: 4, padding: '2px 8px', color: '#a855f7', fontSize: 10, fontFamily: 'monospace', flexShrink: 0 }}>
-            {aiAlerts.length} IA REPORTS
-          </div>
-        )}
+
+        {/* Right-side badges */}
+        <div style={{ display: 'flex', gap: 6, flexShrink: 0, alignItems: 'center' }}>
+          {discordActivity.length > 0 && (
+            <div style={{ background: 'rgba(88,101,242,0.15)', border: '1px solid rgba(88,101,242,0.4)', borderRadius: 4, padding: '2px 7px', color: '#818cf8', fontSize: 9, fontFamily: 'monospace' }}>
+              DISC {discordActivity.length}
+            </div>
+          )}
+          {aiAlerts.length > 0 && (
+            <div style={{ background: 'rgba(168,85,247,0.15)', border: '1px solid rgba(168,85,247,0.4)', borderRadius: 4, padding: '2px 7px', color: '#c084fc', fontSize: 9, fontFamily: 'monospace' }}>
+              {aiAlerts.length} IA
+            </div>
+          )}
+          {/* IA Search button */}
+          <motion.button
+            whileTap={{ scale: 0.93 }}
+            onClick={() => setSearchOpen(s => !s)}
+            style={{
+              background: searchOpen ? 'rgba(168,85,247,0.25)' : 'rgba(168,85,247,0.08)',
+              border: `1px solid rgba(168,85,247,${searchOpen ? 0.5 : 0.25})`,
+              borderRadius: 5, padding: '3px 9px', cursor: 'pointer',
+              color: '#c084fc', fontSize: 9, fontFamily: 'monospace',
+              display: 'flex', alignItems: 'center', gap: 4, transition: 'all 0.2s',
+            }}
+            title="Abrir IA Search (tecla /)"
+          >
+            <Search size={10} /> IA SEARCH
+          </motion.button>
+        </div>
       </div>
 
       {/* Timeline Slider HUD & Simulation Control — Floating above the ticker */}
-      <div style={{ position: 'absolute', bottom: 65, left: '50%', transform: 'translateX(-50%)', width: '70%', maxWidth: 900, background: 'rgba(5,10,15,0.85)', backdropFilter: 'blur(12px)', padding: '12px 24px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.08)', zIndex: 20 }}>
+      <div style={{ position: 'absolute', bottom: 48, left: '50%', transform: 'translateX(-50%)', width: '70%', maxWidth: 900, background: 'rgba(5,10,15,0.85)', backdropFilter: 'blur(12px)', padding: '12px 24px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.08)', zIndex: 20 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 10, fontFamily: "'Space Mono', monospace", color: 'var(--text)', fontSize: 12 }}>
           <span>Pasado (-30d)</span>
           <span style={{ color: timelineDay > 0 ? '#f97316' : '#22c55e', fontWeight: 'bold' }}>
