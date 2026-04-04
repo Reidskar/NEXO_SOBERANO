@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OMNIGLOBE — EL ANARCOCAPITAL</title>
+<script src="https://unpkg.com/globe.gl/dist/globe.gl.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#080c14;color:#e2e8f0;font-family:'Courier New',monospace;overflow:hidden;height:100vh}
+#header{display:flex;align-items:center;justify-content:space-between;padding:8px 16px;background:rgba(4,8,16,.97);border-bottom:1px solid #1a2540;height:44px;position:fixed;top:0;left:0;right:0;z-index:100}
+.logo{font-size:13px;color:#00e5ff;font-weight:700;letter-spacing:.1em}
+.logo span{color:#475569;font-size:10px;margin-left:8px;font-weight:400}
+.nav{display:flex;gap:6px}
+.nav a{font-size:10px;color:#475569;text-decoration:none;padding:3px 9px;border:1px solid #1a2540;border-radius:4px;letter-spacing:.06em;transition:all .15s}
+.nav a:hover{color:#00e5ff;border-color:#00e5ff40}
+#globe-wrap{position:fixed;top:44px;left:0;right:0;bottom:32px}
+#globe-container{width:100%;height:100%}
+#footer{position:fixed;bottom:0;left:0;right:0;height:32px;background:rgba(4,8,16,.97);border-top:1px solid #1a2540;overflow:hidden;display:flex;align-items:center}
+.ticker-wrap{white-space:nowrap;animation:ticker 60s linear infinite;font-size:11px;color:#334155}
+.ticker-wrap span{color:#475569;margin:0 20px}
+.ticker-wrap .hi{color:#ef4444}
+.ticker-wrap .ok{color:#10b981}
+.ticker-wrap .warn{color:#f59e0b}
+@keyframes ticker{from{transform:translateX(100vw)}to{transform:translateX(-100%)}}
+#layers{position:fixed;top:56px;left:12px;z-index:50;display:flex;flex-direction:column;gap:5px}
+.layer-btn{display:flex;align-items:center;gap:6px;background:rgba(13,20,33,.93);border-radius:6px;padding:5px 10px;cursor:pointer;font-size:11px;transition:all .2s;border:1px solid #1a2540;font-family:'Courier New',monospace}
+.layer-btn .dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.layer-btn .cnt{margin-left:auto;padding-left:8px;font-size:10px;color:#475569}
+#detail{position:fixed;top:56px;right:12px;z-index:50;background:rgba(13,20,33,.97);border:1px solid #1a2540;border-radius:10px;padding:14px 16px;width:270px;display:none;backdrop-filter:blur(8px);box-shadow:0 4px 32px rgba(0,0,0,.6)}
+#detail .d-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px}
+#detail .d-cat{font-size:11px;font-weight:700;letter-spacing:.05em}
+#detail .d-name{font-size:13px;color:#e2e8f0;font-weight:700;margin-top:3px;line-height:1.3}
+#detail .d-close{background:none;border:none;color:#64748b;cursor:pointer;font-size:16px;padding:0 0 0 8px}
+#detail .d-body{border-top:1px solid #1a2540;padding-top:10px}
+#detail table{width:100%;border-collapse:collapse;font-size:11px}
+#detail td{padding:2px 0;color:#475569}
+#detail td+td{color:#cbd5e1}
+#detail .d-notes{margin-top:8px;font-size:10px;color:#64748b;line-height:1.5;border-top:1px solid #1a2540;padding-top:6px}
+#counters{position:fixed;bottom:40px;left:12px;z-index:50;display:flex;gap:10px;flex-wrap:wrap}
+.counter{background:rgba(13,20,33,.88);border:1px solid #1a2540;border-radius:6px;padding:4px 10px;font-size:11px}
+#narrative{position:fixed;bottom:44px;left:50%;transform:translateX(-50%);z-index:60;background:rgba(8,12,20,.94);border:1px solid #00e5ff30;border-radius:8px;padding:10px 20px;max-width:560px;text-align:center;font-size:13px;color:#00e5ff;backdrop-filter:blur(8px);box-shadow:0 0 24px rgba(0,229,255,.12);display:none;animation:fadeUp .4s ease}
+@keyframes fadeUp{from{opacity:0;transform:translateX(-50%) translateY(6px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
+</style>
+</head>
+<body>
+<div id="header">
+  <div class="logo">◎ OMNIGLOBE <span>NEXO SOBERANO — LIVE INTELLIGENCE</span></div>
+  <nav class="nav">
+    <a href="/">LANDING</a>
+    <a href="/control">DASHBOARD</a>
+    <a href="/control-center">CONTROL CENTER</a>
+    <a href="/flowmap">FLOWMAP</a>
+  </nav>
+</div>
+<div id="globe-wrap"><div id="globe-container"></div></div>
+<div id="layers">
+  <button class="layer-btn" id="btn-vessels" onclick="toggleLayer('vessels')" style="color:#00e5ff;border-color:#00e5ff40"><span class="dot" style="background:#00e5ff"></span>⛵ Vessels<span class="cnt" id="cnt-vessels">15</span></button>
+  <button class="layer-btn" id="btn-aircraft" onclick="toggleLayer('aircraft')" style="color:#f59e0b;border-color:#f59e0b40"><span class="dot" style="background:#f59e0b"></span>✈ Aircraft<span class="cnt" id="cnt-aircraft">8</span></button>
+  <button class="layer-btn" id="btn-events" onclick="toggleLayer('events')" style="color:#ef4444;border-color:#ef444440"><span class="dot" style="background:#ef4444"></span>⚠ Events<span class="cnt" id="cnt-events">8</span></button>
+  <button class="layer-btn" id="btn-arcs" onclick="toggleLayer('arcs')" style="color:#a78bfa;border-color:#a78bfa40"><span class="dot" style="background:#a78bfa"></span>↗ Flows<span class="cnt" id="cnt-arcs">6</span></button>
+  <button class="layer-btn" id="btn-infra" onclick="toggleLayer('infra')" style="color:#f0abfc;border-color:#f0abfc40"><span class="dot" style="background:#f0abfc"></span>⚡ CritInfra<span class="cnt" id="cnt-infra">8</span></button>
+</div>
+<div id="detail">
+  <div class="d-head">
+    <div><div class="d-cat" id="d-cat"></div><div class="d-name" id="d-name"></div></div>
+    <button class="d-close" onclick="closeDetail()">✕</button>
+  </div>
+  <div class="d-body" id="d-body"></div>
+</div>
+<div id="counters">
+  <div class="counter" style="color:#00e5ff">⛵ <b id="live-vessels">15</b> vessels</div>
+  <div class="counter" style="color:#f59e0b">✈ <b id="live-aircraft">8</b> aircraft</div>
+  <div class="counter" style="color:#ef4444">⚠ <b id="live-events">8</b> events</div>
+  <div class="counter" style="color:#f0abfc">⚡ <b id="live-infra-down">3</b> infra down</div>
+</div>
+<div id="narrative"><span style="opacity:.7;margin-right:8px">◈ NEXO</span><span id="narrative-text"></span></div>
+<div id="footer">
+  <div class="ticker-wrap">
+    <span>🛩 ADS-B ·</span><span class="hi">847 aeronaves militares activas</span>
+    <span>·</span><span>🚢 AIS · 23 portaaviones en tránsito</span>
+    <span>·</span><span class="hi">📡 SIGINT · Actividad RF elevada — Mar de China</span>
+    <span>·</span><span class="warn">📊 Petróleo +2.1% · Oro +0.8% · S&P -0.6%</span>
+    <span>·</span><span class="hi">🔴 BREAKING · Cierre Estrecho Hormuz — 1.6 Mt/mes bloqueados</span>
+    <span>·</span><span class="warn">⚡ Zaporizhzhia NPP — Cold shutdown. IAEA monitoring</span>
+    <span>·</span><span>🛰 Starlink · 412 satélites sobre zona conflicto activa</span>
+    <span>·</span><span class="ok">🟢 NEXO SOBERANO — Sistema operativo</span>
+    <span style="padding-right:100px"></span>
+  </div>
+</div>
+<script>
+// ── DATA ─────────────────────────────────────────────────────────────────────
+const VESSELS=[
+  {id:'v01',cat:'vessel',type:'MILITARY',name:'USS GERALD R. FORD',flag:'US',lat:36.5,lng:15.2,mmsi:'338234567',imo:'N/A',speed:18.3,course:245,dest:'NAPLES',eta:'04 Apr 09:00',size:'333m x 77m',draft:'12.0m',color:'#ef4444',radius:.55},
+  {id:'v02',cat:'vessel',type:'MILITARY',name:'HMS PRINCE OF WALES',flag:'GB',lat:48.2,lng:-7.1,mmsi:'235096837',imo:'N/A',speed:14.1,course:190,dest:'BREST',eta:'05 Apr 18:00',size:'284m x 70m',draft:'11.0m',color:'#ef4444',radius:.55},
+  {id:'v03',cat:'vessel',type:'MILITARY',name:'RFS MOSKVA (REPLICA)',flag:'RU',lat:45.1,lng:31.4,mmsi:'273352980',imo:'N/A',speed:6.2,course:90,dest:'NOVOROSSIYSK',eta:'N/A',size:'186m x 20m',draft:'7.9m',color:'#ef4444',radius:.55},
+  {id:'v04',cat:'vessel',type:'CARGO',name:'ARKLOW FERN',flag:'IE',lat:51.15,lng:1.52,mmsi:'250802173',imo:'9527661',speed:8.1,course:234,dest:'IEFOV',eta:'04 Apr 13:00',size:'90m x 14m',draft:'6.3m',color:'#00e5ff',radius:.4},
+  {id:'v05',cat:'vessel',type:'CARGO',name:'EVER ACE',flag:'PA',lat:37.8,lng:32.0,mmsi:'357488000',imo:'9810563',speed:14.2,course:180,dest:'PORT SAID',eta:'06 Apr 08:00',size:'400m x 62m',draft:'15.5m',color:'#00e5ff',radius:.4},
+  {id:'v06',cat:'vessel',type:'CARGO',name:'MSC GULSUN',flag:'PA',lat:5.2,lng:103.8,mmsi:'370773000',imo:'9811000',speed:16.4,course:270,dest:'SINGAPORE',eta:'03 Apr 22:00',size:'400m x 62m',draft:'16.0m',color:'#00e5ff',radius:.4},
+  {id:'v07',cat:'vessel',type:'TANKER',name:'HORMUZ TITAN I',flag:'IR',lat:26.6,lng:56.5,mmsi:'422134500',imo:'9421030',speed:3.2,course:145,dest:'BANDAR ABBAS',eta:'ANCHORED',size:'332m x 58m',draft:'20.0m',color:'#f97316',radius:.45},
+  {id:'v08',cat:'vessel',type:'TANKER',name:'GULF PRIDE',flag:'SA',lat:24.5,lng:54.3,mmsi:'403234100',imo:'9312044',speed:11.2,course:315,dest:'ROTTERDAM',eta:'20 Apr 06:00',size:'310m x 55m',draft:'18.5m',color:'#f97316',radius:.45},
+  {id:'v09',cat:'vessel',type:'TANKER',name:'PETRO OLYMPUS',flag:'GR',lat:22.8,lng:63.1,mmsi:'241234560',imo:'9433221',speed:13.8,course:280,dest:'ROTTERDAM',eta:'18 Apr 12:00',size:'290m x 52m',draft:'17.0m',color:'#f97316',radius:.45},
+  {id:'v10',cat:'vessel',type:'TANKER',name:'LNG CHALLENGER',flag:'MH',lat:25.9,lng:57.2,mmsi:'538123456',imo:'9500123',speed:7.5,course:60,dest:'TOKYO',eta:'15 Apr 08:00',size:'295m x 46m',draft:'11.5m',color:'#f97316',radius:.45},
+  {id:'v11',cat:'vessel',type:'PASSENGER',name:'MSC VIRTUOSA',flag:'PA',lat:43.2,lng:5.3,mmsi:'215678900',imo:'9741471',speed:19.2,course:270,dest:'BARCELONA',eta:'04 Apr 07:00',size:'332m x 43m',draft:'8.9m',color:'#60a5fa',radius:.4},
+  {id:'v12',cat:'vessel',type:'CARGO',name:'COSCO SHIPPING UNIVERSE',flag:'CN',lat:31.2,lng:121.8,mmsi:'477123456',imo:'9786028',speed:17.1,course:90,dest:'LONG BEACH',eta:'12 Apr 10:00',size:'400m x 58m',draft:'16.0m',color:'#00e5ff',radius:.4},
+  {id:'v13',cat:'vessel',type:'MILITARY',name:'USS RONALD REAGAN',flag:'US',lat:20.5,lng:120.3,mmsi:'338901234',imo:'N/A',speed:22.0,course:180,dest:'YOKOSUKA',eta:'CLASSIFIED',size:'333m x 77m',draft:'12.0m',color:'#ef4444',radius:.55},
+  {id:'v14',cat:'vessel',type:'CARGO',name:'OOCL HONG KONG',flag:'HK',lat:1.3,lng:104.0,mmsi:'477000200',imo:'9776171',speed:15.3,course:315,dest:'ROTTERDAM',eta:'22 Apr 14:00',size:'400m x 59m',draft:'15.5m',color:'#00e5ff',radius:.4},
+  {id:'v15',cat:'vessel',type:'TANKER',name:'ARCTIC DISCOVERER',flag:'NO',lat:70.2,lng:25.8,mmsi:'257123400',imo:'9812301',speed:10.4,course:135,dest:'ROTTERDAM',eta:'10 Apr 20:00',size:'280m x 44m',draft:'13.0m',color:'#f97316',radius:.45}
+];
+const AIRCRAFT=[
+  {id:'a01',cat:'aircraft',type:'RECON',name:'RQ-4B GLOBAL HAWK',callsign:'FORTE10',lat:43.2,lng:34.5,alt:60000,speed:340,org:'SIGONELLA',dest:'BLACK SEA PATROL',color:'#f59e0b',radius:.35},
+  {id:'a02',cat:'aircraft',type:'SIGINT',name:'RC-135W RIVET JOINT',callsign:'JAKE21',lat:52.4,lng:20.1,alt:35000,speed:485,org:'MILDENHALL',dest:'UKRAINE BORDER',color:'#f59e0b',radius:.35},
+  {id:'a03',cat:'aircraft',type:'PATROL',name:'P-8A POSEIDON',callsign:'NEPTUNE3',lat:48.5,lng:-20.3,alt:25000,speed:490,org:'LAJES',dest:'ASW ATLANTIC',color:'#34d399',radius:.35},
+  {id:'a04',cat:'aircraft',type:'CARGO',name:'C-17A GLOBEMASTER',callsign:'RCH497',lat:51.5,lng:7.8,alt:38000,speed:520,org:'RAMSTEIN AB',dest:'RZESZOW',color:'#a78bfa',radius:.35},
+  {id:'a05',cat:'aircraft',type:'BOMBER',name:'B-52H STRATOFORTRESS',callsign:'BONE21',lat:52.8,lng:-1.2,alt:42000,speed:610,org:'RAF FAIRFORD',dest:'NATO EXERCISE',color:'#f59e0b',radius:.35},
+  {id:'a06',cat:'aircraft',type:'RECON',name:'U-2S DRAGON LADY',callsign:'DRAGON44',lat:38.1,lng:46.2,alt:70000,speed:690,org:'AL DHAFRA',dest:'IRAN ISR ORBIT',color:'#f59e0b',radius:.35},
+  {id:'a07',cat:'aircraft',type:'PATROL',name:'P-3C ORION',callsign:'IRON77',lat:36.2,lng:18.5,alt:22000,speed:410,org:'SIGONELLA',dest:'MED SUBMARINE',color:'#34d399',radius:.35},
+  {id:'a08',cat:'aircraft',type:'CARGO',name:'AN-124 RUSLAN',callsign:'RFF2241',lat:55.7,lng:37.9,alt:33000,speed:865,org:'ZHUKOVSKY',dest:'KALININGRAD',color:'#a78bfa',radius:.35}
+];
+const BASE_EVENTS=[
+  {id:'e01',name:'CIERRE ESTRECHO DE HORMUZ',lat:26.58,lng:56.50,severity:'CRITICAL',radiusDeg:.14,r:239,g:68,b:68,desc:'Cierre total por escalada US-Iran. 1.6 Mt/mes combustible bloqueado.',period:800},
+  {id:'e02',name:'CONFLICTO GAZA',lat:31.52,lng:34.45,severity:'CRITICAL',radiusDeg:.06,r:239,g:68,b:68,desc:'Operaciones terrestres activas. Infraestructura civil comprometida.',period:700},
+  {id:'e03',name:'FRENTE DONBAS',lat:48.00,lng:37.80,severity:'HIGH',radiusDeg:.10,r:249,g:115,b:22,desc:'Actividad artilleria elevada. Avance reportado sector norte.',period:1000},
+  {id:'e04',name:'TENSION TAIWAN STRAIT',lat:24.50,lng:120.00,severity:'HIGH',radiusDeg:.12,r:249,g:115,b:22,desc:'Ejercicios PLAN ambos lados del estrecho. 12 fragatas desplegadas.',period:1100},
+  {id:'e05',name:'ACTIVIDAD RF BALTICO',lat:58.50,lng:21.00,severity:'MODERATE',radiusDeg:.09,r:245,g:158,b:11,desc:'GPS spoofing. Afecta rutas aereas civiles en el Baltico.',period:1300},
+  {id:'e06',name:'CRISIS SAHEL',lat:14.50,lng:1.50,severity:'MODERATE',radiusDeg:.11,r:245,g:158,b:11,desc:'Avance grupos armados Mali-Niger. MINUSMA retirada.',period:1400},
+  {id:'e07',name:'CANAL DE SUEZ MONITOR',lat:30.60,lng:32.35,severity:'MONITOR',radiusDeg:.07,r:0,g:229,b:255,desc:'Trafico normal. Control reforzado post-conflicto Gaza.',period:1600},
+  {id:'e08',name:'MAR DE CHINA SUR FIERY',lat:9.55,lng:112.88,severity:'HIGH',radiusDeg:.08,r:249,g:115,b:22,desc:'Construccion instalaciones PLA en Fiery Cross Reef.',period:1050}
+];
+const BASE_ARCS=[
+  {id:'arc01',name:'Bloqueo combustible aviacion',startLat:26.58,startLng:56.50,endLat:51.9,endLng:4.5,colorStart:'#ef4444',colorEnd:'#f97316',stroke:.7,dash:.35,gap:.15,anim:1800},
+  {id:'arc02',name:'Ruta LNG Asia-Pacifico',startLat:25.90,startLng:57.20,endLat:35.7,endLng:139.7,colorStart:'#f97316',colorEnd:'#60a5fa',stroke:.5,dash:.4,gap:.2,anim:2400},
+  {id:'arc03',name:'Airlift OTAN Ramstein-Rzeszow',startLat:49.44,startLng:7.60,endLat:50.11,endLng:22.01,colorStart:'#a78bfa',colorEnd:'#60a5fa',stroke:.5,dash:.3,gap:.1,anim:1500},
+  {id:'arc04',name:'Ruta logistica Beijing-Malacca',startLat:39.91,startLng:116.4,endLat:1.35,endLng:103.8,colorStart:'#ef4444',colorEnd:'#f97316',stroke:.4,dash:.4,gap:.2,anim:2000},
+  {id:'arc05',name:'Corredor militar Moscu-Kalinin',startLat:55.75,startLng:37.62,endLat:54.71,endLng:20.51,colorStart:'#ef4444',colorEnd:'#ef4444',stroke:.5,dash:.3,gap:.12,anim:1600},
+  {id:'arc06',name:'Suministros AUKUS',startLat:33.87,startLng:-118.2,endLat:-33.9,endLng:151.2,colorStart:'#60a5fa',colorEnd:'#34d399',stroke:.4,dash:.5,gap:.25,anim:2800}
+];
+const INFRA=[
+  {id:'ua_zaporizhzhia',name:'Zaporizhzhia NPP',lat:47.51,lng:34.58,fuel:'Nuclear',icon:'☢',capacity:5700,status:'destroyed',color:'#ef4444',radius:.65,notes:'Under Russian control. All 6 reactors cold shutdown. IAEA monitoring.'},
+  {id:'ir_bushehr',name:'Bushehr NPP',lat:28.83,lng:50.89,fuel:'Nuclear',icon:'☢',capacity:1000,status:'active',color:'#10b981',radius:.55,notes:'Only Iranian NPP. Russian-built VVER-1000. Primary HVT.'},
+  {id:'cn_three_gorges',name:'Three Gorges Dam',lat:30.82,lng:111.00,fuel:'Hydro',icon:'💧',capacity:22500,status:'active',color:'#60a5fa',radius:.65,notes:'Largest power plant world. 32 generators. Yangtze River.'},
+  {id:'ua_trypilska',name:'Trypilska TPP',lat:50.11,lng:30.73,fuel:'Coal',icon:'⬛',capacity:1800,status:'destroyed',color:'#ef4444',radius:.45,notes:'Destroyed by Russian air strike Apr 2024.'},
+  {id:'us_palo_verde',name:'Palo Verde NPP',lat:33.39,lng:-112.86,fuel:'Nuclear',icon:'☢',capacity:3942,status:'active',color:'#10b981',radius:.65,notes:'Largest US NPP. 3 PWR. Powers AZ-CA-NM grids.'},
+  {id:'cn_fuqing',name:'Fuqing NPP',lat:25.43,lng:119.39,fuel:'Nuclear',icon:'☢',capacity:3348,status:'active',color:'#10b981',radius:.65,notes:'5 CPR-1000 + 1 Hualong-1. Facing Taiwan strait.'},
+  {id:'pl_belchatow',name:'Belchatow PP',lat:51.26,lng:19.33,fuel:'Coal',icon:'⬛',capacity:5354,status:'active',color:'#94a3b8',radius:.55,notes:'Largest coal plant Europe. 12 units. Poland baseload.'},
+  {id:'ua_kakhovka',name:'Kakhovka HPP',lat:46.77,lng:33.37,fuel:'Hydro',icon:'💧',capacity:351,status:'destroyed',color:'#ef4444',radius:.4,notes:'Dam destroyed Jun 2023. 35,000 acres flooded.'}
+];
+</script>
+<script>
+// ── STATE ─────────────────────────────────────────────────────────────────────
+let dynEvents=[], dynArcs=[], dynPoints=[];
+let infraOverrides={};
+let layers={vessels:true,aircraft:true,events:true,arcs:true,infra:true};
+let globe=null, autoRotate=true, lastPollTs='';
+
+// ── GLOBE INIT ────────────────────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', () => {
+  const el = document.getElementById('globe-container');
+  globe = Globe({rendererConfig:{antialias:false,alpha:true}})
+    .globeImageUrl('//unpkg.com/three-globe/example/img/earth-night.jpg')
+    .backgroundImageUrl('//unpkg.com/three-globe/example/img/night-sky.png')
+    .atmosphereColor('#0a3060')
+    .atmosphereAltitude(0.18)
+    .pointResolution(6)
+    .pointsMerge(false)
+    .pointAltitude(0.005)
+    .pointLabel(d => {
+      const sub = d.cat==='vessel'
+        ? d.type+' · '+d.speed+' kts'
+        : d.cat==='aircraft'
+        ? d.type+' · '+d.alt.toLocaleString()+' ft'
+        : d.fuel+' · '+d.capacity.toLocaleString()+' MW · '+d.status.toUpperCase();
+      return '<div style="background:#0d1421;border:1px solid #1a2540;padding:7px 10px;border-radius:6px;font-family:Courier New,monospace;pointer-events:none;max-width:220px"><div style="color:'+d.color+';font-weight:700;font-size:12px">'+(d.icon||'')+' '+d.name+'</div><div style="color:#64748b;font-size:10px;margin-top:2px">'+sub+'</div></div>';
+    })
+    .onPointClick(onEntityClick)
+    .ringLat('lat').ringLng('lng')
+    .ringMaxRadius('radiusDeg')
+    .ringPropagationSpeed(1.2)
+    .ringRepeatPeriod('period')
+    .ringColor(d => t => 'rgba('+d.r+','+d.g+','+d.b+','+Math.sqrt(1-t)*.85+')')
+    .onRingClick(d => onRingClick(d))
+    .arcStartLat('startLat').arcStartLng('startLng')
+    .arcEndLat('endLat').arcEndLng('endLng')
+    .arcColor(d => [d.colorStart,d.colorEnd])
+    .arcStroke('stroke').arcDashLength('dash').arcDashGap('gap')
+    .arcDashAnimateTime('anim').arcAltitudeAutoScale(0.35)
+    (el);
+
+  // initial camera
+  globe.controls().autoRotate=true;
+  globe.controls().autoRotateSpeed=0.25;
+  globe.controls().enableZoom=true;
+  globe.controls().minDistance=150;
+  globe.controls().maxDistance=650;
+  globe.pointOfView({lat:35,lng:20,altitude:2.2},1200);
+
+  // pause rotation on click
+  el.addEventListener('click', ()=>{
+    globe.controls().autoRotate=false; autoRotate=false;
+  });
+  // double-click = reset
+  el.addEventListener('dblclick', ()=>resetView());
+
+  // resize
+  const ro = new ResizeObserver(()=>{
+    globe.width(el.clientWidth).height(el.clientHeight);
+  });
+  ro.observe(el);
+  globe.width(el.clientWidth).height(el.clientHeight);
+
+  render();
+  startPolling();
+  startWS();
+});
+
+// ── RENDER ─────────────────────────────────────────────────────────────────────
+function getPoints(){
+  let pts=[];
+  if(layers.vessels)  pts=pts.concat(VESSELS.map(v=>({...v})));
+  if(layers.aircraft) pts=pts.concat(AIRCRAFT.map(a=>({...a})));
+  if(layers.infra)    pts=pts.concat(INFRA.map(p=>{
+    const ov=infraOverrides[p.id]||{};
+    return {...p,...ov};
+  }));
+  pts=pts.concat(dynPoints);
+  return pts;
+}
+function getEvents(){ return layers.events ? BASE_EVENTS.concat(dynEvents) : dynEvents; }
+function getArcs(){   return layers.arcs   ? BASE_ARCS.concat(dynArcs)   : dynArcs;   }
+
+function render(){
+  if(!globe) return;
+  globe.pointsData(getPoints()).pointColor('color').pointRadius('radius');
+  globe.ringsData(getEvents());
+  globe.arcsData(getArcs());
+  document.getElementById('live-events').textContent = getEvents().length;
+  document.getElementById('live-infra-down').textContent = INFRA.filter(p=>(infraOverrides[p.id]?.status||p.status)!=='active').length;
+}
+
+// ── CLICK HANDLERS ─────────────────────────────────────────────────────────────
+function onEntityClick(d){
+  globe.controls().autoRotate=false;
+  globe.pointOfView({lat:d.lat,lng:d.lng,altitude:1.5},900);
+  showDetail(d);
+}
+function onRingClick(d){
+  globe.controls().autoRotate=false;
+  globe.pointOfView({lat:d.lat,lng:d.lng,altitude:1.3},900);
+  const cat=d.cat||'event';
+  showDetail({...d,cat});
+}
+function closeDetail(){ document.getElementById('detail').style.display='none'; }
+function showDetail(d){
+  const el=document.getElementById('detail');
+  document.getElementById('d-cat').style.color=d.color||'#00e5ff';
+  document.getElementById('d-cat').textContent =
+    d.cat==='vessel' ? '⛵ '+d.type :
+    d.cat==='aircraft' ? '✈ '+d.type :
+    d.cat==='infra' ? '⚡ '+d.fuel :
+    '⚠ '+(d.severity||'EVENT');
+  document.getElementById('d-name').textContent=d.name;
+  let rows=[];
+  if(d.cat==='vessel'){
+    rows=[['MMSI',d.mmsi],['IMO',d.imo],['FLAG',d.flag],['SPEED',d.speed+' kts'],['COURSE',d.course+'°'],['DEST',d.dest],['ETA',d.eta],['SIZE',d.size],['DRAFT',d.draft]];
+  } else if(d.cat==='aircraft'){
+    rows=[['CALLSIGN',d.callsign],['ALT',d.alt.toLocaleString()+' ft'],['SPEED',d.speed+' kts'],['FROM',d.org],['MISSION',d.dest]];
+  } else if(d.cat==='infra'){
+    rows=[['FUEL',d.icon+' '+d.fuel],['CAPACITY',(d.capacity||0).toLocaleString()+' MW'],['STATUS',(infraOverrides[d.id]?.status||d.status||'active').toUpperCase()],['COORDS',d.lat.toFixed(2)+'°, '+d.lng.toFixed(2)+'°']];
+  } else {
+    rows=[['SEVERITY',d.severity||''],['LAT/LNG',d.lat.toFixed(2)+'°, '+d.lng.toFixed(2)+'°']];
+  }
+  document.getElementById('d-body').innerHTML=
+    '<table>'+rows.map(([k,v])=>'<tr><td>'+k+'</td><td>'+v+'</td></tr>').join('')+'</table>'
+    +(d.notes||d.desc?'<div class="d-notes">'+(d.notes||d.desc)+'</div>':'');
+  el.style.display='block';
+}
+
+// ── LAYER TOGGLES ──────────────────────────────────────────────────────────────
+function toggleLayer(key){
+  layers[key]=!layers[key];
+  const btn=document.getElementById('btn-'+key);
+  if(btn){
+    btn.style.opacity=layers[key]?'1':'0.4';
+    btn.style.filter=layers[key]?'':'grayscale(1)';
+  }
+  render();
+}
+
+// ── AI COMMAND HANDLER ─────────────────────────────────────────────────────────
+const SEV_RGB={CRITICAL:[239,68,68],HIGH:[249,115,22],MODERATE:[245,158,11],MONITOR:[0,229,255]};
+const SEV_RAD={CRITICAL:.14,HIGH:.10,MODERATE:.08,MONITOR:.06};
+const SEV_PERIOD={CRITICAL:800,HIGH:1000,MODERATE:1300,MONITOR:1600};
+
+function handleCommand(cmd){
+  if(!cmd||!cmd.type) return;
+  switch(cmd.type){
+    case 'fly_to':
+      if(globe && cmd.lat!=null && cmd.lng!=null){
+        globe.controls().autoRotate=false;
+        globe.pointOfView({lat:cmd.lat,lng:cmd.lng,altitude:cmd.altitude||1.5},cmd.duration||1200);
+      }
+      break;
+    case 'add_event':{
+      dynEvents=dynEvents.filter(e=>e.id!==cmd.id);
+      const rgb=SEV_RGB[cmd.severity]||[245,158,11];
+      dynEvents.push({id:cmd.id,name:cmd.name||cmd.id,cat:'event',lat:cmd.lat,lng:cmd.lng,
+        severity:cmd.severity||'HIGH',radiusDeg:cmd.radius_deg||SEV_RAD[cmd.severity]||.09,
+        r:rgb[0],g:rgb[1],b:rgb[2],desc:cmd.desc||'',period:SEV_PERIOD[cmd.severity]||1000});
+      render(); break;
+    }
+    case 'remove_event':
+      dynEvents=dynEvents.filter(e=>e.id!==cmd.id); render(); break;
+    case 'update_infra':
+      if(cmd.id){ infraOverrides[cmd.id]={status:cmd.status,damage_pct:cmd.damage_pct}; render(); }
+      break;
+    case 'add_arc':{
+      dynArcs=dynArcs.filter(a=>a.id!==cmd.id);
+      dynArcs.push({id:cmd.id,name:cmd.name||cmd.id,
+        startLat:cmd.start_lat,startLng:cmd.start_lng,endLat:cmd.end_lat,endLng:cmd.end_lng,
+        colorStart:cmd.color_start||'#ef4444',colorEnd:cmd.color_end||'#f97316',
+        stroke:cmd.stroke||.6,dash:.35,gap:.15,anim:1800});
+      render(); break;
+    }
+    case 'remove_arc':
+      dynArcs=dynArcs.filter(a=>a.id!==cmd.id); render(); break;
+    case 'add_point':{
+      dynPoints=dynPoints.filter(p=>p.id!==cmd.id);
+      dynPoints.push({id:cmd.id,name:cmd.name||cmd.id,cat:cmd.cat||'point',
+        lat:cmd.lat,lng:cmd.lng,color:cmd.color||'#00e5ff',radius:.45,notes:cmd.notes||''});
+      render(); break;
+    }
+    case 'remove_point':
+      dynPoints=dynPoints.filter(p=>p.id!==cmd.id); render(); break;
+    case 'set_layer':
+      if(cmd.layer && cmd.visible!=null && layers[cmd.layer]!==cmd.visible){
+        layers[cmd.layer]=cmd.visible;
+        const b=document.getElementById('btn-'+cmd.layer);
+        if(b){ b.style.opacity=cmd.visible?'1':'0.4'; b.style.filter=cmd.visible?'':'grayscale(1)'; }
+        render();
+      }
+      break;
+    case 'narrative':
+      showNarrative(cmd.text||'', cmd.clear_after_ms!=null?cmd.clear_after_ms:6000);
+      break;
+    case 'clear_narrative':
+      document.getElementById('narrative').style.display='none'; break;
+    case 'highlight':
+      flashEntity(cmd.entity_id||cmd.id); break;
+    case 'reset_view': resetView(); break;
+    case 'clear_dynamic':
+      dynEvents=[];dynArcs=[];dynPoints=[];infraOverrides={}; render(); break;
+    default: break;
+  }
+}
+
+function showNarrative(text, clearMs){
+  const el=document.getElementById('narrative');
+  document.getElementById('narrative-text').textContent=text;
+  el.style.display='block';
+  if(clearMs!==0) setTimeout(()=>{ el.style.display='none'; }, clearMs);
+}
+function flashEntity(id){
+  // find in all datasets, fly to it
+  const all=[...VESSELS,...AIRCRAFT,...INFRA,...dynPoints];
+  const e=all.find(x=>x.id===id);
+  if(e && globe){ globe.pointOfView({lat:e.lat,lng:e.lng,altitude:1.3},900); }
+}
+function resetView(){
+  if(globe){ globe.controls().autoRotate=true; globe.pointOfView({lat:35,lng:20,altitude:2.2},1200); }
+  closeDetail();
+}
+
+// ── POLLING /api/globe/poll ────────────────────────────────────────────────────
+function startPolling(){
+  setInterval(async ()=>{
+    try{
+      const r=await fetch('/api/globe/poll?since='+encodeURIComponent(lastPollTs));
+      const d=await r.json();
+      if(d.commands&&d.commands.length){
+        d.commands.forEach(c=>handleCommand(c));
+        lastPollTs=d.commands[d.commands.length-1]._ts||lastPollTs;
+      }
+    }catch(e){}
+  }, 4000);
+}
+
+// ── WEBSOCKET (fallback real-time) ─────────────────────────────────────────────
+function startWS(){
+  try{
+    const proto=location.protocol==='https:'?'wss:':'ws:';
+    const ws=new WebSocket(proto+'//'+location.host+'/ws/alerts/globe');
+    ws.onmessage=e=>{
+      try{ const m=JSON.parse(e.data); if(m.channel==='globe_command') handleCommand(m.payload); }catch(ex){}
+    };
+    ws.onclose=()=>setTimeout(startWS,5000);
+    ws.onerror=()=>ws.close();
+  }catch(ex){}
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>FLOWMAP — EL ANARCOCAPITAL</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#080c14;color:#e2e8f0;font-family:'Courier New',monospace;min-height:100vh;overflow-x:hidden}
+#header{display:flex;align-items:center;justify-content:space-between;padding:10px 20px;background:rgba(4,8,16,.97);border-bottom:1px solid #1a2540;position:sticky;top:0;z-index:100}
+.logo{font-size:14px;color:#00e5ff;font-weight:700;letter-spacing:.1em}
+.logo small{color:#334155;font-size:10px;margin-left:8px;font-weight:400}
+.nav a{font-size:10px;color:#475569;text-decoration:none;padding:3px 10px;border:1px solid #1a2540;border-radius:4px;margin-left:6px;letter-spacing:.06em;transition:all .15s}
+.nav a:hover{color:#00e5ff;border-color:#00e5ff40}
+#canvas-wrap{padding:32px 24px;max-width:1400px;margin:0 auto}
+h2{font-size:11px;color:#334155;letter-spacing:.15em;margin-bottom:24px;text-transform:uppercase;border-bottom:1px solid #1a2540;padding-bottom:8px}
+.legend{display:flex;gap:16px;margin-bottom:28px;flex-wrap:wrap}
+.leg{display:flex;align-items:center;gap:6px;font-size:10px;color:#64748b}
+.leg-dot{width:10px;height:10px;border-radius:50%}
+/* LAYERS */
+.layer{margin-bottom:20px}
+.layer-label{font-size:9px;color:#334155;letter-spacing:.15em;text-transform:uppercase;margin-bottom:10px;padding-left:4px}
+.row{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-start;justify-content:center;margin-bottom:6px}
+/* NODE */
+.node{display:inline-flex;flex-direction:column;align-items:center;cursor:pointer;transition:transform .2s;text-decoration:none;position:relative}
+.node:hover{transform:translateY(-2px)}
+.node:hover .box{box-shadow:0 0 14px var(--glow)}
+.box{border:1px solid var(--c);border-radius:8px;padding:8px 14px;background:var(--bg);min-width:120px;text-align:center;position:relative;overflow:hidden}
+.box::before{content:'';position:absolute;inset:0;background:var(--c);opacity:.06}
+.box .icon{font-size:16px;margin-bottom:3px;display:block}
+.box .title{font-size:11px;font-weight:700;color:#e2e8f0;letter-spacing:.04em}
+.box .route{font-size:9px;color:#475569;margin-top:2px}
+.box .badge{font-size:8px;padding:1px 6px;border-radius:10px;margin-top:4px;display:inline-block;border:1px solid var(--c);color:var(--c)}
+.arrow{width:1px;height:18px;background:linear-gradient(to bottom,#1a2540,#334155);margin:0 auto;position:relative}
+.arrow::after{content:'▼';position:absolute;bottom:-8px;left:50%;transform:translateX(-50%);font-size:8px;color:#334155}
+.arrow-h{flex:1;height:1px;background:linear-gradient(to right,transparent,#1a2540,transparent);align-self:center;max-width:40px}
+/* INFRA ROW */
+.infra-box{display:flex;align-items:center;gap:10px;background:#0a0f1a;border:1px solid #1a2540;border-radius:8px;padding:10px 16px;margin-bottom:8px;font-size:11px}
+.infra-icon{font-size:18px}
+.infra-name{color:#64748b;font-size:10px}
+/* ANIMATED FLOW LINE */
+.flow-container{position:relative;height:30px;overflow:hidden;margin:4px 0}
+.flow-line{position:absolute;top:50%;left:0;right:0;height:1px;background:linear-gradient(to right,transparent,var(--c,#1a2540) 40%,var(--c,#1a2540) 60%,transparent)}
+.flow-dot{position:absolute;top:50%;width:6px;height:6px;border-radius:50%;background:var(--c,#00e5ff);transform:translateY(-50%);animation:flowMove 2s linear infinite;box-shadow:0 0 6px var(--c,#00e5ff)}
+@keyframes flowMove{from{left:-5px}to{left:calc(100% + 5px)}}
+/* API BLOCK */
+.api-block{background:#0a0f1a;border:1px solid #1a2540;border-radius:8px;padding:12px 16px;margin-bottom:12px}
+.api-block h4{font-size:10px;color:#475569;letter-spacing:.1em;margin-bottom:10px;text-transform:uppercase}
+.api-routes{display:flex;flex-wrap:wrap;gap:6px}
+.api-route{font-size:9px;padding:2px 8px;border-radius:4px;border:1px solid #1a2540;color:#64748b;font-family:'Courier New',monospace;cursor:default;transition:all .15s}
+.api-route:hover{color:#00e5ff;border-color:#00e5ff40}
+.api-route.ws{border-color:#7c3aed40;color:#a78bfa}
+.api-route.ai{border-color:#00e5ff40;color:#00e5ff}
+.api-route.geo{border-color:#10b98140;color:#10b981}
+/* STORE BLOCK */
+.stores{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:8px}
+.store{background:#0a0f1a;border:1px solid #1a2540;border-radius:6px;padding:7px 14px;font-size:10px;color:#475569;display:flex;align-items:center;gap:6px}
+.store .si{font-size:14px}
+</style>
+</head>
+<body>
+<div id="header">
+  <div class="logo">◉ FLOWMAP <small>ARQUITECTURA WEB — EL ANARCOCAPITAL</small></div>
+  <nav class="nav">
+    <a href="/">LANDING</a>
+    <a href="/omniglobe">OMNIGLOBE</a>
+    <a href="/control">DASHBOARD</a>
+    <a href="/control-center">CONTROL CENTER</a>
+  </nav>
+</div>
+
+<div id="canvas-wrap">
+  <div class="legend">
+    <div class="leg"><div class="leg-dot" style="background:#00e5ff"></div>Público</div>
+    <div class="leg"><div class="leg-dot" style="background:#7c3aed"></div>Privado (auth)</div>
+    <div class="leg"><div class="leg-dot" style="background:#f59e0b"></div>Admin</div>
+    <div class="leg"><div class="leg-dot" style="background:#10b981"></div>Mobile</div>
+    <div class="leg"><div class="leg-dot" style="background:#6366f1"></div>API / WebSocket</div>
+    <div class="leg"><div class="leg-dot" style="background:#475569"></div>Infraestructura</div>
+  </div>
+
+  <!-- INFRA LAYER -->
+  <div class="layer">
+    <div class="layer-label">⬛ Infraestructura de red</div>
+    <div class="row">
+      <div class="node" style="--c:#475569;--bg:#0a0f1a;--glow:#47556940">
+        <div class="box"><span class="icon">☁</span><div class="title">CLOUDFLARE CDN</div><div class="route">elanarcocapital.com</div><div class="badge">DNS + TLS + WAF</div></div>
+      </div>
+      <div class="arrow-h"></div>
+      <div class="node" style="--c:#475569;--bg:#0a0f1a;--glow:#47556940">
+        <div class="box"><span class="icon">🔀</span><div class="title">NGINX</div><div class="route">reverse proxy</div><div class="badge">rate limit · TLS 1.3</div></div>
+      </div>
+      <div class="arrow-h"></div>
+      <div class="node" style="--c:#475569;--bg:#0a0f1a;--glow:#47556940">
+        <div class="box"><span class="icon">⚡</span><div class="title">FastAPI :8000</div><div class="route">backend/main.py</div><div class="badge">uvicorn · ASGI</div></div>
+      </div>
+      <div class="arrow-h"></div>
+      <div class="node" style="--c:#475569;--bg:#0a0f1a;--glow:#47556940">
+        <div class="box"><span class="icon">🚇</span><div class="title">CLOUDFLARE TUNNEL</div><div class="route">cloudflared</div><div class="badge">local → public</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FLOW LINE -->
+  <div class="flow-container" style="--c:#1a2540"><div class="flow-line"></div><div class="flow-dot" style="animation-duration:2.5s"></div></div>
+
+  <!-- PUBLIC PAGES -->
+  <div class="layer">
+    <div class="layer-label">🌐 Páginas públicas</div>
+    <div class="row">
+      <a class="node" href="/" target="_blank" style="--c:#00e5ff;--bg:#001a24;--glow:#00e5ff30">
+        <div class="box"><span class="icon">🏠</span><div class="title">LANDING</div><div class="route">/</div><div class="badge">React SPA</div></div>
+      </a>
+      <a class="node" href="/omniglobe" target="_blank" style="--c:#00e5ff;--bg:#001a24;--glow:#00e5ff30">
+        <div class="box"><span class="icon">🌍</span><div class="title">OMNIGLOBE</div><div class="route">/omniglobe</div><div class="badge">globe.gl CDN</div></div>
+      </a>
+      <a class="node" href="/flowmap" target="_blank" style="--c:#00e5ff;--bg:#001a24;--glow:#00e5ff30">
+        <div class="box"><span class="icon">◉</span><div class="title">FLOWMAP</div><div class="route">/flowmap</div><div class="badge">arquitectura web</div></div>
+      </a>
+      <a class="node" href="/landing" target="_blank" style="--c:#00e5ff;--bg:#001a24;--glow:#00e5ff30">
+        <div class="box"><span class="icon">📰</span><div class="title">LANDING HTML</div><div class="route">/landing</div><div class="badge">static HTML</div></div>
+      </a>
+    </div>
+  </div>
+
+  <!-- FLOW LINE -->
+  <div class="flow-container" style="--c:#7c3aed"><div class="flow-line" style="--c:#7c3aed20"></div><div class="flow-dot" style="background:#7c3aed;box-shadow:0 0 6px #7c3aed;animation-duration:3s"></div></div>
+
+  <!-- AUTH + INTERNAL -->
+  <div class="layer">
+    <div class="layer-label">🔒 Panel interno (requiere auth)</div>
+    <div class="row" style="margin-bottom:10px">
+      <a class="node" href="/control" target="_blank" style="--c:#7c3aed;--bg:#12062e;--glow:#7c3aed30">
+        <div class="box"><span class="icon">📊</span><div class="title">DASHBOARD</div><div class="route">/control</div><div class="badge">StatusDashboard</div></div>
+      </a>
+      <a class="node" href="/control/sesion" target="_blank" style="--c:#7c3aed;--bg:#12062e;--glow:#7c3aed30">
+        <div class="box"><span class="icon">🤖</span><div class="title">SESIÓN IA</div><div class="route">/control/sesion</div><div class="badge">SesionIA · RAG</div></div>
+      </a>
+      <a class="node" href="/control/mapa" target="_blank" style="--c:#7c3aed;--bg:#12062e;--glow:#7c3aed30">
+        <div class="box"><span class="icon">🌍</span><div class="title">MAPA 3D</div><div class="route">/control/mapa</div><div class="badge">OmniGlobe React</div></div>
+      </a>
+      <a class="node" href="/control/mercados" target="_blank" style="--c:#7c3aed;--bg:#12062e;--glow:#7c3aed30">
+        <div class="box"><span class="icon">📈</span><div class="title">MERCADOS</div><div class="route">/control/mercados</div><div class="badge">market intel</div></div>
+      </a>
+      <a class="node" href="/control/escenarios" target="_blank" style="--c:#7c3aed;--bg:#12062e;--glow:#7c3aed30">
+        <div class="box"><span class="icon">🎯</span><div class="title">ESCENARIOS</div><div class="route">/control/escenarios</div><div class="badge">war-gaming</div></div>
+      </a>
+      <a class="node" href="/control/memoria" target="_blank" style="--c:#7c3aed;--bg:#12062e;--glow:#7c3aed30">
+        <div class="box"><span class="icon">🧠</span><div class="title">MEMORIA</div><div class="route">/control/memoria</div><div class="badge">Qdrant · RAG</div></div>
+      </a>
+      <a class="node" href="/control/video-studio" target="_blank" style="--c:#7c3aed;--bg:#12062e;--glow:#7c3aed30">
+        <div class="box"><span class="icon">🎬</span><div class="title">VIDEO STUDIO</div><div class="route">/control/video-studio</div><div class="badge">ffmpeg · TTS</div></div>
+      </a>
+      <a class="node" href="/control/boveda" target="_blank" style="--c:#7c3aed;--bg:#12062e;--glow:#7c3aed30">
+        <div class="box"><span class="icon">🔐</span><div class="title">BÓVEDA</div><div class="route">/control/boveda</div><div class="badge">secure docs</div></div>
+      </a>
+    </div>
+  </div>
+
+  <!-- ADMIN + MOBILE -->
+  <div class="layer" style="margin-top:4px">
+    <div class="row">
+      <div style="flex:1;min-width:220px">
+        <div class="layer-label">🛡 Admin</div>
+        <div class="row" style="justify-content:flex-start">
+          <a class="node" href="/control-center" target="_blank" style="--c:#f59e0b;--bg:#1a0d00;--glow:#f59e0b30">
+            <div class="box"><span class="icon">⚙️</span><div class="title">CONTROL CENTER</div><div class="route">/control-center</div><div class="badge">ops panel</div></div>
+          </a>
+          <a class="node" href="/admin_dashboard_v2.html" target="_blank" style="--c:#f59e0b;--bg:#1a0d00;--glow:#f59e0b30">
+            <div class="box"><span class="icon">🖥</span><div class="title">ADMIN DASH</div><div class="route">/admin_dashboard_v2.html</div><div class="badge">v2 · full stats</div></div>
+          </a>
+        </div>
+      </div>
+      <div style="flex:1;min-width:220px">
+        <div class="layer-label">📱 Mobile</div>
+        <div class="row" style="justify-content:flex-start">
+          <a class="node" href="/app_user_mobile.html" target="_blank" style="--c:#10b981;--bg:#001a10;--glow:#10b98130">
+            <div class="box"><span class="icon">📱</span><div class="title">MOBILE USER</div><div class="route">/app_user_mobile.html</div><div class="badge">Xiaomi agent</div></div>
+          </a>
+          <a class="node" href="/app_admin_mobile.html" target="_blank" style="--c:#10b981;--bg:#001a10;--glow:#10b98130">
+            <div class="box"><span class="icon">🔧</span><div class="title">MOBILE ADMIN</div><div class="route">/app_admin_mobile.html</div><div class="badge">admin mobile</div></div>
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FLOW LINE -->
+  <div class="flow-container" style="--c:#6366f1"><div class="flow-line" style="--c:#6366f120"></div><div class="flow-dot" style="background:#6366f1;box-shadow:0 0 6px #6366f1;animation-duration:1.8s"></div></div>
+
+  <!-- API -->
+  <div class="layer">
+    <div class="layer-label">⚡ API Routes — FastAPI</div>
+    <div class="api-block">
+      <div class="api-routes">
+        <span class="api-route ai">/api/ai/ask</span>
+        <span class="api-route ai">/agente/consultar</span>
+        <span class="api-route ai">/agente/consultar-rag</span>
+        <span class="api-route">/api/knowledge</span>
+        <span class="api-route">/api/dashboard/stats</span>
+        <span class="api-route">/api/stream/status</span>
+        <span class="api-route">/api/video/*</span>
+        <span class="api-route">/eventos/infraestructura</span>
+        <span class="api-route geo">/api/globe/command</span>
+        <span class="api-route geo">/api/globe/poll</span>
+        <span class="api-route geo">/api/globe/scenario/{name}</span>
+        <span class="api-route">/api/drive/buscar</span>
+        <span class="api-route">/api/social/monitor</span>
+        <span class="api-route">/api/metrics</span>
+        <span class="api-route">/api/mobile/heartbeat</span>
+        <span class="api-route">/api/webhooks/ingest</span>
+        <span class="api-route">/auth/login</span>
+        <span class="api-route">/health</span>
+        <span class="api-route ws">/ws/alerts/{tenant}</span>
+        <span class="api-route ws">/ws/alerts/globe</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- DATA STORES -->
+  <div class="layer">
+    <div class="layer-label">🗄 Data Stores</div>
+    <div class="stores">
+      <div class="store"><span class="si">🐘</span><div><div style="color:#e2e8f0;font-size:11px">PostgreSQL</div><div class="infra-name">supabase · eventos · tenants</div></div></div>
+      <div class="store"><span class="si">⚡</span><div><div style="color:#e2e8f0;font-size:11px">Redis</div><div class="infra-name">Upstash · cache · WS state</div></div></div>
+      <div class="store"><span class="si">🔮</span><div><div style="color:#e2e8f0;font-size:11px">Qdrant</div><div class="infra-name">vector DB · memoria semántica</div></div></div>
+      <div class="store"><span class="si">📁</span><div><div style="color:#e2e8f0;font-size:11px">Google Drive</div><div class="infra-name">contexto · documentos · aporte</div></div></div>
+      <div class="store"><span class="si">💬</span><div><div style="color:#e2e8f0;font-size:11px">Discord</div><div class="infra-name">webhook · supervisor · alertas</div></div></div>
+      <div class="store"><span class="si">🤖</span><div><div style="color:#e2e8f0;font-size:11px">AI Providers</div><div class="infra-name">Gemini · Claude · GPT-4 · Grok</div></div></div>
+    </div>
+  </div>
+
+  <div style="height:40px"></div>
+</div>
+</body>
+</html>

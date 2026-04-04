@@ -16,6 +16,22 @@ import Mercados from './pages/Mercados';
 import Memoria from './pages/Memoria';
 import VideoEstudio from './pages/VideoEstudio';
 
+// Full-page OmniGlobe standalone view
+function OmniGlobePage() {
+  const OmniGlobe = React.lazy(() => import('./components/OmniGlobe'));
+  return (
+    <div style={{ width: '100vw', height: '100vh', background: '#040810', overflow: 'hidden' }}>
+      <React.Suspense fallback={
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', color: '#00e5ff', fontFamily: 'monospace' }}>
+          LOADING OMNIGLOBE...
+        </div>
+      }>
+        <OmniGlobe height="100vh" />
+      </React.Suspense>
+    </div>
+  );
+}
+
 function App() {
   return (
     <BrowserRouter>
@@ -23,6 +39,7 @@ function App() {
         {/* Public landing */}
         <Route path="/" element={<Landing />} />
         <Route path="/mapa" element={<Mapa />} />
+        <Route path="/omniglobe" element={<OmniGlobePage />} />
 
         {/* Internal warroom */}
         <Route path="/control" element={<MainLayout />}>

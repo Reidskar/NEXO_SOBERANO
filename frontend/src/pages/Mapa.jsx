@@ -1,66 +1,82 @@
-function Mapa() {
+import { useState } from 'react';
+import OmniGlobe from '../components/OmniGlobe';
+
+const NAV_LINKS = [
+  { label: 'OMNIGLOBE',     href: '/omniglobe', external: false },
+  { label: 'FLOWMAP',       href: '/flowmap',   external: false },
+  { label: 'DASHBOARD',     href: '/control',   external: false },
+];
+
+export default function Mapa() {
+  const [fullscreen, setFullscreen] = useState(false);
+
   return (
-    <div className="p-4 space-y-4">
-      <div>
-        <h2 className="text-lg font-bold text-nexo-text">Mapa Geopolítico</h2>
-        <p className="text-xs text-nexo-dim">Visualización de infraestructura y zonas de interés</p>
+    <div style={{
+      display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0,
+      background: '#040810', color: '#e2e8f0',
+      fontFamily: "'JetBrains Mono','Courier New',monospace",
+    }}>
+      {/* Header bar */}
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        padding: '8px 14px', background: 'rgba(8,12,20,0.95)',
+        borderBottom: '1px solid #1a2540', flexShrink: 0,
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <span style={{ fontSize: 11, color: '#00e5ff', fontWeight: 700, letterSpacing: '0.12em' }}>◎ OMNIGLOBE</span>
+          <span style={{ fontSize: 10, color: '#334155', margin: '0 4px' }}>|</span>
+          <span style={{ fontSize: 10, color: '#475569' }}>INTELLIGENCE LAYER · LIVE</span>
+          <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#10b981', display: 'inline-block', marginLeft: 6, boxShadow: '0 0 6px #10b981' }} />
+        </div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          {NAV_LINKS.map(l => (
+            <a key={l.label} href={l.href}
+              style={{
+                fontSize: 10, color: '#475569', textDecoration: 'none',
+                padding: '3px 8px', border: '1px solid #1a2540', borderRadius: 4,
+                letterSpacing: '0.06em', transition: 'all 0.15s',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.color = '#00e5ff'; e.currentTarget.style.borderColor = '#00e5ff40'; }}
+              onMouseLeave={e => { e.currentTarget.style.color = '#475569'; e.currentTarget.style.borderColor = '#1a2540'; }}
+            >
+              {l.label}
+            </a>
+          ))}
+          <button
+            onClick={() => setFullscreen(f => !f)}
+            style={{
+              fontSize: 10, color: '#475569', background: 'none',
+              padding: '3px 8px', border: '1px solid #1a2540', borderRadius: 4,
+              cursor: 'pointer', letterSpacing: '0.06em',
+            }}
+          >
+            {fullscreen ? '⊡ EXIT' : '⊞ EXPAND'}
+          </button>
+        </div>
       </div>
 
-      <div className="nexo-card p-5">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="w-10 h-10 rounded-lg bg-nexo-green/15 flex items-center justify-center">
-            <span className="text-nexo-green-l text-lg">◎</span>
-          </div>
-          <div>
-            <h3 className="text-sm font-semibold text-nexo-text">Módulo en desarrollo</h3>
-            <p className="text-xs text-nexo-dim">Integración con API Overpass para datos geoespaciales</p>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-3">
-          <div className="bg-nexo-dark rounded-lg p-4 border border-nexo-border/50">
-            <div className="flex items-center gap-2 mb-2">
-              <span className="text-xs text-[#00d4ff]">◈</span>
-              <h4 className="text-sm font-semibold text-nexo-text">Zonas activas</h4>
-            </div>
-            <p className="text-xs text-nexo-muted leading-relaxed">
-              Datos en tiempo real de infraestructura geopolítica disponibles vía
-              <code className="text-nexo-green-l bg-nexo-surface px-1 py-0.5 rounded text-[10px] ml-1">/eventos/infraestructura</code>
-            </p>
-          </div>
-          <div className="bg-nexo-dark rounded-lg p-4 border border-nexo-border/50">
-            <div className="flex items-center gap-2 mb-2">
-              <span className="text-xs text-amber-400">◎</span>
-              <h4 className="text-sm font-semibold text-nexo-text">Overpass API</h4>
-            </div>
-            <p className="text-xs text-nexo-muted leading-relaxed">
-              Motor de consultas OpenStreetMap para puntos de interés, fronteras, bases militares y rutas estratégicas.
-            </p>
-          </div>
-        </div>
+      {/* Globe fills remaining space */}
+      <div style={{ flex: 1, minHeight: 0, position: 'relative' }}>
+        <OmniGlobe height={fullscreen ? window.innerHeight - 45 : '100%'} />
       </div>
 
-      {/* Placeholder visual del mapa */}
-      <div className="nexo-card overflow-hidden">
-        <div className="relative h-64 bg-gradient-to-br from-nexo-dark via-nexo-panel to-nexo-surface flex items-center justify-center">
-          <div className="absolute inset-0 opacity-5">
-            {/* Grid visual */}
-            <div className="w-full h-full" style={{
-              backgroundImage: "linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px)",
-              backgroundSize: "40px 40px"
-            }} />
-          </div>
-          <div className="text-center z-10">
-            <div className="w-16 h-16 rounded-full border-2 border-nexo-border flex items-center justify-center mx-auto mb-3">
-              <span className="text-2xl text-nexo-dim">◎</span>
-            </div>
-            <p className="text-sm text-nexo-muted">Vista de mapa próximamente</p>
-            <p className="text-[10px] text-nexo-dim mt-1">Integración Leaflet + datos Overpass</p>
-          </div>
-        </div>
+      {/* Bottom status bar */}
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 16, padding: '5px 14px',
+        background: 'rgba(8,12,20,0.95)', borderTop: '1px solid #1a2540',
+        fontSize: 10, color: '#334155', flexShrink: 0,
+        flexWrap: 'wrap',
+      }}>
+        <span style={{ color: '#475569' }}>SRC: AIS · ADS-B · SIGINT · OSINT</span>
+        <span>|</span>
+        <span>DOBLE CLICK para restablecer vista</span>
+        <span>|</span>
+        <span>CLICK en entidad para detalles</span>
+        <span>|</span>
+        <span style={{ marginLeft: 'auto', color: '#1e3a5f' }}>
+          {new Date().toUTCString().replace('GMT', 'UTC')}
+        </span>
       </div>
     </div>
   );
 }
-
-export default Mapa;

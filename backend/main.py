@@ -50,6 +50,7 @@ from backend.routes import metrics as metrics_router
 from backend.routes import media as media_router
 from backend.routes import mobile as mobile_router
 from backend.routes import files as files_router
+from backend.routes.globe_control import router as globe_router, set_broadcast
 from backend.middleware.monitoring import PerformanceMiddleware
 from backend.core import heartbeat as heartbeat_service
 
@@ -142,6 +143,27 @@ def landing_page():
         return HTMLResponse(content=path.read_text(encoding="utf-8"))
     return HTMLResponse(content="<h1>Landing Page Not Found</h1>", status_code=404)
 
+@app.get("/omniglobe", response_class=HTMLResponse)
+def omniglobe_page():
+    path = Path("frontend_public/omniglobe.html")
+    if path.exists():
+        return HTMLResponse(content=path.read_text(encoding="utf-8"))
+    return HTMLResponse(content="<h1>OmniGlobe — Building...</h1>", status_code=503)
+
+@app.get("/flowmap", response_class=HTMLResponse)
+def flowmap_page():
+    path = Path("frontend_public/flowmap.html")
+    if path.exists():
+        return HTMLResponse(content=path.read_text(encoding="utf-8"))
+    return HTMLResponse(content="<h1>FlowMap — Building...</h1>", status_code=503)
+
+@app.get("/control-center", response_class=HTMLResponse)
+def control_center_page():
+    path = Path("frontend_public/control_center.html")
+    if path.exists():
+        return HTMLResponse(content=path.read_text(encoding="utf-8"))
+    return HTMLResponse(content="<h1>Control Center Not Found</h1>", status_code=404)
+
 # Auth
 @app.post("/auth/login")
 async def auth_login(payload: LoginRequest):
@@ -180,6 +202,12 @@ class ConnectionManager:
                     pass
 
 manager = ConnectionManager()
+
+# Wire globe_control broadcast to the WS manager
+set_broadcast(lambda msg: manager.broadcast("globe", msg))
+
+# Include globe control router (after manager is created)
+app.include_router(globe_router)
 
 @app.websocket("/ws/alerts/{tenant_slug}")
 async def websocket_endpoint(websocket: WebSocket, tenant_slug: str):
