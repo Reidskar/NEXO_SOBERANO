@@ -51,17 +51,9 @@ const AISearchPanel = ({ onPushAlert, onClose, isOpen }) => {
     }
   }, [messages]);
 
-  // Global `/` key toggle
-  useEffect(() => {
-    const handleKey = (e) => {
-      if (e.key === '/' && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') {
-        e.preventDefault();
-        if (!isOpen) onClose?.(); // parent handles open/close
-      }
-    };
-    window.addEventListener('keydown', handleKey);
-    return () => window.removeEventListener('keydown', handleKey);
-  }, [isOpen, onClose]);
+  // The `/` key shortcut is handled in OmniGlobe.jsx which owns the open/close state.
+  // This effect is kept intentionally empty (no-op) to document that contract.
+  // Global `/` key toggle — note: panel is only rendered when isOpen=true (parent controls visibility)
 
   const sendQuery = useCallback(async (text) => {
     const q = (text || query).trim();

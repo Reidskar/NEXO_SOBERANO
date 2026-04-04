@@ -100,10 +100,15 @@ export default function Globe3D({
       return s;
     };
 
+    // Track shaders for cleanup
+    const shaders = [];
     const buildProg = (vs, fs) => {
+      const vsShader = compile(gl.VERTEX_SHADER,   vs);
+      const fsShader = compile(gl.FRAGMENT_SHADER, fs);
+      shaders.push(vsShader, fsShader);
       const p = gl.createProgram();
-      gl.attachShader(p, compile(gl.VERTEX_SHADER, vs));
-      gl.attachShader(p, compile(gl.FRAGMENT_SHADER, fs));
+      gl.attachShader(p, vsShader);
+      gl.attachShader(p, fsShader);
       gl.linkProgram(p);
       return p;
     };
@@ -208,6 +213,8 @@ export default function Globe3D({
 
     let angle = 0, tiltAngle = 0.3;
     let pulseAnim = 0; // 0..1 oscillation driven by sin
+    // Rate at which pulse fades when not alerting (frames per step)
+    const PULSE_DECAY_RATE = 0.02;
     let raf;
 
     const draw = () => {
@@ -218,7 +225,7 @@ export default function Globe3D({
       if (alertingRef.current) {
         pulseAnim = 0.5 + 0.5 * Math.sin(angle * 8);
       } else {
-        pulseAnim = Math.max(0, pulseAnim - 0.02);
+        pulseAnim = Math.max(0, pulseAnim - PULSE_DECAY_RATE);
       }
 
       gl.clear(gl.COLOR_BUFFER_BIT);
@@ -258,6 +265,8 @@ export default function Globe3D({
     draw();
     return () => {
       cancelAnimationFrame(raf);
+      // Clean up all compiled shaders first, then programs and buffer
+      shaders.forEach(s => gl.deleteShader(s));
       gl.deleteBuffer(vbo);
       gl.deleteProgram(prog);
       gl.deleteProgram(progAtmo);

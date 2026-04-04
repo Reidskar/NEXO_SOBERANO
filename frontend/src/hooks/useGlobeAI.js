@@ -205,10 +205,11 @@ export const useGlobeAI = (enabled = true, osintContext = null) => {
                 webViewLink: f.webViewLink,
               }));
             if (newDocs.length > 0) {
-              // Push alert for each new doc (max 3 at once)
-              newDocs.slice(0, 3).forEach(doc => {
-                pushAlert(`Nuevo doc en Drive: ${doc.text}`, { color: '#a855f7', prefix: '[DRIVE]' });
-              });
+              // Batch alert to avoid ticker spam
+              const alertText = newDocs.length === 1
+                ? `Nuevo doc en Drive: ${newDocs[0].text}`
+                : `${newDocs.length} nuevos documentos en Drive — análisis IA en proceso`;
+              pushAlert(alertText, { color: '#a855f7', prefix: '[DRIVE]' });
               return [...newDocs, ...prev].slice(0, MAX_DRIVE);
             }
             return prev;
@@ -221,15 +222,16 @@ export const useGlobeAI = (enabled = true, osintContext = null) => {
   const startPolling = useCallback(() => {
     clearInterval(pollRef.current);
     setWsMode(false);
-    // Immediate first poll
+    // Immediate first poll for both AI and Drive
     pollAI();
     pollDrive();
-    // AI tactical brief every 35s, Drive check every 60s
-    let aiTick = 0;
+    // Alternate: AI every 35s, Drive every 2 AI cycles (~70s)
+    // Use a simple counter that resets at 2 to avoid integer overflow
+    let driveTick = 0;
     pollRef.current = setInterval(() => {
-      aiTick++;
       pollAI();
-      if (aiTick % 2 === 0) pollDrive(); // Drive every ~70s
+      driveTick = (driveTick + 1) % 2;
+      if (driveTick === 0) pollDrive();
     }, 35000);
   }, [pollAI, pollDrive]);
 

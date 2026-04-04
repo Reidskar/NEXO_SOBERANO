@@ -92,6 +92,22 @@ const OmniGlobe = () => {
   // ── AISearchPanel visibility ────────────────────────────────────────────
   const [searchOpen, setSearchOpen] = useState(false);
 
+  // `/` key toggles the search panel (only when not typing in an input)
+  useEffect(() => {
+    const handleKey = (e) => {
+      const tag = document.activeElement?.tagName;
+      if (e.key === '/' && tag !== 'INPUT' && tag !== 'TEXTAREA') {
+        e.preventDefault();
+        setSearchOpen(s => !s);
+      }
+      if (e.key === 'Escape' && searchOpen) {
+        setSearchOpen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  }, [searchOpen]);
+
   // ── Merge Drive markers from OSINT hook + AI hook for HUD panel ────────
   const combinedDriveActivity = useMemo(() => {
     const osintDocs = driveMarkers.map(m => ({
@@ -110,23 +126,34 @@ const OmniGlobe = () => {
   }, [driveMarkers, aiDriveActivity]);
 
   // ── Auto-animate globe when NEW Drive docs arrive ───────────────────────
-  const prevDriveCountRef = useRef(combinedDriveActivity.length);
+  // Initialize to 0 so any docs present at mount don't fire as "new"
+  const prevDriveCountRef = useRef(0);
+  const mountedRef = useRef(false);
   useEffect(() => {
-    const prev  = prevDriveCountRef.current;
-    const curr  = combinedDriveActivity.length;
+    if (!mountedRef.current) {
+      // Skip the first effect run (mounting): sync ref to current count without animating
+      mountedRef.current = true;
+      prevDriveCountRef.current = combinedDriveActivity.length;
+      return;
+    }
+    const prev = prevDriveCountRef.current;
+    const curr = combinedDriveActivity.length;
     prevDriveCountRef.current = curr;
-    if (curr > prev && curr > 0) {
-      // New document detected — fly to its location if it has coordinates
-      const newest = combinedDriveActivity[0];
+    if (curr > prev) {
+      const newCount = curr - prev;
+      const newest   = combinedDriveActivity[0];
+      // Fly to location if the newest doc has coordinates
       if (newest?.lat && newest?.lng && maplibreRef.current?.flyToEvent) {
         maplibreRef.current.flyToEvent(newest.lat, newest.lng, 5);
       }
-      // Push alert to ticker
-      pushAlert(`📂 Nuevo documento en Drive: ${newest.text || newest.label}`, {
-        color: '#a855f7', prefix: '[DRIVE INTEL]',
-      });
+      // Batch into a single ticker alert to avoid spam
+      const alertText = newCount === 1
+        ? `📂 Nuevo documento en Drive: ${newest.text || newest.label || 'Sin nombre'}`
+        : `📂 ${newCount} nuevos documentos en Drive — análisis IA en proceso`;
+      // eslint-disable-next-line react-hooks/exhaustive-deps -- pushAlert is stable, maplibreRef is a ref
+      pushAlert(alertText, { color: '#a855f7', prefix: '[DRIVE INTEL]' });
     }
-  }, [combinedDriveActivity.length]);
+  }, [combinedDriveActivity.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Phase 12+13: OSINT Simulation State ────────────────────────────────
   const [activeSimulations, setActiveSimulations] = useState([]); // Descending missiles

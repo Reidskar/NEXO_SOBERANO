@@ -127,7 +127,7 @@ const OmniGlobeHUD = ({ currentAlert, driveActivity = [], discordActivity = [], 
     prevDiscordLen.current = discordActivity.length;
   }, [discordActivity.length]);
 
-  // Periodically refresh metrics from backend
+  // Periodically refresh metrics from backend (single batched setState)
   useEffect(() => {
     const fetchMetrics = async () => {
       try {
@@ -135,9 +135,12 @@ const OmniGlobeHUD = ({ currentAlert, driveActivity = [], discordActivity = [], 
         if (res.ok) {
           const data = await res.json();
           // Backend may expose economic indicators; if not, keep defaults
-          if (data.brent)  setMetrics(m => ({ ...m, brent:  data.brent }));
-          if (data.ormuz)  setMetrics(m => ({ ...m, ormuz:  data.ormuz }));
-          if (data.tension) setMetrics(m => ({ ...m, tension: data.tension }));
+          setMetrics(m => ({
+            ...m,
+            ...(data.brent   != null ? { brent:   data.brent   } : {}),
+            ...(data.ormuz   != null ? { ormuz:   data.ormuz   } : {}),
+            ...(data.tension != null ? { tension: data.tension } : {}),
+          }));
         }
       } catch (_) {}
     };
