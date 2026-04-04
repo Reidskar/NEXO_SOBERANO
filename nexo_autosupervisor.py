@@ -632,6 +632,27 @@ class NexoSupervisor:
                         log.warning(f"⚠️  {report.critical} ISSUES CRÍTICOS DETECTADOS")
                         self._notify_critical(report)
 
+                    # File Guardian — integridad estructural profunda
+                    try:
+                        import subprocess as _sp
+                        import sys as _sys
+                        _gres = _sp.run(
+                            [_sys.executable, "scripts/nexo_file_guardian.py", "--json"],
+                            capture_output=True, text=True, timeout=20,
+                        )
+                        if _gres.returncode != 0 and _gres.stdout.strip():
+                            import json as _json
+                            _gdata = _json.loads(_gres.stdout)
+                            _broken = _gdata.get("broken_files", 0)
+                            _global = len(_gdata.get("global_issues", []))
+                            if _broken or _global:
+                                log.warning(
+                                    f"🚨 File Guardian: {_broken} archivo(s) rotos, "
+                                    f"{_global} problema(s) global(es) — ver logs/file_guardian_last.json"
+                                )
+                    except Exception:
+                        pass
+
                 time.sleep(interval)
         except KeyboardInterrupt:
             log.info("⏹ Watch detenido por el usuario")

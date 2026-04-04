@@ -136,6 +136,40 @@ async def ciclo_rapido() -> dict:
     _banner("CICLO RÁPIDO — Salud + Auto-fixes nivel 1")
     resultado = {"ts": datetime.now(timezone.utc).isoformat(), "tipo": "rapido", "acciones": []}
 
+    # 0. File Guardian — detectar archivos rotos antes de cualquier otra cosa
+    rc_guard, out_guard = _run([PYTHON, "scripts/nexo_file_guardian.py", "--json"])
+    try:
+        guard_result = json.loads(out_guard) if out_guard.strip().startswith("{") else {}
+    except Exception:
+        guard_result = {}
+    broken_count = guard_result.get("broken_files", 0)
+    global_issues = len(guard_result.get("global_issues", []))
+    if broken_count == 0 and global_issues == 0:
+        print("  ✅ File Guardian: todos los archivos OK")
+        resultado["acciones"].append("file_guardian: OK")
+    else:
+        print(f"  🚨 File Guardian: {broken_count} archivo(s) rotos, {global_issues} problemas globales")
+        resultado["acciones"].append(f"file_guardian: ERRORES — {broken_count} rotos, {global_issues} globales")
+        resultado["guardian_broken"] = [b["file"] for b in guard_result.get("broken", [])]
+        resultado["guardian_global"] = [g["message"] for g in guard_result.get("global_issues", [])]
+        # Pedir diagnóstico a Gemma 4 si hay errores críticos
+        all_msgs = [
+            f"[{b['file']}] {i['message']}"
+            for b in guard_result.get("broken", [])
+            for i in b.get("issues", [])
+            if i.get("severity") == "critical"
+        ] + resultado["guardian_global"]
+        if all_msgs:
+            diag = await _gemma(
+                prompt="Errores críticos en archivos NEXO SOBERANO:\n" + "\n".join(all_msgs[:15])
+                       + "\n\nPara cada error: causa y paso exacto de corrección.",
+                system="Eres el guardián de código. Diagnostica y propón fixes concretos. Español.",
+                max_tokens=500,
+            )
+            if diag:
+                print(f"\n  Gemma 4 diagnóstico Guardian:\n{diag}")
+                resultado["guardian_diagnosis"] = diag
+
     # 1. Ruff auto-fix (nivel 1, sin intervención)
     rc, out = _run([PYTHON, "-m", "ruff", "check", "--fix", "backend", "NEXO_CORE", "-q"])
     if rc == 0:

@@ -18,6 +18,12 @@
         "hooks": [
           {
             "type": "command",
+            "command": "python scripts/nexo_file_guardian.py --file \"$CLAUDE_TOOL_INPUT_file_path\" --json 2>/dev/null || true",
+            "timeout": 15000,
+            "blocking": false
+          },
+          {
+            "type": "command",
             "command": "python scripts/nexo_manager.py review --file \"$CLAUDE_TOOL_INPUT_file_path\" 2>/dev/null || true",
             "timeout": 60000,
             "blocking": false
