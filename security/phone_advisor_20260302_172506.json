@@ -1,0 +1,46 @@
+{
+  "timestamp": "2026-03-02T20:25:06.380387+00:00",
+  "source_report": "reports/security\\phone_scan_20260302_172506.json",
+  "device_model": "2407FPN8EG",
+  "android_version": "16",
+  "security_patch": "2026-02-01",
+  "developer_options": "0",
+  "unknown_sources": "1",
+  "accessibility_enabled": "1",
+  "battery_temp_c": 39.9,
+  "risky_packages": {
+    "remote_access": [
+      "package:com.anydesk.adcontrol.ad1",
+      "package:com.sand.remotesupportaddon",
+      "package:com.sand.airdroid",
+      "package:com.duokan.phone.remotecontroller",
+      "package:com.anydesk.anydeskandroid"
+    ],
+    "modified_social": [
+      "package:com.disney.disneyplus",
+      "package:com.instapro2.android",
+      "package:lg.tv.plus",
+      "package:com.happymod.apk",
+      "package:jp.co.shueisha.mangaplus"
+    ]
+  },
+  "top_cpu_processes": [
+    "800%cpu 146%user  11%nice 311%sys 279%idle   7%iow  43%irq   4%sirq   0%host",
+    "29122 u0_a311      12  -8  19G 244M 159M S  160   2.1   0:06.45 org.telegram.messenger",
+    "3047 system       -2   0  23G 580M 298M S 85.7   5.1 215:02.27 com.android.systemui",
+    "1257 system       -3  -8  16G 120M  98M S 53.5   1.0 465:57.27 surfaceflinger",
+    "13446 u0_a307      20   0  21G 301M 182M S 39.2   2.6   2:42.06 com.whatsapp",
+    "1489 system       18  -2  27G 1.0G 769M S 28.5   9.2 526:33.92 system_server",
+    "1112 system       -3   0  11G  14M  10M S 14.2   0.1 229:48.27 android.hardware.graphics.composer@3.2-service",
+    "30649 shell        20   0  10G 6.2M 4.5M R 10.7   0.0   0:00.03 top -n 1 -b"
+  ],
+  "recommendations": [
+    "Desactivar instalación de orígenes desconocidos y revisar sideload recientes.",
+    "Auditar servicios de Accesibilidad; dejar solo los estrictamente necesarios.",
+    "Reducir apps de acceso remoto (AnyDesk/AirDroid/RemoteSupport) o limitar permisos en segundo plano.",
+    "Eliminar apps modificadas (ej. InstaPro) por riesgo de exfiltración y consumo elevado.",
+    "Temperatura de batería alta para reposo (>38.5°C): limitar apps con CPU alta, refresco alto y brillo automático agresivo.",
+    "Activar 2FA en cuentas críticas y revisar sesiones activas en Google/Meta/Telegram.",
+    "Ejecutar escaneo full semanal y comparar dif de paquetes/servicios habilitados."
+  ]
+}

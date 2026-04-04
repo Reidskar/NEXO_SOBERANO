@@ -1,0 +1,634 @@
+[
+  {
+    "path": "/openapi.json",
+    "methods": [
+      "GET",
+      "HEAD"
+    ]
+  },
+  {
+    "path": "/docs",
+    "methods": [
+      "GET",
+      "HEAD"
+    ]
+  },
+  {
+    "path": "/docs/oauth2-redirect",
+    "methods": [
+      "GET",
+      "HEAD"
+    ]
+  },
+  {
+    "path": "/redoc",
+    "methods": [
+      "GET",
+      "HEAD"
+    ]
+  },
+  {
+    "path": "/api/health",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "",
+    "methods": []
+  },
+  {
+    "path": "/api/config",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/ai/control",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/tasks/pending",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/tasks/complete",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/webhooks/supabase",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/webhooks/discord",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/analytics/track",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/email/subscribe",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/sponsored/upload",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/sponsored/approve/{slot_id}",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/pay/sponsored",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/pay/sponsored/callback",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/sponsored/active",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/sponsored/availability",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/sponsored/history/{email}",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/system/status",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/system/ops",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/system/expansion",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/documents",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/documents/{slug}",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/sitemap.xml",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/events",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/countries/{name}",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/timeline/{country}",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/agente/",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/agente/consultar",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/agente/consultar-rag",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/agente/drive/upload-aporte",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/agente/health",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/agente/presupuesto",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/agente/drive/recent-old",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/agente/photos/recent",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/agente/onedrive/recent",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/agente/historial-costos",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/agente/costs/report",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/agente/costs/daily-summary",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/agente/costs/budget",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/agente/tokens/status",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/agente/autopilot/credentials",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/agente/autopilot/credentials/status",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/agente/sync/unificado",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/agente/youtube/recent",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/agente/youtube/transcript",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/agente/youtube/upload-summary",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/agente/youtube/upload-summary-file",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/agente/youtube/authorize",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/agente/youtube/create-client-secrets",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/agente/drive/create-client-secrets",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/agente/drive/authorize",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/agente/photos/authorize",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/agente/drive/list",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/agente/drive/ensure-folder",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/agente/drive/upload",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/agente/drive/upload-b64",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/agente/drive/move",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/agente/drive/rename",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/agente/drive/trash",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/agente/drive/delete",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/agente/drive/recent",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/agente/youtube/daily-resume",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/agente/x/post",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/agente/x/search",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/agente/x/mentions",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/agente/x/ingest-mentions",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/agente/grok/consult",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/agente/x/monitor-once",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/agente/x/monitor-status",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/agente/google-stitch/status",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/agente/google-stitch/connect",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/agente/google-stitch/test",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/agente/google-stitch/push",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/agente/grok/share-code",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/agente/mobile-package",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/agente/mobile-package/download",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/agente/mobile-package/send-email",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/agente/go-live/preflight",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/agente/control-center/status",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/agente/control-center/reports",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/agente/control-center/report/{report_name}",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/agente/control-center/errors",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/agente/control-center/run-drive-classification",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/agente/control-center/sync-unified-status",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/agente/control-center/run-unified-sync",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/agente/control-center/analytics",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/agente/intelligence/autonomous-cycle",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/agente/intelligence/autonomous-status",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/agente/intelligence/evolution-cycle",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/agente/intelligence/evolution-status",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/agente/intelligence/foda-critico",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/agente/intelligence/foda-status",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/agente/alerts",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/agente/warroom/ai-control",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/agente/warroom/apply-code-improvements",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/agente/warroom/code-improvements-status",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/agente/control-center/extractor-status",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/agente/control-center/run-code-extractor",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/agente/control-center/extractor-download",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/agente/control-center/extractor-prompt",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/health",
+    "methods": [
+      "GET"
+    ]
+  }
+]

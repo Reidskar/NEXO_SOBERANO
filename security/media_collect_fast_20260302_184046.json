@@ -1,0 +1,35 @@
+{
+  "timestamp": "2026-03-02T21:40:46.113603+00:00",
+  "jobs": 1,
+  "ok": 1,
+  "failed": 0,
+  "output_root": "documentos\\media_intake_test",
+  "results": [
+    {
+      "source": "youtube",
+      "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+      "result": {
+        "ok": true,
+        "code": 0,
+        "stdout": "[youtube] Extracting URL: https://www.youtube.com/watch?v=dQw4w9WgXcQ\n[youtube] dQw4w9WgXcQ: Downloading webpage\n[youtube] dQw4w9WgXcQ: Downloading android vr player API JSON\n[info] dQw4w9WgXcQ: Downloading 1 format(s): 401+251\n[download] Destination: documentos\\media_intake_test\\youtube\\Rick Astley\\Rick Astley - Never Gonna Give You Up (Official Video) (4K Remaster) [dQw4w9WgXcQ].f401.mp4\n[download] Download completed\n[download] Destination: documentos\\media_intake_test\\youtube\\Rick Astley\\Rick Astley - Never Gonna Give You Up (Official Video) (4K Remaster) [dQw4w9WgXcQ].f251.webm\n[download] Download completed\n[Merger] Merging formats into \"documentos\\media_intake_test\\youtube\\Rick Astley\\Rick Astley - Never Gonna Give You Up (Official Video) (4K Remaster) [dQw4w9WgXcQ].mp4\"\nDeleting original file documentos\\media_intake_test\\youtube\\Rick Astley\\Rick Astley - Never Gonna Give You Up (Official Video) (4K Remaster) [dQw4w9WgXcQ].f251.webm (pass -k to keep)\nDeleting original file documentos\\media_intake_test\\youtube\\Rick Astley\\Rick Astley - Never Gonna Give You Up (Official Video) (4K Remaster) [dQw4w9WgXcQ].f401.mp4 (pass -k to keep)",
+        "stderr": "WARNING: [youtube] No supported JavaScript runtime could be found. Only deno is enabled by default; to use another runtime add  --js-runtimes RUNTIME[:PATH]  to your command/config. YouTube extraction without a JS runtime has been deprecated, and some formats may be missing. See  https://github.com/yt-dlp/yt-dlp/wiki/EJS  for details on installing one",
+        "cmd": [
+          "C:\\Users\\Admn\\Desktop\\NEXO_SOBERANO\\.venv\\Scripts\\python.exe",
+          "-m",
+          "yt_dlp",
+          "--no-progress",
+          "--concurrent-fragments",
+          "4",
+          "--download-archive",
+          "documentos\\media_intake_test\\youtube\\yt-dlp-archive.txt",
+          "-o",
+          "documentos\\media_intake_test\\youtube\\%(uploader)s\\%(title).180B [%(id)s].%(ext)s",
+          "--merge-output-format",
+          "mp4",
+          "--no-playlist",
+          "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+        ]
+      }
+    }
+  ]
+}

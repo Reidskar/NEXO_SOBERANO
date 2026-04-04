@@ -1,0 +1,47 @@
+{
+  "timestamp": "2026-03-02T20:21:13.159685+00:00",
+  "source_report": "reports/security\\phone_scan_20260302_171825.json",
+  "device_model": "2407FPN8EG",
+  "android_version": "16",
+  "security_patch": "2026-02-01",
+  "developer_options": "1",
+  "unknown_sources": "1",
+  "accessibility_enabled": "1",
+  "battery_temp_c": 38.9,
+  "risky_packages": {
+    "remote_access": [
+      "package:com.anydesk.adcontrol.ad1",
+      "package:com.sand.remotesupportaddon",
+      "package:com.sand.airdroid",
+      "package:com.duokan.phone.remotecontroller",
+      "package:com.anydesk.anydeskandroid"
+    ],
+    "modified_social": [
+      "package:com.disney.disneyplus",
+      "package:com.instapro2.android",
+      "package:lg.tv.plus",
+      "package:com.happymod.apk",
+      "package:jp.co.shueisha.mangaplus"
+    ]
+  },
+  "top_cpu_processes": [
+    "800%cpu 100%user   3%nice 228%sys 383%idle  17%iow  62%irq   7%sirq   0%host",
+    "23684 u0_a422       4 -16  24G 666M 330M S 86.2   5.9  24:42.53 com.instapro2.android",
+    "19388 u0_a311      12  -8  18G 193M 121M S 65.5   1.7   0:30.16 org.telegram.messenger",
+    "1257 system       -3  -8  16G 106M  84M R 44.8   0.9 463:15.33 surfaceflinger",
+    "5332 u0_a268      20   0  17G 144M  84M S 24.1   1.2 319:38.79 com.google.android.providers.media.module",
+    "1112 system       -3   0  11G 9.4M 7.9M S 20.6   0.0 228:36.99 android.hardware.graphics.composer@3.2-service",
+    "21294 shell        20   0  10G 6.0M 4.4M R 13.7   0.0   0:00.04 top -n 1 -b",
+    "20676 root         20   0    0    0    0 I  6.8   0.0   0:08.11 [kworker/u16:5-ged_kpi]"
+  ],
+  "recommendations": [
+    "Desactivar instalación de orígenes desconocidos y revisar sideload recientes.",
+    "Desactivar Opciones de desarrollador cuando no estés depurando para reducir superficie de ataque.",
+    "Auditar servicios de Accesibilidad; dejar solo los estrictamente necesarios.",
+    "Reducir apps de acceso remoto (AnyDesk/AirDroid/RemoteSupport) o limitar permisos en segundo plano.",
+    "Eliminar apps modificadas (ej. InstaPro) por riesgo de exfiltración y consumo elevado.",
+    "Temperatura de batería alta para reposo (>38.5°C): limitar apps con CPU alta, refresco alto y brillo automático agresivo.",
+    "Activar 2FA en cuentas críticas y revisar sesiones activas en Google/Meta/Telegram.",
+    "Ejecutar escaneo full semanal y comparar dif de paquetes/servicios habilitados."
+  ]
+}

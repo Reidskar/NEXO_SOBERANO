@@ -1,0 +1,38 @@
+{
+  "timestamp": "2026-03-02T20:20:30.707067+00:00",
+  "source_report": "reports/security\\phone_scan_20260302_171825.json",
+  "device_model": "2407FPN8EG",
+  "android_version": "16",
+  "security_patch": "2026-02-01",
+  "developer_options": "1",
+  "unknown_sources": "1",
+  "accessibility_enabled": "1",
+  "battery_temp_c": 38.9,
+  "risky_packages": {
+    "remote_access": [
+      "package:com.anydesk.adcontrol.ad1",
+      "package:com.sand.remotesupportaddon",
+      "package:com.sand.airdroid",
+      "package:com.duokan.phone.remotecontroller",
+      "package:com.anydesk.anydeskandroid"
+    ],
+    "modified_social": [
+      "package:com.disney.disneyplus",
+      "package:com.instapro2.android",
+      "package:lg.tv.plus",
+      "package:com.happymod.apk",
+      "package:jp.co.shueisha.mangaplus"
+    ]
+  },
+  "top_cpu_processes": [],
+  "recommendations": [
+    "Desactivar instalación de orígenes desconocidos y revisar sideload recientes.",
+    "Desactivar Opciones de desarrollador cuando no estés depurando para reducir superficie de ataque.",
+    "Auditar servicios de Accesibilidad; dejar solo los estrictamente necesarios.",
+    "Reducir apps de acceso remoto (AnyDesk/AirDroid/RemoteSupport) o limitar permisos en segundo plano.",
+    "Eliminar apps modificadas (ej. InstaPro) por riesgo de exfiltración y consumo elevado.",
+    "Temperatura de batería alta para reposo (>38.5°C): limitar apps con CPU alta, refresco alto y brillo automático agresivo.",
+    "Activar 2FA en cuentas críticas y revisar sesiones activas en Google/Meta/Telegram.",
+    "Ejecutar escaneo full semanal y comparar dif de paquetes/servicios habilitados."
+  ]
+}
