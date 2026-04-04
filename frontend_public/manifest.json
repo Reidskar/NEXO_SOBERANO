@@ -1,0 +1,33 @@
+{
+  "name": "NEXO SOBERANO — El Anarcocapital",
+  "short_name": "NEXO",
+  "description": "Plataforma de inteligencia geopolítica soberana en tiempo real",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#030712",
+  "theme_color": "#00e5ff",
+  "orientation": "any",
+  "lang": "es",
+  "categories": ["news", "productivity", "utilities"],
+  "icons": [
+    {"src": "/static/icons/icon-72.png",  "sizes": "72x72",   "type": "image/png"},
+    {"src": "/static/icons/icon-96.png",  "sizes": "96x96",   "type": "image/png"},
+    {"src": "/static/icons/icon-128.png", "sizes": "128x128", "type": "image/png"},
+    {"src": "/static/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable"},
+    {"src": "/static/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any"}
+  ],
+  "screenshots": [
+    {"src": "/static/screenshots/globe.png",     "sizes": "1280x720", "type": "image/png", "label": "OmniGlobe 3D"},
+    {"src": "/static/screenshots/dashboard.png", "sizes": "1280x720", "type": "image/png", "label": "Dashboard NEXO"}
+  ],
+  "shortcuts": [
+    {"name": "OmniGlobe",     "url": "/omniglobe",     "description": "Mapa 3D de inteligencia"},
+    {"name": "Control Center","url": "/control-center", "description": "Panel de control"}
+  ],
+  "share_target": {
+    "action": "/api/intel/share",
+    "method": "POST",
+    "enctype": "application/x-www-form-urlencoded",
+    "params": {"title": "title", "text": "text", "url": "url"}
+  }
+}

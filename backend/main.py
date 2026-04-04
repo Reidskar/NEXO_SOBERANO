@@ -52,6 +52,7 @@ from backend.routes import mobile as mobile_router
 from backend.routes import files as files_router
 from backend.routes.globe_control import router as globe_router, set_broadcast
 from backend.routes.osint import router as osint_router
+from backend.routes.nexo_platform import router as platform_router
 from backend.middleware.monitoring import PerformanceMiddleware
 from backend.core import heartbeat as heartbeat_service
 
@@ -210,6 +211,7 @@ set_broadcast(lambda msg: manager.broadcast("globe", msg))
 # Include globe control router (after manager is created)
 app.include_router(globe_router)
 app.include_router(osint_router)
+app.include_router(platform_router)
 
 @app.websocket("/ws/alerts/{tenant_slug}")
 async def websocket_endpoint(websocket: WebSocket, tenant_slug: str):
