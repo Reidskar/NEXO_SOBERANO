@@ -28,6 +28,18 @@ def set_broadcast(fn):
     _broadcast_fn = fn
 
 
+async def broadcast_command(payload: Dict):
+    """Public helper: send a command dict directly to all OmniGlobe clients."""
+    _command_history.append(payload)
+    if len(_command_history) > _MAX_HISTORY:
+        _command_history.pop(0)
+    if _broadcast_fn:
+        try:
+            await _broadcast_fn({"channel": "globe_command", "payload": payload})
+        except Exception as e:
+            logger.warning(f"Globe broadcast_command failed: {e}")
+
+
 # ── Schemas ────────────────────────────────────────────────────────────────────
 
 class GlobeCommand(BaseModel):
