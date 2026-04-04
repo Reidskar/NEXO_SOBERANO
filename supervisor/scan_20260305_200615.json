@@ -1,0 +1,656 @@
+{
+  "report": {
+    "timestamp": "2026-03-05T23:06:15.798256+00:00",
+    "files_scanned": 25,
+    "total_issues": 24,
+    "critical": 1,
+    "high": 1,
+    "medium": 2,
+    "low": 10,
+    "auto_fixed": 0,
+    "quality_score": 98.37,
+    "improvements": [],
+    "metrics": {
+      "scan_limit": 25,
+      "files_total_collected": 199,
+      "scan_truncated": true,
+      "analysis_errors": 0,
+      "files_by_score": {
+        "excellent(90-100)": 24,
+        "good(70-90)": 1,
+        "fair(50-70)": 0,
+        "poor(<50)": 0
+      },
+      "top_issues": [
+        {
+          "code": "ST002",
+          "count": 9,
+          "message": "except Exception muy amplio"
+        },
+        {
+          "code": "ST007",
+          "count": 3,
+          "message": "pass innecesario"
+        },
+        {
+          "code": "ST008",
+          "count": 3,
+          "message": "Línea demasiado larga (180 chars)"
+        },
+        {
+          "code": "CX001",
+          "count": 2,
+          "message": "Función 'generate_artifacts' muy larga (119 líneas)"
+        },
+        {
+          "code": "PF003",
+          "count": 2,
+          "message": "Leer archivo completo - considerar streaming"
+        },
+        {
+          "code": "PF004",
+          "count": 1,
+          "message": "Variable global - prefer funciones puras"
+        },
+        {
+          "code": "HT005",
+          "count": 1,
+          "message": "innerHTML puede causar XSS"
+        },
+        {
+          "code": "HT008",
+          "count": 1,
+          "message": "console.log en producción"
+        },
+        {
+          "code": "SV007",
+          "count": 1,
+          "message": "Posible SQL injection con f-string"
+        },
+        {
+          "code": "ST003",
+          "count": 1,
+          "message": "log.info() - usar logging"
+        }
+      ],
+      "files_with_critical": [
+        "C:\\Users\\Admn\\Desktop\\NEXO_SOBERANO\\AI-INTELLIGENCE-SYSTEM\\scripts\\run_mass_video_system.py"
+      ]
+    }
+  },
+  "files": [
+    {
+      "path": "C:\\Users\\Admn\\Desktop\\NEXO_SOBERANO\\.tmp_run_sync.py",
+      "lines": 42,
+      "functions": 0,
+      "classes": 0,
+      "complexity": 0,
+      "issues": [],
+      "quality_score": 100.0,
+      "hash": "a4c7d054d2eb1bbf",
+      "last_checked": "2026-03-05T23:06:15.726850+00:00"
+    },
+    {
+      "path": "C:\\Users\\Admn\\Desktop\\NEXO_SOBERANO\\.tmp_run_sync_drive.py",
+      "lines": 33,
+      "functions": 0,
+      "classes": 0,
+      "complexity": 0,
+      "issues": [],
+      "quality_score": 100.0,
+      "hash": "f27c0760600a31dc",
+      "last_checked": "2026-03-05T23:06:15.727052+00:00"
+    },
+    {
+      "path": "C:\\Users\\Admn\\Desktop\\NEXO_SOBERANO\\50_MEJORAS_UX.py",
+      "lines": 402,
+      "functions": 0,
+      "classes": 0,
+      "complexity": 0,
+      "issues": [
+        {
+          "file": "C:\\Users\\Admn\\Desktop\\NEXO_SOBERANO\\50_MEJORAS_UX.py",
+          "line": 303,
+          "col": 0,
+          "severity": "low",
+          "category": "performance",
+          "code": "PF004",
+          "message": "Variable global - prefer funciones puras",
+          "suggestion": "Revisar y refactorizar según buenas prácticas",
+          "auto_fixable": false,
+          "fixed": false
+        }
+      ],
+      "quality_score": 99.0,
+      "hash": "69f3eac2db7e5107",
+      "last_checked": "2026-03-05T23:06:15.731575+00:00"
+    },
+    {
+      "path": "C:\\Users\\Admn\\Desktop\\NEXO_SOBERANO\\admin_dashboard.html",
+      "lines": 418,
+      "functions": 0,
+      "classes": 0,
+      "complexity": 0,
+      "issues": [
+        {
+          "file": "C:\\Users\\Admn\\Desktop\\NEXO_SOBERANO\\admin_dashboard.html",
+          "line": 379,
+          "col": 0,
+          "severity": "high",
+          "category": "style",
+          "code": "HT005",
+          "message": "innerHTML puede causar XSS",
+          "suggestion": "Código HT005: revisar y actualizar",
+          "auto_fixable": false,
+          "fixed": false
+        },
+        {
+          "file": "C:\\Users\\Admn\\Desktop\\NEXO_SOBERANO\\admin_dashboard.html",
+          "line": 373,
+          "col": 0,
+          "severity": "info",
+          "category": "style",
+          "code": "HT008",
+          "message": "console.log en producción",
+          "suggestion": "Código HT008: revisar y actualizar",
+          "auto_fixable": true,
+          "fixed": false
+        }
+      ],
+      "quality_score": 94,
+      "hash": "ba24722bedf5d719",
+      "last_checked": "2026-03-05T23:06:15.731754+00:00"
+    },
+    {
+      "path": "C:\\Users\\Admn\\Desktop\\NEXO_SOBERANO\\agente_postulaciones\\ai_router.py",
+      "lines": 156,
+      "functions": 6,
+      "classes": 0,
+      "complexity": 15,
+      "issues": [],
+      "quality_score": 100.0,
+      "hash": "9f9bcd9f99c1d2ba",
+      "last_checked": "2026-03-05T23:06:15.731827+00:00"
+    },
+    {
+      "path": "C:\\Users\\Admn\\Desktop\\NEXO_SOBERANO\\agente_postulaciones\\config.py",
+      "lines": 97,
+      "functions": 1,
+      "classes": 0,
+      "complexity": 4,
+      "issues": [
+        {
+          "file": "C:\\Users\\Admn\\Desktop\\NEXO_SOBERANO\\agente_postulaciones\\config.py",
+          "line": 92,
+          "col": 0,
+          "severity": "low",
+          "category": "style",
+          "code": "ST002",
+          "message": "except Exception muy amplio",
+          "suggestion": "Revisar y refactorizar según buenas prácticas",
+          "auto_fixable": false,
+          "fixed": false
+        },
+        {
+          "file": "C:\\Users\\Admn\\Desktop\\NEXO_SOBERANO\\agente_postulaciones\\config.py",
+          "line": 93,
+          "col": 0,
+          "severity": "info",
+          "category": "style",
+          "code": "ST007",
+          "message": "pass innecesario",
+          "suggestion": "Revisar y refactorizar según buenas prácticas",
+          "auto_fixable": true,
+          "fixed": false
+        }
+      ],
+      "quality_score": 98.8,
+      "hash": "9056882e1bec594b",
+      "last_checked": "2026-03-05T23:06:15.733140+00:00"
+    },
+    {
+      "path": "C:\\Users\\Admn\\Desktop\\NEXO_SOBERANO\\agente_postulaciones\\evaluador_ia.py",
+      "lines": 26,
+      "functions": 1,
+      "classes": 0,
+      "complexity": 0,
+      "issues": [],
+      "quality_score": 100.0,
+      "hash": "5c036ad4538d37c2",
+      "last_checked": "2026-03-05T23:06:15.740515+00:00"
+    },
+    {
+      "path": "C:\\Users\\Admn\\Desktop\\NEXO_SOBERANO\\agente_postulaciones\\filtro.py",
+      "lines": 61,
+      "functions": 3,
+      "classes": 0,
+      "complexity": 11,
+      "issues": [],
+      "quality_score": 100.0,
+      "hash": "36bb5c40cf5f6fe7",
+      "last_checked": "2026-03-05T23:06:15.742118+00:00"
+    },
+    {
+      "path": "C:\\Users\\Admn\\Desktop\\NEXO_SOBERANO\\agente_postulaciones\\postulador.py",
+      "lines": 74,
+      "functions": 1,
+      "classes": 0,
+      "complexity": 8,
+      "issues": [
+        {
+          "file": "C:\\Users\\Admn\\Desktop\\NEXO_SOBERANO\\agente_postulaciones\\postulador.py",
+          "line": 31,
+          "col": 120,
+          "severity": "info",
+          "category": "style",
+          "code": "ST008",
+          "message": "Línea demasiado larga (134 chars)",
+          "suggestion": "Dividir en múltiples líneas (PEP8: max 120 chars)",
+          "auto_fixable": false,
+          "fixed": false
+        }
+      ],
+      "quality_score": 99.8,
+      "hash": "b4ee2405d710b771",
+      "last_checked": "2026-03-05T23:06:15.750917+00:00"
+    },
+    {
+      "path": "C:\\Users\\Admn\\Desktop\\NEXO_SOBERANO\\agente_postulaciones\\main.py",
+      "lines": 249,
+      "functions": 4,
+      "classes": 0,
+      "complexity": 16,
+      "issues": [
+        {
+          "file": "C:\\Users\\Admn\\Desktop\\NEXO_SOBERANO\\agente_postulaciones\\main.py",
+          "line": 174,
+          "col": 0,
+          "severity": "low",
+          "category": "style",
+          "code": "ST002",
+          "message": "except Exception muy amplio",
+          "suggestion": "Revisar y refactorizar según buenas prácticas",
+          "auto_fixable": false,
+          "fixed": false
+        },
+        {
+          "file": "C:\\Users\\Admn\\Desktop\\NEXO_SOBERANO\\agente_postulaciones\\main.py",
+          "line": 33,
+          "col": 0,
+          "severity": "medium",
+          "category": "complexity",
+          "code": "CX001",
+          "message": "Función 'run_cycle' muy larga (133 líneas)",
+          "suggestion": "Dividir en funciones más pequeñas (máx 80 líneas)",
+          "auto_fixable": false,
+          "fixed": false
+        }
+      ],
+      "quality_score": 95.0,
+      "hash": "417561945eed2b44",
+      "last_checked": "2026-03-05T23:06:15.746973+00:00"
+    },
+    {
+      "path": "C:\\Users\\Admn\\Desktop\\NEXO_SOBERANO\\agente_postulaciones\\notificacion.py",
+      "lines": 20,
+      "functions": 1,
+      "classes": 0,
+      "complexity": 2,
+      "issues": [
+        {
+          "file": "C:\\Users\\Admn\\Desktop\\NEXO_SOBERANO\\agente_postulaciones\\notificacion.py",
+          "line": 19,
+          "col": 0,
+          "severity": "low",
+          "category": "style",
+          "code": "ST002",
+          "message": "except Exception muy amplio",
+          "suggestion": "Revisar y refactorizar según buenas prácticas",
+          "auto_fixable": false,
+          "fixed": false
+        }
+      ],
+      "quality_score": 99.0,
+      "hash": "cbd54f8ebbea137b",
+      "last_checked": "2026-03-05T23:06:15.750255+00:00"
+    },
+    {
+      "path": "C:\\Users\\Admn\\Desktop\\NEXO_SOBERANO\\agente_postulaciones\\registro.py",
+      "lines": 139,
+      "functions": 8,
+      "classes": 0,
+      "complexity": 18,
+      "issues": [
+        {
+          "file": "C:\\Users\\Admn\\Desktop\\NEXO_SOBERANO\\agente_postulaciones\\registro.py",
+          "line": 16,
+          "col": 0,
+          "severity": "low",
+          "category": "style",
+          "code": "ST002",
+          "message": "except Exception muy amplio",
+          "suggestion": "Revisar y refactorizar según buenas prácticas",
+          "auto_fixable": false,
+          "fixed": false
+        },
+        {
+          "file": "C:\\Users\\Admn\\Desktop\\NEXO_SOBERANO\\agente_postulaciones\\registro.py",
+          "line": 93,
+          "col": 0,
+          "severity": "low",
+          "category": "style",
+          "code": "ST002",
+          "message": "except Exception muy amplio",
+          "suggestion": "Revisar y refactorizar según buenas prácticas",
+          "auto_fixable": false,
+          "fixed": false
+        },
+        {
+          "file": "C:\\Users\\Admn\\Desktop\\NEXO_SOBERANO\\agente_postulaciones\\registro.py",
+          "line": 106,
+          "col": 0,
+          "severity": "low",
+          "category": "style",
+          "code": "ST002",
+          "message": "except Exception muy amplio",
+          "suggestion": "Revisar y refactorizar según buenas prácticas",
+          "auto_fixable": false,
+          "fixed": false
+        },
+        {
+          "file": "C:\\Users\\Admn\\Desktop\\NEXO_SOBERANO\\agente_postulaciones\\registro.py",
+          "line": 121,
+          "col": 0,
+          "severity": "low",
+          "category": "style",
+          "code": "ST002",
+          "message": "except Exception muy amplio",
+          "suggestion": "Revisar y refactorizar según buenas prácticas",
+          "auto_fixable": false,
+          "fixed": false
+        },
+        {
+          "file": "C:\\Users\\Admn\\Desktop\\NEXO_SOBERANO\\agente_postulaciones\\registro.py",
+          "line": 133,
+          "col": 0,
+          "severity": "low",
+          "category": "style",
+          "code": "ST002",
+          "message": "except Exception muy amplio",
+          "suggestion": "Revisar y refactorizar según buenas prácticas",
+          "auto_fixable": false,
+          "fixed": false
+        },
+        {
+          "file": "C:\\Users\\Admn\\Desktop\\NEXO_SOBERANO\\agente_postulaciones\\registro.py",
+          "line": 138,
+          "col": 0,
+          "severity": "low",
+          "category": "style",
+          "code": "ST002",
+          "message": "except Exception muy amplio",
+          "suggestion": "Revisar y refactorizar según buenas prácticas",
+          "auto_fixable": false,
+          "fixed": false
+        },
+        {
+          "file": "C:\\Users\\Admn\\Desktop\\NEXO_SOBERANO\\agente_postulaciones\\registro.py",
+          "line": 107,
+          "col": 0,
+          "severity": "info",
+          "category": "style",
+          "code": "ST007",
+          "message": "pass innecesario",
+          "suggestion": "Revisar y refactorizar según buenas prácticas",
+          "auto_fixable": true,
+          "fixed": false
+        },
+        {
+          "file": "C:\\Users\\Admn\\Desktop\\NEXO_SOBERANO\\agente_postulaciones\\registro.py",
+          "line": 134,
+          "col": 0,
+          "severity": "info",
+          "category": "style",
+          "code": "ST007",
+          "message": "pass innecesario",
+          "suggestion": "Revisar y refactorizar según buenas prácticas",
+          "auto_fixable": true,
+          "fixed": false
+        }
+      ],
+      "quality_score": 93.6,
+      "hash": "a842f3e92ec9728f",
+      "last_checked": "2026-03-05T23:06:15.753300+00:00"
+    },
+    {
+      "path": "C:\\Users\\Admn\\Desktop\\NEXO_SOBERANO\\AI-INTELLIGENCE-SYSTEM\\scripts\\notebooklm_bridge_api.py",
+      "lines": 182,
+      "functions": 12,
+      "classes": 5,
+      "complexity": 3,
+      "issues": [],
+      "quality_score": 100.0,
+      "hash": "125509bb3fefde81",
+      "last_checked": "2026-03-05T23:06:15.762038+00:00"
+    },
+    {
+      "path": "C:\\Users\\Admn\\Desktop\\NEXO_SOBERANO\\agente_postulaciones\\scraper.py",
+      "lines": 76,
+      "functions": 3,
+      "classes": 1,
+      "complexity": 3,
+      "issues": [],
+      "quality_score": 100.0,
+      "hash": "ec62c164f1930a92",
+      "last_checked": "2026-03-05T23:06:15.761318+00:00"
+    },
+    {
+      "path": "C:\\Users\\Admn\\Desktop\\NEXO_SOBERANO\\AI-INTELLIGENCE-SYSTEM\\scripts\\run_mass_video_system.py",
+      "lines": 280,
+      "functions": 16,
+      "classes": 1,
+      "complexity": 14,
+      "issues": [
+        {
+          "file": "C:\\Users\\Admn\\Desktop\\NEXO_SOBERANO\\AI-INTELLIGENCE-SYSTEM\\scripts\\run_mass_video_system.py",
+          "line": 175,
+          "col": 0,
+          "severity": "critical",
+          "category": "security",
+          "code": "SV007",
+          "message": "Posible SQL injection con f-string",
+          "suggestion": "Usar ORM o parámetros: cursor.execute(query, params)",
+          "auto_fixable": false,
+          "fixed": false
+        },
+        {
+          "file": "C:\\Users\\Admn\\Desktop\\NEXO_SOBERANO\\AI-INTELLIGENCE-SYSTEM\\scripts\\run_mass_video_system.py",
+          "line": 226,
+          "col": 120,
+          "severity": "info",
+          "category": "style",
+          "code": "ST008",
+          "message": "Línea demasiado larga (121 chars)",
+          "suggestion": "Dividir en múltiples líneas (PEP8: max 120 chars)",
+          "auto_fixable": false,
+          "fixed": false
+        }
+      ],
+      "quality_score": 84.8,
+      "hash": "82e41c419125ae84",
+      "last_checked": "2026-03-05T23:06:15.762763+00:00"
+    },
+    {
+      "path": "C:\\Users\\Admn\\Desktop\\NEXO_SOBERANO\\AI-INTELLIGENCE-SYSTEM\\scripts\\run_nexo_local_video_pipeline.py",
+      "lines": 321,
+      "functions": 13,
+      "classes": 0,
+      "complexity": 13,
+      "issues": [
+        {
+          "file": "C:\\Users\\Admn\\Desktop\\NEXO_SOBERANO\\AI-INTELLIGENCE-SYSTEM\\scripts\\run_nexo_local_video_pipeline.py",
+          "line": 77,
+          "col": 0,
+          "severity": "info",
+          "category": "performance",
+          "code": "PF003",
+          "message": "Leer archivo completo - considerar streaming",
+          "suggestion": "Revisar y refactorizar según buenas prácticas",
+          "auto_fixable": false,
+          "fixed": false
+        },
+        {
+          "file": "C:\\Users\\Admn\\Desktop\\NEXO_SOBERANO\\AI-INTELLIGENCE-SYSTEM\\scripts\\run_nexo_local_video_pipeline.py",
+          "line": 84,
+          "col": 0,
+          "severity": "info",
+          "category": "performance",
+          "code": "PF003",
+          "message": "Leer archivo completo - considerar streaming",
+          "suggestion": "Revisar y refactorizar según buenas prácticas",
+          "auto_fixable": false,
+          "fixed": false
+        },
+        {
+          "file": "C:\\Users\\Admn\\Desktop\\NEXO_SOBERANO\\AI-INTELLIGENCE-SYSTEM\\scripts\\run_nexo_local_video_pipeline.py",
+          "line": 306,
+          "col": 0,
+          "severity": "info",
+          "category": "style",
+          "code": "ST003",
+          "message": "log.info() - usar logging",
+          "suggestion": "Usar logging.info() en vez de print()",
+          "auto_fixable": true,
+          "fixed": false
+        },
+        {
+          "file": "C:\\Users\\Admn\\Desktop\\NEXO_SOBERANO\\AI-INTELLIGENCE-SYSTEM\\scripts\\run_nexo_local_video_pipeline.py",
+          "line": 124,
+          "col": 0,
+          "severity": "medium",
+          "category": "complexity",
+          "code": "CX001",
+          "message": "Función 'generate_artifacts' muy larga (119 líneas)",
+          "suggestion": "Dividir en funciones más pequeñas (máx 80 líneas)",
+          "auto_fixable": false,
+          "fixed": false
+        }
+      ],
+      "quality_score": 95.39999999999999,
+      "hash": "23d57d8bd6776d88",
+      "last_checked": "2026-03-05T23:06:15.766620+00:00"
+    },
+    {
+      "path": "C:\\Users\\Admn\\Desktop\\NEXO_SOBERANO\\api\\main.py",
+      "lines": 58,
+      "functions": 0,
+      "classes": 0,
+      "complexity": 5,
+      "issues": [],
+      "quality_score": 100.0,
+      "hash": "a8819c049e83dfc6",
+      "last_checked": "2026-03-05T23:06:15.773869+00:00"
+    },
+    {
+      "path": "C:\\Users\\Admn\\Desktop\\NEXO_SOBERANO\\api\\__init__.py",
+      "lines": 0,
+      "functions": 0,
+      "classes": 0,
+      "complexity": 0,
+      "issues": [],
+      "quality_score": 100.0,
+      "hash": "e3b0c44298fc1c14",
+      "last_checked": "2026-03-05T23:06:15.771682+00:00"
+    },
+    {
+      "path": "C:\\Users\\Admn\\Desktop\\NEXO_SOBERANO\\api\\routes\\__init__.py",
+      "lines": 0,
+      "functions": 0,
+      "classes": 0,
+      "complexity": 0,
+      "issues": [],
+      "quality_score": 100.0,
+      "hash": "e3b0c44298fc1c14",
+      "last_checked": "2026-03-05T23:06:15.781723+00:00"
+    },
+    {
+      "path": "C:\\Users\\Admn\\Desktop\\NEXO_SOBERANO\\api\\routes\\health.py",
+      "lines": 28,
+      "functions": 2,
+      "classes": 0,
+      "complexity": 0,
+      "issues": [],
+      "quality_score": 100.0,
+      "hash": "da6decb8d1364851",
+      "last_checked": "2026-03-05T23:06:15.792233+00:00"
+    },
+    {
+      "path": "C:\\Users\\Admn\\Desktop\\NEXO_SOBERANO\\api\\routes\\chat.py",
+      "lines": 51,
+      "functions": 2,
+      "classes": 2,
+      "complexity": 2,
+      "issues": [],
+      "quality_score": 100.0,
+      "hash": "4a1e08dd6e94c6dc",
+      "last_checked": "2026-03-05T23:06:15.790808+00:00"
+    },
+    {
+      "path": "C:\\Users\\Admn\\Desktop\\NEXO_SOBERANO\\api_puente.py",
+      "lines": 76,
+      "functions": 1,
+      "classes": 1,
+      "complexity": 2,
+      "issues": [
+        {
+          "file": "C:\\Users\\Admn\\Desktop\\NEXO_SOBERANO\\api_puente.py",
+          "line": 24,
+          "col": 120,
+          "severity": "info",
+          "category": "style",
+          "code": "ST008",
+          "message": "Línea demasiado larga (180 chars)",
+          "suggestion": "Dividir en múltiples líneas (PEP8: max 120 chars)",
+          "auto_fixable": false,
+          "fixed": false
+        }
+      ],
+      "quality_score": 99.8,
+      "hash": "4202790cc7b1b4aa",
+      "last_checked": "2026-03-05T23:06:15.792388+00:00"
+    },
+    {
+      "path": "C:\\Users\\Admn\\Desktop\\NEXO_SOBERANO\\arquitecto_v2.py",
+      "lines": 25,
+      "functions": 1,
+      "classes": 0,
+      "complexity": 5,
+      "issues": [],
+      "quality_score": 100.0,
+      "hash": "7672bf25ae7d511d",
+      "last_checked": "2026-03-05T23:06:15.792590+00:00"
+    },
+    {
+      "path": "C:\\Users\\Admn\\Desktop\\NEXO_SOBERANO\\asistente_nexo.py",
+      "lines": 8,
+      "functions": 0,
+      "classes": 0,
+      "complexity": 1,
+      "issues": [],
+      "quality_score": 100.0,
+      "hash": "2a36a978189d95da",
+      "last_checked": "2026-03-05T23:06:15.793249+00:00"
+    },
+    {
+      "path": "C:\\Users\\Admn\\Desktop\\NEXO_SOBERANO\\backend\\__init__.py",
+      "lines": 1,
+      "functions": 0,
+      "classes": 0,
+      "complexity": 0,
+      "issues": [],
+      "quality_score": 100.0,
+      "hash": "08d38db98a6add66",
+      "last_checked": "2026-03-05T23:06:15.794540+00:00"
+    }
+  ]
+}

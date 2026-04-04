@@ -1,0 +1,34 @@
+{
+  "timestamp": "2026-03-02T20:24:07.452168+00:00",
+  "checks": {
+    "adb_devices": {
+      "ok": true,
+      "stdout": "List of devices attached\n45KZZHE6JB6TJFIJ\tdevice",
+      "stderr": ""
+    },
+    "battery": {
+      "ok": true,
+      "stdout": "Current Battery Service state:\n  AC powered: false\n  USB powered: true\n  Wireless powered: false\n  Dock powered: false\n  Max charging current: 0\n Time when the latest updated value of the Max charging current was sent via battery changed broadcast: +10s216ms\n  Max charging voltage: 0\n  Charge counter: 1515000\n  status: 2\n  health: 2\n  present: true\n  level: 33\n  scale: 100\n  voltage: 3784\n Time when the latest updated value of the voltage was sent via battery changed broadcast: +1d22h6m36s53ms\n The last voltage value sent via the battery changed broadcast: 3791\n  temperature: 398\n  technology: Li-poly\n  Charging state: 0\n  Charging policy: 0\n  Capacity level: 3\nMiuiBatteryService first usage time:\n  mSetBatteryUsageTimeCount=0\n  mNtpTime=-1\n  mParseNtpTime=",
+      "stderr": ""
+    },
+    "thermal": {
+      "ok": true,
+      "snippet": "IsStatusOverride: false\nThermalEventListeners:\n\tcallbacks: 4\n\tkilled: false\n\tbroadcasts count: -1\nThermalStatusListeners:\n\tcallbacks: 12\n\tkilled: false\n\tbroadcasts count: -1\nThermal Status: 0\nCached temperatures:\n\tTemperature{mValue=87.912, mType=0, mName=CPU, mStatus=3}\n\tTemperature{mValue=87.912, mType=1, mName=GPU, mStatus=3}\n\tTemperature{mValue=87.912, mType=9, mName=NPU, mStatus=3}\n\tTemperature{mValue=87.547, mType=13, mName=SOC, mStatus=3}\n\tTemperature{mValue=87.547, mType=10, mName=TPU, mStatus=3}\n\tTemperature{mValue=32.8, mType=3, mName=SKIN, mStatus=0}\n\tTemperature{mValue=32.8, mType=2, mName=BATTERY, mStatus=0}\n\tTemperature{mValue=44.938, mType=5, mName=POWER_AMPLIFIER, mStatus=0}\nHAL Ready: true\nHAL connection:\n\tThermalHAL AIDL 3  connected: yes\nCurrent temperatures from HAL:\n\tTemperature{mValue=61.613, mType=0, mName=CPU, mStatus=0}\n\tTemperature{mValue=61.613, mType=1, mName=GPU, mStatus=0}\n\tTemperature{mValue=39.8, mType=2, mName=BATTERY, mStatus=0}\n\tTemperature{mValue=39.8, mType=3, mName=SKIN, mStatus=0}\n\tTemperature{mValue=46.602, mType=5, mName=POWER_AMPLIFIER, mStatus=0}\n\tTemperature{mValue=61.613, mType=9, mName=NPU, mStatus=0}\n\tTemperature{mValue=61.613, mType=1"
+    },
+    "backend_root": {
+      "ok": true,
+      "status": 200,
+      "body": "{\"status\":\"NEXO_CORE activo\",\"version\":\"3.0.0\",\"docs\":\"/api/docs\",\"control_center\":\"/control-center\"}"
+    },
+    "backend_health": {
+      "ok": true,
+      "status": 200,
+      "body": "{\"status\":\"operational\",\"uptime_seconds\":21487,\"state\":{\"stream_active\":false,\"obs_connected\":false,\"discord_connected\":false,\"ai_requests_today\":0,\"last_error\":null,\"last_error_at\":null,\"current_scene\":null,\"uptime_start\":\"2026-03-02T14:25:58.085323+00:00\"}}"
+    },
+    "stream_health": {
+      "ok": true,
+      "status": 200,
+      "body": "{\"active\":false,\"obs_connected\":false,\"discord_connected\":false,\"current_scene\":null}"
+    }
+  }
+}

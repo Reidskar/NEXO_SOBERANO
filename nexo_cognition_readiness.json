@@ -1,0 +1,100 @@
+{
+  "generated_at": "2026-03-06T03:34:18.465361+00:00",
+  "global_score": 75.4,
+  "critical_blockers": [
+    "Falta OPENAI_API_KEY",
+    "Falta XAI_API_KEY",
+    "Falta NEXO_ALERT_WEBHOOK"
+  ],
+  "capabilities": [
+    {
+      "name": "multi_ai_resilience",
+      "objective": "Alta disponibilidad cognitiva y fallback entre modelos",
+      "status": "ok",
+      "score": 50,
+      "blockers": [
+        "Falta OPENAI_API_KEY",
+        "Falta XAI_API_KEY"
+      ],
+      "next_actions": [
+        "Configurar OPENAI_API_KEY",
+        "Configurar XAI_API_KEY",
+        "Mantener Gemini/Claude como base de análisis"
+      ]
+    },
+    {
+      "name": "notebooklm_research_engine",
+      "objective": "Procesar corpus masivo (2TB) con RAG asistido",
+      "status": "ok",
+      "score": 85,
+      "blockers": [],
+      "next_actions": [
+        "Definir taxonomía de fuentes (geopolítica/economía/RRSS)",
+        "Cargar perfiles de personalidad por libreta",
+        "Programar resumen diario automático"
+      ]
+    },
+    {
+      "name": "rrss_mediation_and_alerts",
+      "objective": "Mediación de RRSS y alertas operativas",
+      "status": "degraded",
+      "score": 60,
+      "blockers": [
+        "Falta NEXO_ALERT_WEBHOOK"
+      ],
+      "next_actions": [
+        "Validar webhook de Discord en runtime",
+        "Unificar alertas de sync y war room",
+        "Añadir umbrales de ruido para evitar spam"
+      ]
+    },
+    {
+      "name": "youtube_operational_pipeline",
+      "objective": "Armado de videos, guiones y publicación asistida",
+      "status": "ok",
+      "score": 80,
+      "blockers": [],
+      "next_actions": [
+        "Conectar salida de NotebookLM a guion",
+        "Añadir plantilla de storytelling y CTA",
+        "Medir retención estimada por segmento"
+      ]
+    },
+    {
+      "name": "web_visual_agent",
+      "objective": "Operación web + visual con telemetría",
+      "status": "ok",
+      "score": 75,
+      "blockers": [],
+      "next_actions": [
+        "Si no usas OBS continuo, poner OBS_ENABLED=false",
+        "Mantener AI visual guard con SLO de frescura",
+        "Registrar errores visuales en tablero diario"
+      ]
+    },
+    {
+      "name": "secure_code_evolution",
+      "objective": "Evolución de código segura y orientada a objetivos",
+      "status": "ok",
+      "score": 88,
+      "blockers": [],
+      "next_actions": [
+        "Ejecutar scan/fix diario con reporte",
+        "Bloquear deploy con issues críticos",
+        "Alinear roadmap técnico con KPI de negocio"
+      ]
+    },
+    {
+      "name": "metacognition_core",
+      "objective": "Razonamiento causal, escenarios y autocrítica",
+      "status": "ok",
+      "score": 90,
+      "blockers": [],
+      "next_actions": [
+        "Correr brief diario por dominios (geo/econ/social)",
+        "Medir precisión de hipótesis semanal",
+        "Refinar prompts por fallos observados"
+      ]
+    }
+  ]
+}

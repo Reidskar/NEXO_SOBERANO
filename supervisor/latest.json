@@ -1,0 +1,89 @@
+{
+  "timestamp": "2026-03-18T04:07:53.542616+00:00",
+  "files_scanned": 4705,
+  "total_issues": 2962,
+  "critical": 11,
+  "high": 385,
+  "medium": 355,
+  "low": 337,
+  "auto_fixed": 0,
+  "quality_score": 98.95,
+  "improvements": [],
+  "metrics": {
+    "scan_limit": 0,
+    "files_total_collected": 4705,
+    "scan_truncated": false,
+    "analysis_errors": 0,
+    "files_by_score": {
+      "excellent(90-100)": 4582,
+      "good(70-90)": 92,
+      "fair(50-70)": 17,
+      "poor(<50)": 14
+    },
+    "top_issues": [
+      {
+        "code": "ST008",
+        "count": 824,
+        "message": "Línea demasiado larga (133 chars)"
+      },
+      {
+        "code": "HT008",
+        "count": 484,
+        "message": "console.log en producción"
+      },
+      {
+        "code": "HT005",
+        "count": 359,
+        "message": "innerHTML puede causar XSS"
+      },
+      {
+        "code": "ST003",
+        "count": 277,
+        "message": "log.info() - usar logging"
+      },
+      {
+        "code": "ST002",
+        "count": 242,
+        "message": "except Exception muy amplio"
+      },
+      {
+        "code": "ST007",
+        "count": 202,
+        "message": "pass innecesario"
+      },
+      {
+        "code": "CX001",
+        "count": 163,
+        "message": "Función 'get_google_credentials' muy larga (120 líneas)"
+      },
+      {
+        "code": "ST001",
+        "count": 162,
+        "message": "except desnudo - capturar excepciones específicas"
+      },
+      {
+        "code": "PF004",
+        "count": 95,
+        "message": "Variable global - prefer funciones puras"
+      },
+      {
+        "code": "PF003",
+        "count": 49,
+        "message": "Leer archivo completo - considerar streaming"
+      }
+    ],
+    "files_with_critical": [
+      "C:\\Users\\Admn\\Desktop\\NEXO_SOBERANO\\camilo_el_bkn\\camilo_extract\\START_HERE.py",
+      "C:\\Users\\Admn\\Desktop\\NEXO_SOBERANO\\camilo_el_bkn\\camilo_extract\\v2_snapshot\\START_HERE.py",
+      "C:\\Users\\Admn\\Desktop\\NEXO_SOBERANO\\camilo_el_bkn\\nexo_v2.py",
+      "C:\\Users\\Admn\\Desktop\\NEXO_SOBERANO\\camilo_el_bkn\\scan_dbs.py",
+      "C:\\Users\\Admn\\Desktop\\NEXO_SOBERANO\\camilo_el_bkn\\scripts\\validate_migration.py",
+      "C:\\Users\\Admn\\Desktop\\NEXO_SOBERANO\\camilo_extract\\START_HERE.py",
+      "C:\\Users\\Admn\\Desktop\\NEXO_SOBERANO\\camilo_extract\\v2_snapshot\\START_HERE.py",
+      "C:\\Users\\Admn\\Desktop\\NEXO_SOBERANO\\kindle_sync\\__init__.py",
+      "C:\\Users\\Admn\\Desktop\\NEXO_SOBERANO\\nexo_v2.py",
+      "C:\\Users\\Admn\\Desktop\\NEXO_SOBERANO\\scan_dbs.py",
+      "C:\\Users\\Admn\\Desktop\\NEXO_SOBERANO\\script_cero_vacios.py"
+    ]
+  }
+}
