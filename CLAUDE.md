@@ -118,3 +118,49 @@ NEXO_SOBERANO/
 - **Railway**: `railway.toml` + `Procfile`. Variables en Railway dashboard.
 - **Cloudflare Tunnel**: `cloudflared` expone el backend local a `elanarcocapital.com`.
 - **Frontend build**: `cd frontend && npm run build` → sirve desde `frontend/dist/` (montado en FastAPI como StaticFiles).
+
+---
+
+## Skills y comandos disponibles
+
+Integrado de [affaan-m/everything-claude-code](https://github.com/affaan-m/everything-claude-code).
+
+### Slash commands (`.claude/commands/`)
+
+| Comando | Cuándo usar |
+|---|---|
+| `/security-review` | Antes de cada commit — escanea secretos, auth guards, bandit |
+| `/feature-development` | Al implementar una nueva feature completa |
+| `/osint-investigate` | Lanzar investigación OSINT BigBrother + Gemma 4 |
+
+### Skills (`.claude/skills/`)
+
+| Archivo | Cuándo se activa |
+|---|---|
+| `security-review.md` | Al tocar `backend/auth/`, middlewares, nuevos endpoints |
+| `backend-patterns.md` | Al diseñar nuevas rutas o servicios FastAPI |
+
+### Rules (`.claude/rules/`)
+
+| Regla | Ámbito |
+|---|---|
+| `python-security.md` | Todos los `.py` — siempre activa |
+| `python-patterns.md` | Todos los `.py` — patrones async, Pydantic, servicios |
+
+### MCP Servers (`.mcp.json`)
+
+| Servidor | Uso |
+|---|---|
+| `memory` | Memoria persistente entre sesiones |
+| `sequential-thinking` | Razonamiento paso a paso en análisis complejos |
+| `context7` | Docs actualizadas de FastAPI/React/Qdrant |
+| `github` | Gestión del repo Reidskar/NEXO_SOBERANO |
+| `playwright` | Web scraping para OSINT |
+
+### Seguridad pre-commit
+```bash
+# Escaneo rápido
+grep -rn "sk-\|password\s*=\s*['\"]" backend/ NEXO_CORE/ --include="*.py"
+.venv/Scripts/python.exe -m bandit -r backend/ NEXO_CORE/ -ll -q
+git diff --cached --name-only | grep -E "\.env$|auth/.*\.json"
+```
