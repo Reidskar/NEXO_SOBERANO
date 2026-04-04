@@ -16,13 +16,24 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&family=Syne:wght@600;700;800&display=swap" rel="stylesheet" />
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%23030712' stroke='%2300e5ff' stroke-width='2'/%3E%3Ccircle cx='16' cy='16' r='5' fill='%2300e5ff'/%3E%3C/svg%3E" />
-  <script type="module" crossorigin src="/assets/index-9b84c458.js"></script>
-  <link rel="stylesheet" href="/assets/index-d343bd3a.css">
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="ElAnarcocapital" />
+    <meta name="theme-color" content="#00e5ff" />
+  <script type="module" crossorigin src="/assets/index-c96eaa22.js"></script>
+  <link rel="stylesheet" href="/assets/index-57f00686.css">
 </head>
 
   <body>
     <div id="root"></div>
     
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js'));
+      }
+    </script>
   </body>
 </html>
 <!-- Vercel Build Trigger (Production Root Enforcement) -->
