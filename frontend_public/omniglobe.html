@@ -3,19 +3,25 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>OMNIGLOBE — EL ANARCOCAPITAL</title>
-<script src="https://unpkg.com/globe.gl/dist/globe.gl.min.js"></script>
+<title>NEXO INTELLIGENCE — OMNIGLOBE</title>
+<script src="https://unpkg.com/globe.gl@2/dist/globe.gl.min.js"></script>
 <script src="/nexo_config.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{background:#080c14;color:#e2e8f0;font-family:'Courier New',monospace;overflow:hidden;height:100vh}
-#header{display:flex;align-items:center;justify-content:space-between;padding:8px 16px;background:rgba(4,8,16,.97);border-bottom:1px solid #1a2540;height:44px;position:fixed;top:0;left:0;right:0;z-index:100}
-.logo{font-size:13px;color:#00e5ff;font-weight:700;letter-spacing:.1em}
-.logo span{color:#475569;font-size:10px;margin-left:8px;font-weight:400}
+body{background:#080c14;color:#e2e8f0;font-family:'Space Mono','Courier New',monospace;overflow:hidden;height:100vh}
+#header{display:flex;align-items:center;justify-content:space-between;padding:8px 16px;background:rgba(4,8,16,.98);border-bottom:1px solid #1a2540;height:48px;position:fixed;top:0;left:0;right:0;z-index:100;box-shadow:0 1px 20px rgba(0,229,255,.06)}
+.logo{font-size:13px;color:#00e5ff;font-weight:700;letter-spacing:.12em;text-shadow:0 0 16px rgba(0,229,255,.4)}
+.logo span{color:#334155;font-size:10px;margin-left:10px;font-weight:400;letter-spacing:.06em}
+.header-right{display:flex;align-items:center;gap:12px}
+#utc-clock{font-size:11px;color:#475569;letter-spacing:.08em;font-variant-numeric:tabular-nums}
+#ws-status{width:8px;height:8px;border-radius:50%;background:#ef4444;box-shadow:0 0 6px #ef4444;transition:background .4s,box-shadow .4s}
+#ws-status.connected{background:#10b981;box-shadow:0 0 8px #10b981}
+#ws-status.polling{background:#f59e0b;box-shadow:0 0 6px #f59e0b}
 .nav{display:flex;gap:6px}
 .nav a{font-size:10px;color:#475569;text-decoration:none;padding:3px 9px;border:1px solid #1a2540;border-radius:4px;letter-spacing:.06em;transition:all .15s}
 .nav a:hover{color:#00e5ff;border-color:#00e5ff40}
-#globe-wrap{position:fixed;top:44px;left:0;right:0;bottom:32px}
+.nav a.active{color:#00e5ff;border-color:#00e5ff60}
+#globe-wrap{position:fixed;top:48px;left:0;right:0;bottom:32px}
 #globe-container{width:100%;height:100%}
 #footer{position:fixed;bottom:0;left:0;right:0;height:32px;background:rgba(4,8,16,.97);border-top:1px solid #1a2540;overflow:hidden;display:flex;align-items:center}
 .ticker-wrap{white-space:nowrap;animation:ticker 60s linear infinite;font-size:11px;color:#334155}
@@ -24,11 +30,11 @@ body{background:#080c14;color:#e2e8f0;font-family:'Courier New',monospace;overfl
 .ticker-wrap .ok{color:#10b981}
 .ticker-wrap .warn{color:#f59e0b}
 @keyframes ticker{from{transform:translateX(100vw)}to{transform:translateX(-100%)}}
-#layers{position:fixed;top:56px;left:12px;z-index:50;display:flex;flex-direction:column;gap:5px}
+#layers{position:fixed;top:60px;left:12px;z-index:50;display:flex;flex-direction:column;gap:5px}
 .layer-btn{display:flex;align-items:center;gap:6px;background:rgba(13,20,33,.93);border-radius:6px;padding:5px 10px;cursor:pointer;font-size:11px;transition:all .2s;border:1px solid #1a2540;font-family:'Courier New',monospace}
 .layer-btn .dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
 .layer-btn .cnt{margin-left:auto;padding-left:8px;font-size:10px;color:#475569}
-#detail{position:fixed;top:56px;right:12px;z-index:50;background:rgba(13,20,33,.97);border:1px solid #1a2540;border-radius:10px;padding:14px 16px;width:270px;display:none;backdrop-filter:blur(8px);box-shadow:0 4px 32px rgba(0,0,0,.6)}
+#detail{position:fixed;top:60px;right:12px;z-index:50;background:rgba(13,20,33,.97);border:1px solid #1a2540;border-radius:10px;padding:14px 16px;width:270px;display:none;backdrop-filter:blur(8px);box-shadow:0 4px 32px rgba(0,0,0,.6)}
 #detail .d-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px}
 #detail .d-cat{font-size:11px;font-weight:700;letter-spacing:.05em}
 #detail .d-name{font-size:13px;color:#e2e8f0;font-weight:700;margin-top:3px;line-height:1.3}
@@ -46,20 +52,25 @@ body{background:#080c14;color:#e2e8f0;font-family:'Courier New',monospace;overfl
 </head>
 <body>
 <div id="header">
-  <div class="logo">◎ OMNIGLOBE <span>NEXO SOBERANO — LIVE INTELLIGENCE</span></div>
+  <div class="logo">◎ NEXO INTELLIGENCE <span>OMNIGLOBE — GEOSPATIAL SURVEILLANCE</span></div>
   <nav class="nav">
-    <a href="/">LANDING</a>
+    <a href="/">HOME</a>
+    <a href="/omniglobe" class="active">GLOBE</a>
     <a href="/control">DASHBOARD</a>
-    <a href="/control-center">CONTROL CENTER</a>
+    <a href="/control-center">WAR ROOM</a>
     <a href="/flowmap">FLOWMAP</a>
   </nav>
+  <div class="header-right">
+    <span id="utc-clock">--:--:-- UTC</span>
+    <div id="ws-status" title="Conexión en tiempo real"></div>
+  </div>
 </div>
 <div id="globe-wrap"><div id="globe-container"></div></div>
 <div id="layers">
   <button class="layer-btn" id="btn-vessels" onclick="toggleLayer('vessels')" style="color:#00e5ff;border-color:#00e5ff40"><span class="dot" style="background:#00e5ff"></span>⛵ Vessels<span class="cnt" id="cnt-vessels">15</span></button>
   <button class="layer-btn" id="btn-aircraft" onclick="toggleLayer('aircraft')" style="color:#f59e0b;border-color:#f59e0b40"><span class="dot" style="background:#f59e0b"></span>✈ Aircraft<span class="cnt" id="cnt-aircraft">8</span></button>
-  <button class="layer-btn" id="btn-events" onclick="toggleLayer('events')" style="color:#ef4444;border-color:#ef444440"><span class="dot" style="background:#ef4444"></span>⚠ Events<span class="cnt" id="cnt-events">8</span></button>
-  <button class="layer-btn" id="btn-arcs" onclick="toggleLayer('arcs')" style="color:#a78bfa;border-color:#a78bfa40"><span class="dot" style="background:#a78bfa"></span>↗ Flows<span class="cnt" id="cnt-arcs">6</span></button>
+  <button class="layer-btn" id="btn-events" onclick="toggleLayer('events')" style="color:#ef4444;border-color:#ef444440"><span class="dot" style="background:#ef4444"></span>⚠ Events<span class="cnt" id="cnt-events">15</span></button>
+  <button class="layer-btn" id="btn-arcs" onclick="toggleLayer('arcs')" style="color:#a78bfa;border-color:#a78bfa40"><span class="dot" style="background:#a78bfa"></span>↗ Flows<span class="cnt" id="cnt-arcs">8</span></button>
   <button class="layer-btn" id="btn-infra" onclick="toggleLayer('infra')" style="color:#f0abfc;border-color:#f0abfc40"><span class="dot" style="background:#f0abfc"></span>⚡ CritInfra<span class="cnt" id="cnt-infra">8</span></button>
 </div>
 <div id="detail">
@@ -72,7 +83,7 @@ body{background:#080c14;color:#e2e8f0;font-family:'Courier New',monospace;overfl
 <div id="counters">
   <div class="counter" style="color:#00e5ff">⛵ <b id="live-vessels">15</b> vessels</div>
   <div class="counter" style="color:#f59e0b">✈ <b id="live-aircraft">8</b> aircraft</div>
-  <div class="counter" style="color:#ef4444">⚠ <b id="live-events">8</b> events</div>
+  <div class="counter" style="color:#ef4444">⚠ <b id="live-events">15</b> events</div>
   <div class="counter" style="color:#f0abfc">⚡ <b id="live-infra-down">3</b> infra down</div>
 </div>
 <div id="narrative"><span style="opacity:.7;margin-right:8px">◈ NEXO</span><span id="narrative-text"></span></div>
@@ -126,7 +137,14 @@ const BASE_EVENTS=[
   {id:'e05',name:'ACTIVIDAD RF BALTICO',lat:58.50,lng:21.00,severity:'MODERATE',radiusDeg:.09,r:245,g:158,b:11,desc:'GPS spoofing. Afecta rutas aereas civiles en el Baltico.',period:1300},
   {id:'e06',name:'CRISIS SAHEL',lat:14.50,lng:1.50,severity:'MODERATE',radiusDeg:.11,r:245,g:158,b:11,desc:'Avance grupos armados Mali-Niger. MINUSMA retirada.',period:1400},
   {id:'e07',name:'CANAL DE SUEZ MONITOR',lat:30.60,lng:32.35,severity:'MONITOR',radiusDeg:.07,r:0,g:229,b:255,desc:'Trafico normal. Control reforzado post-conflicto Gaza.',period:1600},
-  {id:'e08',name:'MAR DE CHINA SUR FIERY',lat:9.55,lng:112.88,severity:'HIGH',radiusDeg:.08,r:249,g:115,b:22,desc:'Construccion instalaciones PLA en Fiery Cross Reef.',period:1050}
+  {id:'e08',name:'MAR DE CHINA SUR FIERY',lat:9.55,lng:112.88,severity:'HIGH',radiusDeg:.08,r:249,g:115,b:22,desc:'Construccion instalaciones PLA en Fiery Cross Reef.',period:1050},
+  {id:'e09',name:'ESTRECHO DE MALACA',lat:1.28,lng:103.8,severity:'MODERATE',radiusDeg:.07,r:245,g:158,b:11,desc:'25% del comercio mundial. Monitoreo antipiratería activo.',period:1400},
+  {id:'e10',name:'CANAL DE PANAMA',lat:9.07,lng:-79.7,severity:'MONITOR',radiusDeg:.06,r:0,g:229,b:255,desc:'Niveles Gatun bajos. Restriccion calado max 44 pies.',period:1700},
+  {id:'e11',name:'ESTRECHO DE BERING',lat:65.8,lng:-169.0,severity:'MODERATE',radiusDeg:.10,r:245,g:158,b:11,desc:'Ruta Artica Noreste. Actividad submarina detectada.',period:1200},
+  {id:'e12',name:'MAR ROJO — HUTHI',lat:14.5,lng:42.8,severity:'CRITICAL',radiusDeg:.12,r:239,g:68,b:68,desc:'Ataques hutíes a navegacion comercial. 80% rutas desviadas.',period:750},
+  {id:'e13',name:'CUERNO DE AFRICA',lat:11.5,lng:51.0,severity:'HIGH',radiusDeg:.09,r:249,g:115,b:22,desc:'Piratería somalí reactivada. Patrulla EUNAVFOR.',period:1100},
+  {id:'e14',name:'GIBRALTAR CHOKEPOINT',lat:35.97,lng:-5.47,severity:'MONITOR',radiusDeg:.05,r:0,g:229,b:255,desc:'Tráfico normal. Tensión UK-ES residual.',period:1800},
+  {id:'e15',name:'SAHEL OCCIDENTAL',lat:15.8,lng:-2.3,severity:'MODERATE',radiusDeg:.11,r:245,g:158,b:11,desc:'Burkina Faso: operaciones AQ-Sahel activas. 2.1M desplazados.',period:1350}
 ];
 const BASE_ARCS=[
   {id:'arc01',name:'Bloqueo combustible aviacion',startLat:26.58,startLng:56.50,endLat:51.9,endLng:4.5,colorStart:'#ef4444',colorEnd:'#f97316',stroke:.7,dash:.35,gap:.15,anim:1800},
@@ -134,7 +152,9 @@ const BASE_ARCS=[
   {id:'arc03',name:'Airlift OTAN Ramstein-Rzeszow',startLat:49.44,startLng:7.60,endLat:50.11,endLng:22.01,colorStart:'#a78bfa',colorEnd:'#60a5fa',stroke:.5,dash:.3,gap:.1,anim:1500},
   {id:'arc04',name:'Ruta logistica Beijing-Malacca',startLat:39.91,startLng:116.4,endLat:1.35,endLng:103.8,colorStart:'#ef4444',colorEnd:'#f97316',stroke:.4,dash:.4,gap:.2,anim:2000},
   {id:'arc05',name:'Corredor militar Moscu-Kalinin',startLat:55.75,startLng:37.62,endLat:54.71,endLng:20.51,colorStart:'#ef4444',colorEnd:'#ef4444',stroke:.5,dash:.3,gap:.12,anim:1600},
-  {id:'arc06',name:'Suministros AUKUS',startLat:33.87,startLng:-118.2,endLat:-33.9,endLng:151.2,colorStart:'#60a5fa',colorEnd:'#34d399',stroke:.4,dash:.5,gap:.25,anim:2800}
+  {id:'arc06',name:'Suministros AUKUS',startLat:33.87,startLng:-118.2,endLat:-33.9,endLng:151.2,colorStart:'#60a5fa',colorEnd:'#34d399',stroke:.4,dash:.5,gap:.25,anim:2800},
+  {id:'arc07',name:'Desvio Cabo Buena Esperanza',startLat:22.0,startLng:57.0,endLat:-34.4,endLng:18.5,colorStart:'#f97316',colorEnd:'#f59e0b',stroke:.5,dash:.4,gap:.2,anim:3200},
+  {id:'arc08',name:'Corredor OTAN Baltico',startLat:51.5,startLng:-0.1,endLat:59.9,endLng:10.7,colorStart:'#60a5fa',colorEnd:'#a78bfa',stroke:.4,dash:.3,gap:.12,anim:1800}
 ];
 const INFRA=[
   {id:'ua_zaporizhzhia',name:'Zaporizhzhia NPP',lat:47.51,lng:34.58,fuel:'Nuclear',icon:'☢',capacity:5700,status:'destroyed',color:'#ef4444',radius:.65,notes:'Under Russian control. All 6 reactors cold shutdown. IAEA monitoring.'},
@@ -160,8 +180,8 @@ window.addEventListener('DOMContentLoaded', () => {
   globe = Globe({rendererConfig:{antialias:false,alpha:true}})
     .globeImageUrl('//unpkg.com/three-globe/example/img/earth-night.jpg')
     .backgroundImageUrl('//unpkg.com/three-globe/example/img/night-sky.png')
-    .atmosphereColor('#0a3060')
-    .atmosphereAltitude(0.18)
+    .atmosphereColor('#00b4cc')
+    .atmosphereAltitude(0.22)
     .pointResolution(6)
     .pointsMerge(false)
     .pointAltitude(0.005)
@@ -385,17 +405,42 @@ function startPolling(){
   }, 4000);
 }
 
-// ── WEBSOCKET (fallback real-time) ─────────────────────────────────────────────
+// ── UTC CLOCK ─────────────────────────────────────────────────────────────────
+(function clockTick(){
+  const el=document.getElementById('utc-clock');
+  if(el){
+    const now=new Date();
+    el.textContent=now.toUTCString().split(' ')[4]+' UTC';
+  }
+  setTimeout(clockTick,1000);
+})();
+
+// ── WEBSOCKET (con nexo_config.js auto-detect) ─────────────────────────────────
+function setWsStatus(state){
+  const el=document.getElementById('ws-status');
+  if(!el)return;
+  el.className='';
+  el.classList.add(state);
+  el.title=state==='connected'?'WS live':state==='polling'?'HTTP polling':'Sin conexión';
+}
+
+let _wsActive=false;
 function startWS(){
   try{
-    const proto=location.protocol==='https:'?'wss:':'ws:';
-    const ws=new WebSocket(proto+'//'+location.host+'/ws/alerts/globe');
+    const url=window.NEXO ? window.NEXO.ws_globe
+      : (location.protocol==='https:'?'wss':'ws')+'://'+location.host+'/ws/alerts/globe';
+    const ws=new WebSocket(url);
+    ws.onopen=()=>{ _wsActive=true; setWsStatus('connected'); };
     ws.onmessage=e=>{
-      try{ const m=JSON.parse(e.data); if(m.channel==='globe_command') handleCommand(m.payload); }catch(ex){}
+      try{
+        const m=JSON.parse(e.data);
+        if(m.channel==='globe_command') handleCommand(m.payload);
+        else if(m.type) handleCommand(m);
+      }catch(ex){}
     };
-    ws.onclose=()=>setTimeout(startWS,5000);
+    ws.onclose=()=>{ _wsActive=false; setWsStatus('polling'); setTimeout(startWS,5000); };
     ws.onerror=()=>ws.close();
-  }catch(ex){}
+  }catch(ex){ setWsStatus(''); setTimeout(startWS,8000); }
 }
 </script>
 </body>
