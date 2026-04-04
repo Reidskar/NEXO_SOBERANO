@@ -318,6 +318,7 @@
       color: var(--nexo-accent-cyan);
     }
   </style>
+<script src="/nexo_config.js"></script>
 </head>
 
 <body>
@@ -471,7 +472,7 @@
     function startHealthPolling() {
       const poll = async () => {
         try {
-          const r = await fetch('http://localhost:8000/api/health', { signal: AbortSignal.timeout(4000) });
+          const r = await fetch('/api/health', { signal: AbortSignal.timeout(4000) });
           const d = await r.json();
           setStatus('backend', d.status === 'ok' ? 'ok' : 'warn');
           setStatus('discord', d.discord ? 'ok' : 'warn');

@@ -4,10 +4,16 @@ import { POWER_PLANTS, FUEL_CONFIG, STATUS_CONFIG, calcOutageImpact, COUNTRY_NAM
 
 // ─── WS URL ───────────────────────────────────────────────────────────────────
 const WS_URL = (() => {
-  if (typeof window === 'undefined') return null;
-  const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-  return `${proto}//${window.location.host}/ws/alerts/globe`;
+  // Auto-detect: Vite proxy in dev, real domain in prod
+  const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+  const backendHost = import.meta.env.VITE_BACKEND_URL
+    ? import.meta.env.VITE_BACKEND_URL.replace(/^https?:\/\//, '')
+    : location.host;
+  return `${proto}://${backendHost}/ws/alerts/globe`;
 })();
+
+// API base — relative in prod (same origin), Vite proxy in dev
+const API_BASE = import.meta.env.VITE_BACKEND_URL || '';
 
 // ─── SEVERITY → RGB ───────────────────────────────────────────────────────────
 const SEV_RGB = {
@@ -235,7 +241,7 @@ export default function OmniGlobe({ height = 600 }) {
     let lastTs = new Date().toISOString();
     const poll = setInterval(async () => {
       try {
-        const r = await fetch(`/api/globe/poll?since=${encodeURIComponent(lastTs)}`);
+        const r = await fetch(`${API_BASE}/api/globe/poll?since=${encodeURIComponent(lastTs)}`);
         const d = await r.json();
         if (d.commands?.length) {
           d.commands.forEach(c => handleCommand(c));

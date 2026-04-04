@@ -281,6 +281,7 @@ footer{padding:40px 48px;border-top:1px solid var(--border);display:flex;align-i
     position: relative; z-index: 2;
   }
 </style>
+<script src="/nexo_config.js"></script>
 </head>
 
 <body>
@@ -312,7 +313,7 @@ footer{padding:40px 48px;border-top:1px solid var(--border);display:flex;align-i
     <li><a href="#stack" data-s="stack">Stack</a></li>
   </ul>
   <div class="hamburger" id="hbg"><span></span><span></span><span></span></div>
-  <a href="http://localhost:8000/api/docs" class="nav-btn"><span>Dashboard →</span></a>
+  <a href="/api/docs" class="nav-btn"><span>Dashboard →</span></a>
 </nav>
 
 <!-- HERO -->
@@ -332,9 +333,9 @@ footer{padding:40px 48px;border-top:1px solid var(--border);display:flex;align-i
       <span style="color:var(--dim)">Zero vendor lock-in. Control total. Tu infraestructura.</span>
     </p>
     <div class="hero-actions">
-      <a href="http://localhost:8000/warroom" class="btn-p">Abrir Warroom</a>
-      <a href="http://localhost:8000/api/docs" class="btn-s">API Explorer</a>
-      <a href="http://localhost:8000/api/metrics/health/deep" class="btn-s">Health Check</a>
+      <a href="/warroom" class="btn-p">Abrir Warroom</a>
+      <a href="/api/docs" class="btn-s">API Explorer</a>
+      <a href="/api/metrics/health/deep" class="btn-s">Health Check</a>
     </div>
   </div>
   <div class="status-bar">
@@ -502,9 +503,9 @@ footer{padding:40px 48px;border-top:1px solid var(--border);display:flex;align-i
       <h2 class="cta-h">El sistema<br>está <span class="cta-g">vivo.</span></h2>
       <p class="cta-p">Warroom, API, agentes y toda la infraestructura soberana lista para operar ahora mismo.</p>
       <div style="display:flex;gap:16px;justify-content:center;flex-wrap:wrap">
-        <a href="http://localhost:8000/warroom" class="btn-p">Abrir Warroom</a>
-        <a href="http://localhost:8000/api/docs" class="btn-s">API Docs</a>
-        <a href="http://localhost:8000/api/metrics/health/deep" class="btn-s">Health Check</a>
+        <a href="/warroom" class="btn-p">Abrir Warroom</a>
+        <a href="/api/docs" class="btn-s">API Docs</a>
+        <a href="/api/metrics/health/deep" class="btn-s">Health Check</a>
         <a href="https://github.com/Reidskar/NEXO_SOBERANO" class="btn-s">GitHub</a>
       </div>
 
@@ -552,7 +553,7 @@ function setStatus(name, state) {
 function startHealthPolling() {
   const poll = async () => {
     try {
-      const r = await fetch('http://localhost:8000/api/health', {signal:AbortSignal.timeout(4000)});
+      const r = await fetch(window.NEXO ? window.NEXO.api('/api/health') : '/api/health', {signal:AbortSignal.timeout(4000)});
       const d = await r.json();
       setStatus('backend', d.status==='ok'?'ok':'warn');
       setStatus('discord', d.discord?'ok':'warn');
@@ -678,7 +679,7 @@ setTimeout(addEvent,800);
 /* ── LIVE METRICS ───────────────────────── */
 async function fetchMetrics(){
   try{
-    const r=await fetch('http://localhost:8000/api/metrics/system',{signal:AbortSignal.timeout(3000)});
+    const r=await fetch(window.NEXO ? window.NEXO.api('/api/metrics/system') : '/api/metrics/system',{signal:AbortSignal.timeout(3000)});
     if(r.ok){
       const d=await r.json();
       document.getElementById('m-uptime').textContent=Math.round(d.uptime_seconds/3600*10)/10;
@@ -690,7 +691,7 @@ async function fetchMetrics(){
 }
 async function fetchHealth(){
   try{
-    const r=await fetch('http://localhost:8000/health',{signal:AbortSignal.timeout(2000)});
+    const r=await fetch(window.NEXO ? window.NEXO.api('/health') : '/health',{signal:AbortSignal.timeout(2000)});
     if(r.ok){
       const dot=document.getElementById('dot-backend');
       dot.className='s-dot g';
