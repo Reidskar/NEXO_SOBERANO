@@ -1,35 +1,52 @@
 ---
 name: feature-development
-description: Standard feature implementation workflow for NEXO SOBERANO.
+description: Flujo completo de implementación de feature en NEXO SOBERANO.
 allowed_tools: ["Bash", "Read", "Write", "Edit", "Grep", "Glob"]
 ---
 
 # /feature-development
 
-## Goal
-Implement a new feature following NEXO SOBERANO architecture patterns.
+## Flujo estándar
 
-## Sequence
+1. **Verificar estado del sistema**
+   ```bash
+   python scripts/nexo_manager.py status
+   ```
 
-1. **Understand current state** — read related files before writing anything
-2. **Plan layers needed**: route → service → model (Pydantic) → tests
-3. **Implement service first** in `backend/services/` or `NEXO_CORE/services/`
-4. **Add route** in `backend/routes/`, register in `backend/main.py`
-5. **Check cost**: does this call cloud AI? If yes, route through `ai_router.py` with local-first
-6. **Globe integration**: if geo data → use `broadcast_command()` to push to OmniGlobe
-7. **Run tests**: `python -m pytest tests/ -v`
-8. **Security check**: run `/security-review` before committing
+2. **Implementar** (route → service → model Pydantic)
+   - Service en `backend/services/` o `NEXO_CORE/services/`
+   - Route en `backend/routes/`, registrar en `backend/main.py`
+   - Si consulta AI: usar `ai_router.py` (Gemma 4 primero, cloud fallback)
+   - Si hay geo data: `broadcast_command()` → OmniGlobe
 
-## Key Files
-- Routes: `backend/routes/`
-- Services: `backend/services/` and `NEXO_CORE/services/`
-- AI routing: `NEXO_CORE/services/ai_router.py`
-- Globe commands: `backend/routes/globe_control.py`
-- Config/env: `NEXO_CORE/config.py`, `backend/config.py`
+3. **Revisar código**
+   ```bash
+   python scripts/nexo_manager.py review --file backend/routes/nueva_ruta.py
+   ```
 
-## Commit Format
-```
-feat(module): short description
+4. **Auditoría de seguridad**
+   ```bash
+   python scripts/nexo_manager.py security --file backend/routes/nueva_ruta.py
+   ```
 
-Body explaining why, not what.
-```
+5. **Auto-corregir si hay issues**
+   ```bash
+   python scripts/nexo_manager.py fix --file backend/routes/nueva_ruta.py --apply
+   ```
+
+6. **Tests**
+   ```bash
+   .venv/Scripts/python.exe -m pytest tests/ -v
+   ```
+
+7. **Diagnóstico final**
+   ```bash
+   python scripts/nexo_manager.py diagnose
+   ```
+
+## Integración de nueva herramienta externa
+1. Crear `backend/services/<herramienta>_bridge.py` (patrón: `big_brother_bridge.py`)
+2. Agregar route en `backend/routes/<herramienta>.py`
+3. Registrar en `backend/main.py`
+4. Documentar en `.env.example`
+5. Actualizar `scripts/supervisor_osint.py` si tiene servicio propio

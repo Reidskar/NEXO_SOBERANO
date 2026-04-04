@@ -232,6 +232,56 @@ class AIRouter:
             logger.error(f"Gemini Pro error, intentando Flash: {e}")
             return await self._gemini_flash(request)
 
+    async def revisar_codigo(self, diff: str, archivo: str = "") -> AIResponse:
+        """Revisión de código — Gemma 4 primero, Claude Sonnet fallback."""
+        req = AIRequest(
+            prompt=diff[:8000],
+            tipo="codigo",
+            contexto=f"Revisando {archivo}" if archivo else "",
+            forzar_local=True,
+            max_tokens=2048,
+        )
+        resp = await self.consultar(req)
+        if not resp.success:
+            # Fallback: Claude para code review
+            resp = await self._claude_sonnet(AIRequest(
+                prompt=diff[:8000],
+                tipo="codigo",
+                system="Senior code reviewer. Report CRITICAL/HIGH/MEDIUM issues with file:line format.",
+                max_tokens=2048,
+            ))
+        return resp
+
+    async def _claude_sonnet(self, request: AIRequest) -> AIResponse:
+        """Claude Sonnet — fallback para tareas críticas."""
+        if not ANTHROPIC_KEY:
+            return AIResponse(
+                texto="", modelo_usado="claude-sonnet",
+                fuente="error", success=False, error="ANTHROPIC_API_KEY no configurado",
+            )
+        try:
+            import anthropic
+            client = anthropic.Anthropic(api_key=ANTHROPIC_KEY)
+            messages = [{"role": "user", "content": request.prompt}]
+            kwargs = {"model": "claude-sonnet-4-6", "max_tokens": request.max_tokens, "messages": messages}
+            if request.system:
+                kwargs["system"] = request.system
+            msg = client.messages.create(**kwargs)
+            text = msg.content[0].text if msg.content else ""
+            tokens = msg.usage.input_tokens + msg.usage.output_tokens
+            cost = round(tokens * 0.000003, 6)  # ~$3/M tokens
+            logger.info(f"Claude Sonnet | tokens={tokens} | cost=${cost:.6f}")
+            return AIResponse(
+                texto=text, modelo_usado="claude-sonnet-4-6",
+                fuente="claude_cloud", tokens=tokens, cost_usd=cost, success=True,
+            )
+        except Exception as e:
+            logger.error(f"Claude error: {e}")
+            return AIResponse(
+                texto="", modelo_usado="claude-sonnet",
+                fuente="error", success=False, error=str(e),
+            )
+
     async def get_routing_stats(self) -> dict:
         """Estado del router para el dashboard."""
         ollama_ok = await self.ollama.is_available()
@@ -240,10 +290,17 @@ class AIRouter:
             "local_available": ollama_ok,
             "local_model": ollama_status.get("active_general", "N/A"),
             "local_cost": "$0.00/consulta",
-            "cloud_fallback": "gemini-2.0-flash",
+            "cloud_fallback_1": "gemini-2.0-flash",
+            "cloud_fallback_2": "claude-sonnet-4-6",
             "force_local": FORCE_LOCAL,
             "tareas_locales": len(TAREAS_LOCAL),
             "tareas_cloud": len(TAREAS_GEMINI_FLASH) + len(TAREAS_CLOUD_CARO),
+            "cerebros": {
+                "local_primario": "Gemma 4 (Ollama) — $0.00",
+                "cloud_barato":   "Gemini 2.0 Flash — ~$0.0001/1K",
+                "cloud_potente":  "Claude Sonnet 4.6 — ~$0.003/1K",
+                "cloud_critico":  "Gemini 1.5 Pro / Claude Opus — bajo demanda",
+            },
             "ollama": ollama_status,
         }
 

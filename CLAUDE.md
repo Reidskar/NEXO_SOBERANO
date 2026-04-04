@@ -11,8 +11,30 @@ Torre (servidor) + Notebook (consola) + Xiaomi (agente móvil).
 - Backend: FastAPI Python 3.11 en .venv
 - Bot: Node.js Discord con PM2
 - DB: PostgreSQL + Redis + Qdrant (Docker)
-- AI: Gemini primario, Anthropic fallback
+- AI: **4 cerebros** (ver jerarquía abajo)
 - Repo: github.com/Reidskar/NEXO_SOBERANO
+
+### Jerarquía de IA (SIEMPRE respetar este orden)
+
+| Prioridad | Cerebro | Costo | Cuándo usar |
+|---|---|---|---|
+| 1 | **Gemma 4 (Ollama local)** | $0.00 | 95%+ de todo — RAG, OSINT, código, análisis, revisión, clasificación |
+| 2 | **Gemini 2.0 Flash** | ~$0.0001/1K | Multimodal, contextos largos, búsqueda web |
+| 3 | **Claude Sonnet 4.6** | ~$0.003/1K | Razonamiento complejo, arquitectura, code review crítico |
+| 4 | **Gemini Pro / Claude Opus** | ~$0.015/1K | Solo cuando los anteriores fallen en tareas críticas |
+
+**Regla fundamental**: Toda consulta pasa por `ai_router.py`. Nunca llamar APIs cloud directamente.
+El objetivo es **$0 en 95%+ de consultas** mediante Gemma 4 local.
+
+### Gestor inteligente (Gemma 4)
+```bash
+python scripts/nexo_manager.py status      # estado de servicios
+python scripts/nexo_manager.py review      # revisión de código
+python scripts/nexo_manager.py security    # auditoría de seguridad
+python scripts/nexo_manager.py fix --file X --apply  # auto-corrección
+python scripts/nexo_manager.py diagnose    # diagnóstico completo
+python scripts/nexo_manager.py supervise   # monitoreo continuo
+```
 
 ### Rutas clave
 - Torre: C:\Users\Admn\Desktop\NEXO_SOBERANO

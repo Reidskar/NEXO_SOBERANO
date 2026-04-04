@@ -269,6 +269,129 @@ class OllamaService:
         )
         return await self.consultar(prompt=instruccion, modelo="code", system=system, temperature=0.05)
 
+    async def revisar_codigo(
+        self,
+        diff: str,
+        lenguaje: str = "python",
+        contexto: str = "",
+    ) -> OllamaResponse:
+        """
+        Revisión de código con Gemma 4.
+        Devuelve análisis estructurado con niveles CRITICO/ALTO/MEDIO/OK.
+        Costo: $0.
+        """
+        system = (
+            f"Eres un revisor senior de código {lenguaje} para NEXO SOBERANO (FastAPI). "
+            "Revisa el diff proporcionado y reporta issues con este formato EXACTO:\n\n"
+            "## REVISIÓN DE CÓDIGO\n"
+            "### 🔴 CRÍTICO (bloquea merge)\n"
+            "- [archivo:línea] descripción del problema\n"
+            "### 🟡 ALTO (debe corregirse)\n"
+            "- [archivo:línea] descripción\n"
+            "### 🟠 MEDIO (advertencia)\n"
+            "- descripción\n"
+            "### ✅ ESTADO FINAL\n"
+            "APROBADO / RECHAZADO\n\n"
+            "Checks obligatorios para NEXO SOBERANO:\n"
+            "- Secretos hardcodeados (API keys, passwords)\n"
+            "- Endpoints sin _require_key() en mutaciones POST/DELETE/PATCH\n"
+            "- Results OSINT devueltos crudos sin análisis Gemma 4\n"
+            "- Llamadas AI cloud sin pasar por ai_router.py\n"
+            "- Async def con I/O bloqueante (requests en vez de aiohttp)\n"
+            "- bare except: o excepciones silenciadas\n"
+            "- SQL con f-strings (inyección SQL)\n"
+            "- shell=True con input de usuario (inyección de comandos)\n"
+        )
+        prompt = f"CONTEXTO: {contexto}\n\nDIFF A REVISAR:\n```{lenguaje}\n{diff}\n```"
+        return await self.consultar(
+            prompt=prompt, modelo="code", system=system, temperature=0.05, max_tokens=2048
+        )
+
+    async def revisar_seguridad(self, codigo: str, archivo: str = "") -> OllamaResponse:
+        """
+        Auditoría de seguridad profunda con Gemma 4.
+        Complementa bandit con análisis semántico.
+        Costo: $0.
+        """
+        system = (
+            "Eres un auditor de seguridad para NEXO SOBERANO. "
+            "Analiza el código buscando SOLO vulnerabilidades de seguridad reales. "
+            "Formato de respuesta:\n\n"
+            "## AUDITORÍA DE SEGURIDAD\n"
+            "**Archivo:** {archivo}\n"
+            "**Nivel de riesgo:** BAJO / MEDIO / ALTO / CRÍTICO\n\n"
+            "### Vulnerabilidades encontradas\n"
+            "| Tipo | Línea | Descripción | Fix recomendado |\n"
+            "|---|---|---|---|\n\n"
+            "### Resumen\n"
+            "APROBADO para producción / REQUIERE CORRECCIÓN\n\n"
+            "Tipos de vulnerabilidades a buscar:\n"
+            "- Prompt injection (inputs de usuario llegan al LLM sin sanitizar)\n"
+            "- Command injection (subprocess con input usuario)\n"
+            "- Path traversal (open() con paths de usuario)\n"
+            "- SQL injection (queries con f-strings)\n"
+            "- Secretos expuestos (hardcoded keys, tokens)\n"
+            "- SSRF (requests a URLs de usuario sin validar)\n"
+            "- Deserialización insegura (pickle, yaml.load)\n"
+            "- Auth bypass (endpoints sin verificar API key)\n"
+        )
+        prompt = f"ARCHIVO: {archivo}\n\nCÓDIGO:\n```python\n{codigo}\n```"
+        return await self.consultar(
+            prompt=prompt, modelo="code", system=system, temperature=0.0, max_tokens=2048
+        )
+
+    async def sugerir_fix(
+        self,
+        issue: str,
+        codigo_original: str,
+        lenguaje: str = "python",
+    ) -> OllamaResponse:
+        """
+        Genera código corregido para un issue específico.
+        Devuelve SOLO el código corregido, listo para aplicar.
+        Costo: $0.
+        """
+        system = (
+            f"Eres un experto en {lenguaje} para NEXO SOBERANO. "
+            "Se te da un issue y código original. "
+            "Devuelve ÚNICAMENTE el bloque de código corregido (sin explicaciones, "
+            "sin markdown extra). El código debe ser directamente aplicable."
+        )
+        prompt = (
+            f"ISSUE A CORREGIR:\n{issue}\n\n"
+            f"CÓDIGO ORIGINAL:\n```{lenguaje}\n{codigo_original}\n```\n\n"
+            "Devuelve el código corregido completo:"
+        )
+        return await self.consultar(
+            prompt=prompt, modelo="code", system=system, temperature=0.05, max_tokens=4096
+        )
+
+    async def diagnosticar_sistema(self, estado: dict) -> OllamaResponse:
+        """
+        Diagnóstico inteligente del sistema NEXO con Gemma 4.
+        Recibe el estado de todos los servicios y devuelve un plan de acción.
+        Costo: $0.
+        """
+        system = (
+            "Eres el supervisor técnico de NEXO SOBERANO. "
+            "Analiza el estado del sistema y genera un informe de diagnóstico. "
+            "Formato:\n\n"
+            "## DIAGNÓSTICO NEXO SOBERANO\n"
+            "**Estado global:** OPERATIVO / DEGRADADO / CRÍTICO\n\n"
+            "### Servicios con problemas\n"
+            "- Servicio: descripción del problema + causa probable\n\n"
+            "### Acciones inmediatas (ordenadas por prioridad)\n"
+            "1. acción concreta\n\n"
+            "### Optimizaciones recomendadas\n"
+            "- optimización con impacto estimado\n\n"
+            "Responde en español, sé directo y técnico."
+        )
+        import json
+        prompt = f"ESTADO ACTUAL DEL SISTEMA:\n{json.dumps(estado, indent=2, ensure_ascii=False)}"
+        return await self.consultar(
+            prompt=prompt, modelo="general", system=system, temperature=0.1, max_tokens=2048
+        )
+
     async def supervisor_check(self) -> dict:
         """Estado completo del servicio Ollama para el supervisor."""
         available = await self.is_available()

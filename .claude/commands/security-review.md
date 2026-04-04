@@ -1,37 +1,33 @@
 ---
 name: security-review
-description: Run security audit on changed Python files — checks secrets, input validation, auth guards.
+description: Auditoría de seguridad completa — Gemma 4 + bandit + ruff. Ejecutar antes de cada merge.
 allowed_tools: ["Bash", "Read", "Grep", "Glob"]
 ---
 
 # /security-review
 
-Audits NEXO SOBERANO backend for security issues.
+Motor: **Gemma 4 local ($0)** + bandit + ruff.
 
-## Steps
+## Ejecutar
 
-1. **Scan for hardcoded secrets**
-   ```bash
-   grep -rn "sk-\|api_key\s*=\s*['\"]" backend/ NEXO_CORE/ --include="*.py" | grep -v ".env\|os.getenv\|os.environ"
-   ```
+```bash
+# Auditoría de archivos staged (pre-commit)
+python scripts/nexo_manager.py security
 
-2. **Check auth guards on new endpoints**
-   - Every `POST/DELETE/PATCH` route must call `_require_key()` or use a Depends guard
-   - Public `GET` endpoints are acceptable only for `/status`, `/health`, `/poll`
+# Auditoría de archivo específico
+python scripts/nexo_manager.py security --file backend/routes/nuevo_endpoint.py
+```
 
-3. **Run bandit static analysis**
-   ```bash
-   .venv/Scripts/python.exe -m bandit -r backend/ NEXO_CORE/ -ll -q
-   ```
+## Qué verifica Gemma 4
+- Prompt injection (inputs usuario → LLM sin sanitizar)
+- Endpoints sin `_require_key()` en mutaciones
+- OSINT results devueltos crudos (sin pasar por Gemma 4 análisis)
+- AI calls que bypasan `ai_router.py` (van directo a cloud)
+- Command injection (`shell=True` con input usuario)
+- SQL injection (queries con f-strings)
+- Secretos hardcodeados
+- SSRF (requests a URLs de usuario sin validar)
+- Deserialización insegura (pickle, yaml.load sin SafeLoader)
 
-4. **Verify no staged secrets**
-   ```bash
-   git diff --cached --name-only | grep -E "\.env$|auth/.*\.json|\.zip$"
-   ```
-
-5. **Check BigBrother/OSINT routes** — confirm all protected with API key
-
-## Pass Criteria
-- bandit reports 0 HIGH severity issues
-- No hardcoded credentials in diff
-- All mutation endpoints gated
+## Criterio de aprobación
+Sin issues CRÍTICO o ALTO → merge permitido.
