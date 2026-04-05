@@ -12,12 +12,13 @@ function DriveFilePicker({ selected, onToggle, onRefresh }) {
   const load = async () => {
     setLoading(true); setError(null);
     try {
-      const r = await fetch(`${API}/api/drive/files?limit=40`);
+      const r = await fetch(`${API}/api/drive/files?limit=40`, { signal: AbortSignal.timeout(4000) });
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
       const d = await r.json();
       setFiles(d.files || d || []);
     } catch (e) {
-      setError(`No se pudo conectar con Drive: ${e.message}`);
+      // Backend offline (Torre local) — silently degrade, no red error
+      setError('drive_offline');
     } finally {
       setLoading(false);
     }
@@ -36,7 +37,11 @@ function DriveFilePicker({ selected, onToggle, onRefresh }) {
         </button>
       </div>
 
-      {error && <p style={{ color: '#ff5555', fontSize: 12, padding: '6px 12px' }}>{error}</p>}
+      {error === 'drive_offline' && (
+        <p style={{ color: 'rgba(0,229,255,0.35)', fontSize: 11, padding: '6px 12px', fontFamily: "'Space Mono', monospace", letterSpacing: '.04em' }}>
+          Drive · backend local inactivo
+        </p>
+      )}
       {!error && files.length === 0 && !loading && (
         <p style={{ color: 'rgba(255,255,255,0.35)', fontSize: 12, padding: '8px 12px' }}>
           Sin archivos — autoriza Google Drive en el backend.

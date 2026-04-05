@@ -11,7 +11,6 @@ const mono = "'Space Mono', monospace";
 
 const NAV = [
   { section: 'INTELIGENCIA' },
-  { name: 'Command Center',     path: '/control',                icon: LayoutDashboard },
   { name: 'Sesión de Análisis', path: '/control/sesion',         icon: BrainCircuit    },
   { name: 'Memoria Visual',     path: '/control/memoria',        icon: Network         },
   { name: 'Mapa Global',        path: '/control/mapa',           icon: Map             },
@@ -19,15 +18,12 @@ const NAV = [
   { name: 'Escenarios',         path: '/control/escenarios',     icon: Globe           },
   { name: 'OSINT Engine',       path: '/control/osint',          icon: Radar           },
   { name: 'Wireless Intel',     path: '/control/wireless',       icon: Wifi            },
-  { section: 'EVIDENCIAS' },
-  { name: 'Bóveda OSINT',       path: '/control/boveda',         icon: Database        },
-  { name: 'Bóveda Drive',       path: '/control/documents',      icon: FileText        },
+  { section: 'DATOS' },
   { name: 'Timeline Global',    path: '/control/timeline/Global',icon: Clock           },
   { name: 'Mercados',           path: '/control/mercados',       icon: BarChart2       },
   { section: 'OPERACIONES' },
   { name: 'Video Estudio',      path: '/control/video-studio',   icon: Film            },
   { name: 'Terminal Omnicanal', path: '/control/comunidad',      icon: Users           },
-  { name: 'Control Sistema',    path: '/control/system',         icon: Settings        },
 ];
 
 // ── Live system stats en sidebar ──────────────────────────────
