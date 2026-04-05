@@ -54,6 +54,7 @@ from backend.routes.files import router as files_router
 from backend.routes.globe_control import router as globe_router, set_broadcast
 from backend.routes.osint import router as osint_router
 from backend.routes.nexo_platform import router as platform_router
+from backend.routes.phone_setup import router as phone_setup_router
 
 # ════════════════════════════════════════════════════════════════════
 # LOGGING
@@ -206,6 +207,7 @@ set_broadcast(lambda msg: manager.broadcast("globe", msg))
 app.include_router(globe_router)
 app.include_router(osint_router)
 app.include_router(platform_router)
+app.include_router(phone_setup_router)
 
 # ════════════════════════════════════════════════════════════════════
 # WEBSOCKET ENDPOINT
