@@ -10,6 +10,7 @@ router = APIRouter(prefix="/api/mobile", tags=["mobile"])
 # ─── Estado en memoria ────────────────────────────────────────────────────────
 mobile_agents: dict = {}
 command_queues: dict[str, list] = {}   # agent_id → [{"id":..,"type":..,"payload":..}]
+agent_tools: dict[str, list] = {}      # agent_id → [lista de herramientas Termux detectadas]
 
 def _api_key_ok(key: Optional[str]) -> bool:
     expected = os.getenv("NEXO_API_KEY", "nexo_dev_key_2025")
@@ -107,3 +108,132 @@ async def agent_status(agent_id: str):
         "agent": agent,
         "pending_commands": len(command_queues.get(agent_id, [])),
     }
+
+# ─── Inventario de herramientas Termux ───────────────────────────────────────
+
+# Lista completa de herramientas Termux:API que el agente puede detectar
+TERMUX_TOOLS_CATALOG = {
+    # Sensores y hardware
+    "termux-battery-status":     {"cat": "hardware",  "desc": "Estado de batería (%, estado, cargando)"},
+    "termux-sensor":             {"cat": "hardware",  "desc": "Sensores del dispositivo (acelerómetro, giroscopio, etc.)"},
+    "termux-torch":              {"cat": "hardware",  "desc": "Control de linterna/flash"},
+    "termux-vibrate":            {"cat": "hardware",  "desc": "Control de vibración"},
+    "termux-volume":             {"cat": "hardware",  "desc": "Control de volumen por stream"},
+    # Red y conectividad
+    "termux-wifi-connectioninfo":{"cat": "network",   "desc": "Info de WiFi (SSID, RSSI, IP)"},
+    "termux-wifi-scaninfo":      {"cat": "network",   "desc": "Escaneo de redes WiFi cercanas"},
+    "termux-wifi-enable":        {"cat": "network",   "desc": "Habilitar/deshabilitar WiFi"},
+    "termux-telephony-deviceinfo":{"cat":"network",   "desc": "Info de red celular (operadora, señal)"},
+    "termux-telephony-call":     {"cat": "network",   "desc": "Realizar llamadas (requiere permiso)"},
+    # Localización
+    "termux-location":           {"cat": "location",  "desc": "GPS: lat, lng, altitud, precisión"},
+    # Cámara y multimedia
+    "termux-camera-info":        {"cat": "media",     "desc": "Info de cámaras disponibles"},
+    "termux-camera-photo":       {"cat": "media",     "desc": "Tomar foto con cámara"},
+    "termux-microphone-record":  {"cat": "media",     "desc": "Grabar audio del micrófono"},
+    "termux-media-player":       {"cat": "media",     "desc": "Reproducir/pausar audio"},
+    "termux-media-scan":         {"cat": "media",     "desc": "Escanear archivos de medios"},
+    # UI y notificaciones
+    "termux-notification":       {"cat": "ui",        "desc": "Mostrar notificaciones en barra"},
+    "termux-notification-remove":{"cat": "ui",        "desc": "Eliminar notificaciones"},
+    "termux-notification-list":  {"cat": "ui",        "desc": "Listar notificaciones activas"},
+    "termux-dialog":             {"cat": "ui",        "desc": "Mostrar diálogos interactivos"},
+    "termux-toast":              {"cat": "ui",        "desc": "Toast rápido en pantalla"},
+    "termux-open-url":           {"cat": "ui",        "desc": "Abrir URL en browser"},
+    "termux-share":              {"cat": "ui",        "desc": "Compartir contenido via Android"},
+    # Sistema
+    "termux-clipboard-get":      {"cat": "system",    "desc": "Leer portapapeles"},
+    "termux-clipboard-set":      {"cat": "system",    "desc": "Escribir al portapapeles"},
+    "termux-screenshot":         {"cat": "system",    "desc": "Captura de pantalla"},
+    "termux-wake-lock":          {"cat": "system",    "desc": "Mantener CPU activa (no dormir)"},
+    "termux-wake-unlock":        {"cat": "system",    "desc": "Liberar wake lock"},
+    "termux-alarm":              {"cat": "system",    "desc": "Programar alarma"},
+    "termux-job-scheduler":      {"cat": "system",    "desc": "Programar tareas periódicas"},
+    # Mensajería
+    "termux-sms-send":           {"cat": "messaging", "desc": "Enviar SMS (requiere permiso)"},
+    "termux-sms-list":           {"cat": "messaging", "desc": "Listar SMS recibidos"},
+    "termux-call-log":           {"cat": "messaging", "desc": "Historial de llamadas"},
+    "termux-contact-list":       {"cat": "messaging", "desc": "Lista de contactos"},
+    # Extras
+    "termux-fingerprint":        {"cat": "security",  "desc": "Autenticación por huella"},
+    "termux-tts-engines":        {"cat": "tts",       "desc": "Text-to-Speech disponible"},
+    "termux-tts-speak":          {"cat": "tts",       "desc": "Hablar texto en voz alta"},
+}
+
+
+@router.post("/tools/{agent_id}")
+async def register_tools(agent_id: str, data: dict, x_api_key: str = Header(None)):
+    """
+    Recibe el inventario de herramientas Termux disponibles en el dispositivo.
+    El agente envía: {"tools": ["termux-battery-status", ...]}
+    """
+    tools = data.get("tools", [])
+    agent_tools[agent_id] = tools
+
+    # Enriquecer con metadatos del catálogo
+    enriched = []
+    for t in tools:
+        info = TERMUX_TOOLS_CATALOG.get(t, {"cat": "unknown", "desc": t})
+        enriched.append({"cmd": t, **info})
+
+    # Actualizar metadatos del agente
+    if agent_id in mobile_agents:
+        mobile_agents[agent_id]["termux_tools"] = enriched
+        mobile_agents[agent_id]["tools_count"]  = len(tools)
+
+    # Generar comandos disponibles según herramientas detectadas
+    available_commands = []
+    tool_set = set(tools)
+    if "termux-notification" in tool_set:
+        available_commands.append("notify")
+    if "termux-location" in tool_set:
+        available_commands.append("location")
+    if "termux-screenshot" in tool_set:
+        available_commands.append("screenshot")
+    if "termux-camera-photo" in tool_set:
+        available_commands.append("camera")
+    if "termux-vibrate" in tool_set:
+        available_commands.append("vibrate")
+    if "termux-torch" in tool_set:
+        available_commands.append("torch")
+    if "termux-volume" in tool_set:
+        available_commands.append("volume")
+    if "termux-sms-send" in tool_set:
+        available_commands.append("sms")
+    if "termux-tts-speak" in tool_set:
+        available_commands.append("tts_speak")
+
+    logger.info(f"[MOBILE] {agent_id}: {len(tools)} herramientas Termux registradas")
+
+    return {
+        "registered": len(tools),
+        "enriched":   enriched,
+        "available_commands": available_commands,
+        "catalog_coverage": f"{len([t for t in tools if t in TERMUX_TOOLS_CATALOG])}/{len(TERMUX_TOOLS_CATALOG)} del catálogo",
+    }
+
+
+@router.get("/tools/{agent_id}")
+async def get_tools(agent_id: str):
+    """Retorna las herramientas Termux registradas para un agente."""
+    tools = agent_tools.get(agent_id, [])
+    enriched = [{"cmd": t, **TERMUX_TOOLS_CATALOG.get(t, {"cat": "unknown", "desc": t})} for t in tools]
+    return {
+        "agent_id": agent_id,
+        "tools":    enriched,
+        "count":    len(tools),
+        "by_category": {
+            cat: [t for t in enriched if t["cat"] == cat]
+            for cat in set(t["cat"] for t in enriched)
+        },
+    }
+
+
+@router.get("/tools-catalog")
+async def tools_catalog():
+    """Catálogo completo de herramientas Termux soportadas por NEXO."""
+    by_cat: dict = {}
+    for cmd, info in TERMUX_TOOLS_CATALOG.items():
+        cat = info["cat"]
+        by_cat.setdefault(cat, []).append({"cmd": cmd, "desc": info["desc"]})
+    return {"total": len(TERMUX_TOOLS_CATALOG), "by_category": by_cat}

@@ -285,6 +285,39 @@ def main():
 
     _notify("◎ NEXO SOBERANO", "Agente de teléfono iniciado", ongoing=True)
 
+    # ── Inventario de herramientas Termux (al arrancar) ──────────────────────
+    ALL_TOOLS = [
+        "termux-battery-status","termux-sensor","termux-torch","termux-vibrate","termux-volume",
+        "termux-wifi-connectioninfo","termux-wifi-scaninfo","termux-wifi-enable",
+        "termux-telephony-deviceinfo","termux-telephony-call",
+        "termux-location","termux-camera-info","termux-camera-photo",
+        "termux-microphone-record","termux-media-player","termux-media-scan",
+        "termux-notification","termux-notification-remove","termux-notification-list",
+        "termux-dialog","termux-toast","termux-open-url","termux-share",
+        "termux-clipboard-get","termux-clipboard-set","termux-screenshot",
+        "termux-wake-lock","termux-wake-unlock","termux-alarm","termux-job-scheduler",
+        "termux-sms-send","termux-sms-list","termux-call-log","termux-contact-list",
+        "termux-fingerprint","termux-tts-engines","termux-tts-speak",
+    ]
+    detected = []
+    for tool in ALL_TOOLS:
+        try:
+            r = subprocess.run(["which", tool], capture_output=True, timeout=2)
+            if r.returncode == 0:
+                detected.append(tool)
+        except Exception:
+            pass
+    logger.info(f"Herramientas Termux detectadas: {{len(detected)}}/{{len(ALL_TOOLS)}}")
+    try:
+        requests.post(
+            f"{{BACKEND}}/api/mobile/tools/{{AGENT_ID}}",
+            json={{"tools": detected}},
+            headers=_HEADERS, timeout=8,
+        )
+        logger.info("Inventario de herramientas enviado al backend")
+    except Exception as e:
+        logger.warning(f"No se pudo enviar inventario: {{e}}")
+
     errors = 0
     last_heartbeat = 0
     last_cmd_poll  = 0
