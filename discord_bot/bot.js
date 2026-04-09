@@ -23,6 +23,43 @@ const prism = require('prism-media');
 
 const FASTAPI_URL = (process.env.FASTAPI_URL || 'http://127.0.0.1:8000').replace(/\/$/, '');
 
+// ─── NEXO AI — Función centralizada → Gemma 4 (torre, $0) ────────────────────
+// Usa /api/ai/mobile/query con contexto por usuario Discord.
+// Fallback: /api/ai/ask (ruta legacy) si el nuevo endpoint no responde.
+async function askNexoAI(prompt, userId, { remember = true, maxTokens = 1500 } = {}) {
+  const agentId = `discord_${userId}`;
+  try {
+    const resp = await axios.post(
+      `${FASTAPI_URL}/api/ai/mobile/query`,
+      { prompt, agent_id: agentId, max_tokens: maxTokens, remember },
+      { timeout: 90000 }
+    );
+    return {
+      text:   resp.data?.text || resp.data?.respuesta || 'Sin respuesta',
+      model:  resp.data?.model_used  || 'desconocido',
+      source: resp.data?.source      || '',
+      ctx:    resp.data?.context_size || 0,
+    };
+  } catch (err) {
+    console.warn(`[NEXO AI] mobile/query falló (${err.message}), usando legacy /api/ai/ask`);
+    try {
+      const fb = await axios.post(
+        `${FASTAPI_URL}/api/ai/ask`,
+        { question: prompt },
+        { timeout: 30000 }
+      );
+      return {
+        text:   fb.data?.answer || fb.data?.respuesta || 'Sin respuesta',
+        model:  'legacy',
+        source: 'api_ai_ask',
+        ctx:    0,
+      };
+    } catch (err2) {
+      return { text: `Error: ${err2.message}`, model: 'error', source: 'error', ctx: 0 };
+    }
+  }
+}
+
 if (!process.env.DISCORD_TOKEN) {
   console.error('[NEXO ERROR] DISCORD_TOKEN no encontrada');
   process.exit(1);
@@ -40,7 +77,27 @@ const client = new Client({
 });
 
 const commands = [
-  new SlashCommandBuilder().setName('nexo').setDescription('Pregunta general').addStringOption(o => o.setName('query').setDescription('Pregunta').setRequired(true)),
+  new SlashCommandBuilder()
+    .setName('nexo')
+    .setDescription('Pregunta a NEXO (Gemma 4 local → Gemini fallback)')
+    .addStringOption(o => o.setName('query').setDescription('Pregunta').setRequired(true)),
+  new SlashCommandBuilder()
+    .setName('ai')
+    .setDescription('Consulta a la inteligencia principal con contexto persistente')
+    .addStringOption(o => o.setName('pregunta').setDescription('Tu pregunta o instrucción').setRequired(true))
+    .addBooleanOption(o => o.setName('recordar').setDescription('Mantener en contexto (default: sí)').setRequired(false)),
+  new SlashCommandBuilder()
+    .setName('memoria')
+    .setDescription('Gestiona el contexto de tu conversación con NEXO')
+    .addStringOption(o =>
+      o.setName('accion')
+        .setDescription('ver o limpiar')
+        .setRequired(false)
+        .addChoices(
+          { name: 'Ver contexto actual', value: 'ver' },
+          { name: 'Limpiar contexto', value: 'limpiar' },
+        )
+    ),
   new SlashCommandBuilder().setName('status').setDescription('Métricas del sistema'),
   new SlashCommandBuilder().setName('unirse').setDescription('NEXO entra al canal de voz'),
   new SlashCommandBuilder().setName('salir').setDescription('NEXO sale del canal de voz'),
@@ -105,10 +162,66 @@ client.on('interactionCreate', async interaction => {
 
   if (commandName === 'nexo') {
     const query = options.getString('query');
+    const result = await askNexoAI(query, user.id);
+    const footer = result.source !== 'error' ? `\n-# ${result.model} · ctx:${result.ctx}` : '';
+    await interaction.editReply((result.text.substring(0, 1990) + footer).trim());
+  }
+
+  if (commandName === 'ai') {
+    const pregunta = options.getString('pregunta');
+    const recordar = options.getBoolean('recordar') ?? true;
+    const result = await askNexoAI(pregunta, user.id, { remember: recordar, maxTokens: 2000 });
+
+    if (result.source === 'error') {
+      await interaction.editReply(`⚠️ ${result.text}`);
+      return;
+    }
+
+    const embed = new EmbedBuilder()
+      .setColor(result.source.includes('ollama') ? 0x00e5ff : 0xf59e0b)
+      .setDescription(result.text.substring(0, 4000))
+      .setFooter({ text: `${result.model} · ${result.source} · ctx:${result.ctx} turnos` })
+      .setTimestamp();
+
+    await interaction.editReply({ embeds: [embed] });
+  }
+
+  if (commandName === 'memoria') {
+    const accion = options.getString('accion') || 'ver';
+    const agentId = `discord_${user.id}`;
+
+    if (accion === 'limpiar') {
+      try {
+        await axios.delete(
+          `${FASTAPI_URL}/api/ai/mobile/context/${agentId}`,
+          { headers: { 'X-API-Key': process.env.NEXO_API_KEY || 'nexo_dev_key_2025' }, timeout: 5000 }
+        );
+        await interaction.editReply('🧹 Contexto limpiado. La próxima pregunta empieza desde cero.');
+      } catch (err) {
+        await interaction.editReply(`Error al limpiar contexto: ${err.message}`);
+      }
+      return;
+    }
+
+    // ver
     try {
-      const resp = await axios.post(`${FASTAPI_URL}/api/agente/`, { query, user_id: user.id });
-      await interaction.editReply(resp.data.respuesta || 'Sin respuesta');
-    } catch (err) { await interaction.editReply(`Error: ${err.message}`); }
+      const resp = await axios.get(`${FASTAPI_URL}/api/ai/mobile/context/${agentId}`, { timeout: 5000 });
+      const ctx = resp.data;
+      if (!ctx.turns || ctx.turns === 0) {
+        await interaction.editReply('No hay contexto guardado aún. Haz una pregunta con `/ai` para empezar.');
+        return;
+      }
+      const last = ctx.context.slice(-6); // last 3 turns
+      const preview = last.map(t => `**${t.role === 'user' ? '👤' : '🤖'}** ${t.content.substring(0, 200)}`).join('\n');
+      const embed = new EmbedBuilder()
+        .setTitle(`Contexto NEXO — ${ctx.turns} turnos`)
+        .setColor(0x00e5ff)
+        .setDescription(preview.substring(0, 4000))
+        .setFooter({ text: 'Usa /memoria limpiar para resetear' });
+      await interaction.editReply({ embeds: [embed] });
+    } catch (err) {
+      await interaction.editReply(`Error: ${err.message}`);
+    }
   }
 
   if (commandName === 'status') {
@@ -360,11 +473,8 @@ function handleUserVoice(connection, userId, textChannel) {
       const user = client.users.cache.get(userId);
       if (textChannel) textChannel.send(`🎙️ **${user?.username || userId}:** ${text}`).catch(() => {});
 
-      const resp = await axios.post(`${FASTAPI_URL}/api/agente/`, {
-        query: text, user_id: userId, canal: textChannel?.id
-      }, { timeout: 20000 });
-
-      const iaText = resp.data?.respuesta || 'No pude procesar tu solicitud.';
+      const aiResult = await askNexoAI(text, userId, { remember: true, maxTokens: 600 });
+      const iaText = aiResult.text || 'No pude procesar tu solicitud.';
       console.log(`[NEXO VOICE] IA: "${iaText.substring(0, 80)}"`);
 
       if (textChannel) textChannel.send(`🤖 **NEXO:** ${iaText}`).catch(() => {});
