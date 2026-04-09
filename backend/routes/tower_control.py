@@ -348,3 +348,25 @@ async def tail_logs(n: int = 50, x_api_key: str = Header(None)):
 @router.get("/ping")
 async def ping():
     return {"pong": True, "ts": datetime.now(timezone.utc).isoformat()}
+
+
+# ──────────────────────────────────────────────────────────────
+# POST /api/tower/discord/register — register slash commands
+# ──────────────────────────────────────────────────────────────
+
+@router.post("/discord/register")
+async def discord_register_commands(x_api_key: str = Header(None)):
+    """Registers all NEXO slash commands with Discord API from the tower."""
+    _require_api_key(x_api_key)
+    try:
+        import importlib.util
+        spec = importlib.util.spec_from_file_location(
+            "register_discord_commands",
+            Path(__file__).resolve().parents[2] / "scripts" / "register_discord_commands.py",
+        )
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        result = mod.register_commands()
+        return result
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
