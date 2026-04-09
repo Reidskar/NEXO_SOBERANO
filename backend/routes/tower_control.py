@@ -102,8 +102,8 @@ async def tower_status():
 
     obs_status = "unknown"
     try:
-        from NEXO_CORE.services.obs_manager import obs_manager
-        obs_status = "connected" if obs_manager.is_connected() else "disconnected"
+        from NEXO_CORE.core.state_manager import state_manager as sm
+        obs_status = "connected" if sm.snapshot().get("obs_connected") else "disconnected"
     except Exception:
         obs_status = "not_configured"
 
@@ -242,19 +242,32 @@ async def control_stream(payload: StreamAction, x_api_key: str = Header(None)):
     _require_api_key(x_api_key)
     try:
         from NEXO_CORE.services.obs_manager import obs_manager
-        if not obs_manager.is_connected():
-            raise HTTPException(status_code=503, detail="OBS not connected")
+        from NEXO_CORE.core.state_manager import state_manager
+
+        connected = await obs_manager.ensure_connected()
+        if not connected:
+            raise HTTPException(status_code=503, detail="OBS not connected — open OBS on the torre and enable WebSocket (Tools > WebSocket Server Settings)")
 
         if payload.action in ("start", "toggle"):
-            await obs_manager.client.start_stream()
+            ok, err = await obs_manager.set_stream_active(True)
+            if not ok:
+                raise HTTPException(status_code=500, detail=err or "Failed to start stream")
             if payload.record:
-                await obs_manager.client.start_record()
-            return {"ok": True, "action": "stream_started"}
+                try:
+                    await asyncio.to_thread(obs_manager._client.start_record)
+                except Exception:
+                    pass  # recording failure non-fatal
+            return {"ok": True, "action": "stream_started", "streaming": True}
+
         elif payload.action == "stop":
-            await obs_manager.client.stop_stream()
-            return {"ok": True, "action": "stream_stopped"}
+            ok, err = await obs_manager.set_stream_active(False)
+            if not ok:
+                raise HTTPException(status_code=500, detail=err or "Failed to stop stream")
+            return {"ok": True, "action": "stream_stopped", "streaming": False}
+
         else:
-            raise HTTPException(status_code=400, detail=f"Unknown action: {payload.action}")
+            raise HTTPException(status_code=400, detail=f"Unknown action: {payload.action}. Use: start | stop | toggle")
+
     except HTTPException:
         raise
     except Exception as exc:
@@ -266,18 +279,42 @@ async def stream_status():
     """OBS streaming/recording status — no auth needed (read-only)."""
     try:
         from NEXO_CORE.services.obs_manager import obs_manager
-        if not obs_manager.is_connected():
-            return {"obs_connected": False, "streaming": None, "recording": None}
+        from NEXO_CORE.core.state_manager import state_manager
 
-        stream_status = await obs_manager.client.get_stream_status()
-        record_status = await obs_manager.client.get_record_status()
+        snap = state_manager.snapshot()
+        obs_connected = snap.get("obs_connected", False)
+
+        if not obs_connected or obs_manager._client is None:
+            # Try a quick reconnect
+            await obs_manager.connect()
+            obs_connected = state_manager.snapshot().get("obs_connected", False)
+
+        if not obs_connected:
+            return {
+                "obs_connected": False,
+                "streaming": None,
+                "recording": None,
+                "hint": "OBS not connected. Make sure OBS is open and WebSocket is enabled on port 4455.",
+            }
+
+        streaming = await obs_manager.get_stream_active()
+
+        # Try to get record status
+        recording = None
+        try:
+            rec = await asyncio.to_thread(obs_manager._client.get_record_status)
+            recording = getattr(rec, "output_active", None)
+        except Exception:
+            pass
+
+        # Get current scene
+        scene = await obs_manager.get_current_scene()
 
         return {
             "obs_connected": True,
-            "streaming": stream_status.output_active,
-            "stream_timecode": getattr(stream_status, "output_timecode", None),
-            "recording": record_status.output_active,
-            "record_timecode": getattr(record_status, "output_timecode", None),
+            "streaming": streaming,
+            "recording": recording,
+            "current_scene": scene,
         }
     except Exception as exc:
         return {"obs_connected": False, "error": str(exc)}
