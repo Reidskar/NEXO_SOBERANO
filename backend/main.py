@@ -56,6 +56,7 @@ from backend.routes.osint import router as osint_router
 from backend.routes.nexo_platform import router as platform_router
 from backend.routes.phone_setup import router as phone_setup_router
 from backend.routes.nexo_integrations import router as integrations_router
+from backend.routes.tower_control import router as tower_router
 
 # ════════════════════════════════════════════════════════════════════
 # LOGGING
@@ -210,6 +211,7 @@ app.include_router(osint_router)
 app.include_router(platform_router)
 app.include_router(phone_setup_router)
 app.include_router(integrations_router)
+app.include_router(tower_router)
 
 # ════════════════════════════════════════════════════════════════════
 # WEBSOCKET ENDPOINT
