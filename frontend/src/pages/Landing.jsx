@@ -152,13 +152,24 @@ export default function Landing() {
           <span style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--cyan)', boxShadow: '0 0 10px var(--cyan)', animation: 'blink-dot 2s infinite' }} />
           <span style={{ fontFamily: "'Space Mono', monospace", fontSize: 13, fontWeight: 700, color: 'var(--cyan)', letterSpacing: '0.2em', textTransform: 'uppercase' }}>El Anarcocapital</span>
         </div>
-        <div style={{ display: 'flex', gap: 28, alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: 20, alignItems: 'center' }}>
           {[['#inteligencia', 'Inteligencia'], ['#rastreo', 'Rastreo'], ['#ia', 'IA'], ['#comunidad', 'Comunidad']].map(([href, label]) => (
             <a key={href} href={href} style={{ fontFamily: "'Space Mono', monospace", fontSize: 10, color: 'var(--dim)', textDecoration: 'none', letterSpacing: '0.12em', textTransform: 'uppercase', transition: 'color 0.2s' }}
               onMouseEnter={e => e.target.style.color = 'var(--cyan)'}
               onMouseLeave={e => e.target.style.color = 'var(--dim)'}
             >{label}</a>
           ))}
+          <a href="/omniglobe" style={{ fontFamily: "'Space Mono', monospace", fontSize: 10, color: 'var(--dim)', textDecoration: 'none', letterSpacing: '0.12em', textTransform: 'uppercase', transition: 'color 0.2s', display: 'flex', alignItems: 'center', gap: 5 }}
+            onMouseEnter={e => { e.currentTarget.style.color = 'var(--cyan)'; }}
+            onMouseLeave={e => { e.currentTarget.style.color = 'var(--dim)'; }}
+          >
+            <span style={{ width: 5, height: 5, borderRadius: '50%', background: 'currentColor', display: 'inline-block' }} />
+            OmniGlobe
+          </a>
+          <a href="/flowmap" style={{ fontFamily: "'Space Mono', monospace", fontSize: 10, color: 'var(--dim)', textDecoration: 'none', letterSpacing: '0.12em', textTransform: 'uppercase', transition: 'color 0.2s' }}
+            onMouseEnter={e => { e.currentTarget.style.color = 'var(--cyan)'; }}
+            onMouseLeave={e => { e.currentTarget.style.color = 'var(--dim)'; }}
+          >FlowMap</a>
           <Link to="/control" style={{
             fontFamily: "'Space Mono', monospace", fontSize: 10,
             padding: '8px 20px', background: 'var(--cyan)', color: 'var(--bg)',
@@ -173,9 +184,16 @@ export default function Landing() {
         position: 'relative', padding: '140px 48px 120px', overflow: 'hidden'
       }}>
         <NeuralCanvas />
-        <div style={{ position: 'absolute', right: '3vw', top: '50%', transform: 'translateY(-50%)', zIndex: 2, opacity: 0.7, pointerEvents: 'none' }}>
+        <a href="/omniglobe" style={{ position: 'absolute', right: '3vw', top: '50%', transform: 'translateY(-50%)', zIndex: 2, opacity: 0.72, textDecoration: 'none', display: 'block', transition: 'opacity 0.3s' }}
+          onMouseEnter={e => { e.currentTarget.style.opacity = '1'; }}
+          onMouseLeave={e => { e.currentTarget.style.opacity = '0.72'; }}
+          title="Abrir OmniGlobe 3D Interactivo"
+        >
           <Globe3D size={460} color="#00e5ff" speed={0.003} />
-        </div>
+          <div style={{ position: 'absolute', bottom: 20, left: '50%', transform: 'translateX(-50%)', fontFamily: "'Space Mono', monospace", fontSize: 9, color: '#00e5ff', letterSpacing: '0.2em', textTransform: 'uppercase', whiteSpace: 'nowrap', opacity: 0, transition: 'opacity 0.2s' }}
+            onMouseEnter={e => { e.currentTarget.style.opacity = '1'; }}
+          >◈ VER OMNIGLOBE →</div>
+        </a>
 
         <div style={{ maxWidth: 820, position: 'relative', zIndex: 3 }}>
           <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontFamily: "'Space Mono', monospace", fontSize: 10, color: 'var(--cyan)', letterSpacing: '0.2em', textTransform: 'uppercase', border: '1px solid var(--border-hi)', padding: '6px 16px', marginBottom: 36, background: 'rgba(0,229,255,0.05)', animation: 'fade-up 0.5s var(--ease-out) 0.1s both' }}>
@@ -341,6 +359,91 @@ export default function Landing() {
         </div>
       </section>
 
+      {/* ── OMNIGLOBE FEATURE ── */}
+      <section id="omniglobe" style={{ padding: '120px 48px', borderTop: '1px solid var(--border)', position: 'relative', zIndex: 2, background: 'linear-gradient(180deg, var(--bg) 0%, rgba(0,20,40,0.4) 50%, var(--bg) 100%)' }}>
+        <div style={{ maxWidth: 1240, margin: '0 auto' }}>
+          <div className="reveal" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 72, alignItems: 'center' }}>
+            <div>
+              <div className="section-tag">OmniGlobe · 3D en Vivo</div>
+              <h2 style={{ fontSize: 'clamp(30px,4vw,50px)', fontWeight: 800, letterSpacing: '-0.025em', lineHeight: 1.1, marginBottom: 20 }}>
+                El mundo completo<br /><span className="gradient-text">en tiempo real.</span>
+              </h2>
+              <p style={{ fontFamily: "'Space Mono', monospace", fontSize: 12, color: 'var(--muted)', lineHeight: 1.82, marginBottom: 28 }}>
+                OmniGlobe integra 5 capas de inteligencia en un globo 3D interactivo: buques (AIS), aeronaves militares (ADS-B), eventos geopolíticos con severidad ciudad, arcos de flujo logístico e infraestructura crítica global.
+              </p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 32 }}>
+                {[
+                  ['⛵', 'Vessels', '15 buques activos — militares, cargueros, tankers'],
+                  ['✈', 'Aircraft', '8 aeronaves ISR/SIGINT — RQ-4B, RC-135W, P-8A'],
+                  ['⚠', 'Events', 'Zonas de impacto con radio ciudad, no país'],
+                  ['↗', 'Flows', 'Arcos animados — rutas logísticas y militares'],
+                  ['⚡', 'CritInfra', 'Plantas nucleares, represas, gasoductos estratégicos'],
+                ].map(([icon, label, desc]) => (
+                  <div key={label} style={{ display: 'flex', gap: 10, alignItems: 'flex-start', fontFamily: "'Space Mono', monospace", fontSize: 11 }}>
+                    <span style={{ color: 'var(--cyan)', minWidth: 18 }}>{icon}</span>
+                    <span style={{ color: 'var(--text)', fontWeight: 700, minWidth: 80 }}>{label}</span>
+                    <span style={{ color: 'var(--dim)' }}>{desc}</span>
+                  </div>
+                ))}
+              </div>
+              <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+                <a href="/omniglobe" style={{ fontFamily: "'Space Mono', monospace", fontSize: 11, padding: '12px 28px', background: 'var(--cyan)', color: 'var(--bg)', textDecoration: 'none', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+                  Abrir OmniGlobe →
+                </a>
+                <a href="/flowmap" style={{ fontFamily: "'Space Mono', monospace", fontSize: 11, padding: '12px 28px', border: '1px solid var(--border-hi)', color: 'var(--muted)', textDecoration: 'none', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+                  Ver Arquitectura
+                </a>
+              </div>
+            </div>
+
+            {/* Globe preview card */}
+            <a href="/omniglobe" style={{ textDecoration: 'none', display: 'block' }}>
+              <div className="card-hover" style={{ background: 'var(--bg2)', border: '1px solid var(--border)', padding: 0, overflow: 'hidden', cursor: 'pointer', position: 'relative' }}>
+                {/* Header */}
+                <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 10, background: 'rgba(0,0,0,0.4)' }}>
+                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#10b981', animation: 'blink-dot 1.5s infinite' }} />
+                  <span style={{ fontFamily: "'Space Mono', monospace", fontSize: 10, color: 'var(--cyan)', letterSpacing: '0.15em' }}>◎ OMNIGLOBE · INTELLIGENCE LAYER · LIVE</span>
+                  <span style={{ marginLeft: 'auto', fontFamily: "'Space Mono', monospace", fontSize: 9, color: '#ef4444', animation: 'blink-dot 1.5s infinite' }}>● LIVE</span>
+                </div>
+                {/* Stats grid */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 1, background: 'var(--border)', margin: '1px 0' }}>
+                  {[
+                    { label: 'VESSELS', val: '15', color: '#00e5ff' },
+                    { label: 'AIRCRAFT', val: '8', color: '#f59e0b' },
+                    { label: 'EVENTS', val: '8', color: '#ef4444' },
+                  ].map(s => (
+                    <div key={s.label} style={{ background: 'var(--bg2)', padding: '14px 18px', fontFamily: "'Space Mono', monospace" }}>
+                      <div style={{ fontSize: 9, color: 'var(--dim)', letterSpacing: '0.1em' }}>{s.label}</div>
+                      <div style={{ fontSize: 22, color: s.color, fontWeight: 700, marginTop: 4 }}>{s.val}</div>
+                    </div>
+                  ))}
+                </div>
+                {/* Scenario list */}
+                <div style={{ padding: '16px 18px', fontFamily: "'Space Mono', monospace" }}>
+                  <div style={{ fontSize: 9, color: 'var(--dim)', letterSpacing: '0.1em', marginBottom: 10, textTransform: 'uppercase' }}>Escenarios activos</div>
+                  {[
+                    { name: 'CIERRE HORMUZ', sev: 'CRITICAL', col: '#ef4444', lat: '26.6°N 56.5°E' },
+                    { name: 'EJERCICIOS PLA — TAIWÁN', sev: 'CRITICAL', col: '#ef4444', lat: '24.5°N 120.5°E' },
+                    { name: 'GRID STRIKE UCRANIA', sev: 'HIGH', col: '#f97316', lat: '50.4°N 30.5°E' },
+                  ].map(s => (
+                    <div key={s.name} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 0', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                      <span style={{ width: 6, height: 6, borderRadius: '50%', background: s.col, flexShrink: 0 }} />
+                      <span style={{ fontSize: 10, color: 'var(--text)', flex: 1 }}>{s.name}</span>
+                      <span style={{ fontSize: 9, color: s.col, letterSpacing: '0.06em' }}>{s.sev}</span>
+                      <span style={{ fontSize: 9, color: 'var(--dim)', fontVariantNumeric: 'tabular-nums' }}>{s.lat}</span>
+                    </div>
+                  ))}
+                </div>
+                {/* CTA overlay */}
+                <div style={{ padding: '12px 18px', textAlign: 'center', borderTop: '1px solid var(--border)', background: 'rgba(0,229,255,0.04)' }}>
+                  <span style={{ fontFamily: "'Space Mono', monospace", fontSize: 10, color: 'var(--cyan)', letterSpacing: '0.1em' }}>◈ CLICK PARA ABRIR GLOBO INTERACTIVO →</span>
+                </div>
+              </div>
+            </a>
+          </div>
+        </div>
+      </section>
+
       {/* ── COMUNIDAD ── */}
       <section id="comunidad" style={{ padding: '120px 48px', borderTop: '1px solid var(--border)', position: 'relative', zIndex: 2 }}>
         <div style={{ maxWidth: 1240, margin: '0 auto' }}>
@@ -368,7 +471,7 @@ export default function Landing() {
       <footer style={{ borderTop: '1px solid var(--border)', padding: '20px 48px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(7,15,26,0.8)', position: 'relative', zIndex: 2 }}>
         <span style={{ fontFamily: "'Space Mono', monospace", fontSize: 10, color: 'var(--dim)' }}>El Anarcocapital · © 2026 Camilo Estefano · Inteligencia Soberana</span>
         <div style={{ display: 'flex', gap: 20 }}>
-          {[['#inteligencia', 'Capacidades'], ['#ia', 'IA'], ['#rastreo', 'Rastreo'], ['/control', 'Warroom']].map(([href, label]) => (
+          {[['#inteligencia', 'Capacidades'], ['#ia', 'IA'], ['#rastreo', 'Rastreo'], ['/omniglobe', 'OmniGlobe'], ['/flowmap', 'FlowMap'], ['/control', 'Warroom']].map(([href, label]) => (
             <a key={href} href={href} style={{ fontFamily: "'Space Mono', monospace", fontSize: 10, color: 'var(--dim)', textDecoration: 'none', transition: 'color 0.2s' }}
               onMouseEnter={e => e.target.style.color = 'var(--cyan)'}
               onMouseLeave={e => e.target.style.color = 'var(--dim)'}

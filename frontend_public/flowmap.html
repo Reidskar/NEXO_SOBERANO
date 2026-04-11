@@ -193,9 +193,9 @@ h2{font-size:11px;color:#334155;letter-spacing:.15em;margin-bottom:24px;text-tra
     <div class="layer-label">⚡ API Routes — FastAPI</div>
     <div class="api-block">
       <div class="api-routes">
+        <span class="api-route ai">/api/ai/mobile/query</span>
         <span class="api-route ai">/api/ai/ask</span>
         <span class="api-route ai">/agente/consultar</span>
-        <span class="api-route ai">/agente/consultar-rag</span>
         <span class="api-route">/api/knowledge</span>
         <span class="api-route">/api/dashboard/stats</span>
         <span class="api-route">/api/stream/status</span>
@@ -204,10 +204,21 @@ h2{font-size:11px;color:#334155;letter-spacing:.15em;margin-bottom:24px;text-tra
         <span class="api-route geo">/api/globe/command</span>
         <span class="api-route geo">/api/globe/poll</span>
         <span class="api-route geo">/api/globe/scenario/{name}</span>
+        <span class="api-route geo">/api/globe/scenarios</span>
         <span class="api-route">/api/drive/buscar</span>
         <span class="api-route">/api/social/monitor</span>
         <span class="api-route">/api/metrics</span>
         <span class="api-route">/api/mobile/heartbeat</span>
+        <span class="api-route">/api/mobile/quick/{agent}/{action}</span>
+        <span class="api-route">/api/mobile/devices</span>
+        <span class="api-route">/api/tower/status</span>
+        <span class="api-route">/api/tower/stream</span>
+        <span class="api-route">/api/tower/obs/scene</span>
+        <span class="api-route">/api/tower/obs/record</span>
+        <span class="api-route">/api/tower/obs/scenes</span>
+        <span class="api-route">/api/tower/ping</span>
+        <span class="api-route">/api/media/sync/run</span>
+        <span class="api-route">/api/media/sync/status</span>
         <span class="api-route">/api/webhooks/ingest</span>
         <span class="api-route">/auth/login</span>
         <span class="api-route">/health</span>
@@ -226,7 +237,9 @@ h2{font-size:11px;color:#334155;letter-spacing:.15em;margin-bottom:24px;text-tra
       <div class="store"><span class="si">🔮</span><div><div style="color:#e2e8f0;font-size:11px">Qdrant</div><div class="infra-name">vector DB · memoria semántica</div></div></div>
       <div class="store"><span class="si">📁</span><div><div style="color:#e2e8f0;font-size:11px">Google Drive</div><div class="infra-name">contexto · documentos · aporte</div></div></div>
       <div class="store"><span class="si">💬</span><div><div style="color:#e2e8f0;font-size:11px">Discord</div><div class="infra-name">webhook · supervisor · alertas</div></div></div>
-      <div class="store"><span class="si">🤖</span><div><div style="color:#e2e8f0;font-size:11px">AI Providers</div><div class="infra-name">Gemini · Claude · GPT-4 · Grok</div></div></div>
+      <div class="store"><span class="si">🤖</span><div><div style="color:#e2e8f0;font-size:11px">AI Providers</div><div class="infra-name">Gemma 4 local · Gemini · Claude · Grok</div></div></div>
+      <div class="store"><span class="si">🎙</span><div><div style="color:#e2e8f0;font-size:11px">Groq STT/LLM</div><div class="infra-name">Whisper large-v3 · Discord voz</div></div></div>
+      <div class="store"><span class="si">📡</span><div><div style="color:#e2e8f0;font-size:11px">Tailscale VPN</div><div class="infra-name">Torre ↔ Teléfono ↔ Notebook</div></div></div>
     </div>
   </div>
 
