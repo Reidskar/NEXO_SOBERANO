@@ -427,3 +427,287 @@ echo -e "  3. Obtén la IP Tailscale de la torre: ${CYAN}tailscale ip${NC} (en l
 echo -e "  4. Actualiza la config: ${CYAN}sed -i 's/TOWER_TAILSCALE_IP=/TOWER_TAILSCALE_IP=100.x.x.x/' ~/nexo_agent/ai/config.env${NC}"
 echo ""
 fi
+
+# ════════════════════════════════════════════════════════════
+# PASO 7 — Phone Agent NEXO (bidireccional + herramientas Termux)
+# ════════════════════════════════════════════════════════════
+step "7/9  Phone Agent NEXO (Termux tools + comando bidireccional)"
+
+# Intentar descargar el agente desde la torre (ya generado dinámicamente)
+AGENT_INSTALLED=false
+for H in "$TOWER_PRIMARY" "$TOWER_LAN_IP"; do
+    [[ -z "$H" ]] && continue
+    info "Intentando descargar agente desde $H..."
+    if curl -sf --connect-timeout 5 "http://$H:$TOWER_PORT/phone/setup.sh" -o /tmp/nexo_agent_setup.sh 2>/dev/null; then
+        bash /tmp/nexo_agent_setup.sh
+        AGENT_INSTALLED=true
+        ok "Agente instalado desde la torre ($H)"
+        break
+    fi
+done
+
+# Fallback: instalar agente desde el repo clonado
+if [[ "$AGENT_INSTALLED" == "false" ]]; then
+    warn "Torre no disponible — instalando agente desde repo local"
+    mkdir -p "$NEXO_DIR" "$NEXO_DIR/logs"
+
+    # Instalar dependencias Python del agente
+    pip install --quiet requests psutil 2>/dev/null || true
+    pkg install -y -q termux-api 2>/dev/null || true
+
+    # Copiar agente si existe en el repo
+    AGENT_SRC="$REPO_DIR/nexo_agent/nexo_mobile_agent.py"
+    if [[ ! -f "$AGENT_SRC" ]]; then
+        # Crear agente mínimo funcional
+        cat > "$NEXO_DIR/nexo_mobile_agent.py" << 'PYEOF'
+#!/usr/bin/env python3
+"""NEXO Phone Agent — ejecuta cuando la torre lo descargue"""
+import json, os, subprocess, time, requests, psutil
+from datetime import datetime, timezone
+
+BASE     = os.path.expanduser("~/nexo_agent")
+PIDFILE  = os.path.join(BASE, "nexo_agent.pid")
+LOGFILE  = os.path.join(BASE, "logs/agent.log")
+
+def _load_env():
+    for p in [os.path.join(BASE, ".env"), os.path.expanduser("~/.bashrc")]:
+        if os.path.exists(p):
+            for line in open(p):
+                line = line.strip()
+                if line and not line.startswith("#") and "=" in line:
+                    k, v = line.split("=", 1)
+                    os.environ.setdefault(k.strip().strip("export "), v.strip().strip('"'))
+_load_env()
+
+BACKENDS = [b for b in [
+    os.getenv("BACKEND_URL",     "http://192.168.100.22:8000"),
+    os.getenv("TAILSCALE_TOWER_IP", "") and f"http://{os.getenv('TAILSCALE_TOWER_IP')}:{os.getenv('TOWER_PORT','8000')}",
+] if b]
+AGENT_ID = os.getenv("AGENT_ID", "telefono")
+API_KEY  = os.getenv("NEXO_API_KEY", "nexo_dev_key_2025")
+HDR      = {"X-API-Key": API_KEY, "Content-Type": "application/json"}
+
+def get_backend():
+    for url in BACKENDS:
+        try:
+            if requests.get(f"{url}/health", timeout=3).status_code < 500:
+                return url
+        except: pass
+    return BACKENDS[0]
+
+BACKEND = get_backend()
+
+def metrics():
+    m = {"agent_id": AGENT_ID, "timestamp": datetime.now(timezone.utc).isoformat()}
+    try:
+        m["cpu_pct"] = psutil.cpu_percent(interval=0.3)
+        mem = psutil.virtual_memory()
+        m["ram_pct"] = mem.percent
+        m["ram_total_mb"] = round(mem.total / 1e6, 1)
+    except: pass
+    for cmd, key in [("termux-battery-status", "bat"), ("termux-wifi-connectioninfo", "wifi")]:
+        try:
+            r = subprocess.run([cmd], capture_output=True, text=True, timeout=4)
+            if r.returncode == 0:
+                d = json.loads(r.stdout)
+                if key == "bat":
+                    m["bateria_pct"] = d.get("percentage", -1)
+                    m["bateria_estado"] = d.get("status", "unknown")
+                else:
+                    m["wifi_ssid"] = d.get("ssid", "unknown")
+        except: pass
+    return m
+
+def exec_cmd(cmd):
+    t = cmd.get("type","")
+    p = cmd.get("payload", {})
+    def run(*a): subprocess.run(list(a), timeout=10)
+    if t == "notify":    run("termux-notification","--title",p.get("title","NEXO"),"--content",p.get("content",""))
+    elif t == "torch":   run("termux-torch","on" if p.get("on",True) else "off")
+    elif t == "vibrate": run("termux-vibrate","-d",str(p.get("duration_ms",500)),"-f")
+    elif t == "volume":  run("termux-volume",p.get("stream","music"),str(p.get("volume",5)))
+    elif t == "location":
+        r = subprocess.run(["termux-location","-p","gps","-r","once"], capture_output=True, text=True, timeout=15)
+        if r.returncode == 0:
+            loc = json.loads(r.stdout)
+            requests.post(f"{BACKEND}/api/webhooks/ingest",
+                json={"tenant_slug":"globe","type":"phone_location","title":f"{AGENT_ID} GPS",
+                      "body":json.dumps({"lat":loc.get("latitude"),"lng":loc.get("longitude")}),"severity":0.3},
+                headers=HDR, timeout=8)
+    elif t == "screenshot":
+        out = os.path.join(BASE, "screenshot.png")
+        subprocess.run(["termux-screenshot","-f",out], timeout=10)
+    elif t == "exec":
+        out = subprocess.run(["bash","-c",p.get("command","echo ok")], capture_output=True, text=True, timeout=30)
+        subprocess.run(["termux-notification","--title","NEXO exec","--content",out.stdout[:100] or out.stderr[:100]])
+    elif t == "tts":
+        run("termux-tts-speak", p.get("text",""))
+    elif t == "sms":
+        run("termux-sms-send","-n",p.get("number",""),p.get("message","NEXO"))
+    elif t == "open_url":
+        run("termux-open-url", p.get("url",""))
+
+with open(PIDFILE, "w") as f: f.write(str(os.getpid()))
+subprocess.run(["termux-wake-lock"], timeout=5)
+subprocess.run(["termux-notification","--title","◎ NEXO SOBERANO","--content","Agente iniciado","--id","99","--ongoing"])
+
+# Detectar herramientas Termux y registrar
+tools_all = ["termux-battery-status","termux-sensor","termux-torch","termux-vibrate","termux-volume",
+             "termux-wifi-connectioninfo","termux-wifi-scaninfo","termux-location","termux-camera-info",
+             "termux-camera-photo","termux-microphone-record","termux-notification","termux-dialog",
+             "termux-toast","termux-open-url","termux-clipboard-get","termux-clipboard-set",
+             "termux-screenshot","termux-wake-lock","termux-alarm","termux-sms-send","termux-sms-list",
+             "termux-call-log","termux-contact-list","termux-tts-speak","termux-fingerprint"]
+detected = [t for t in tools_all if subprocess.run(["which",t],capture_output=True).returncode == 0]
+try:
+    requests.post(f"{BACKEND}/api/mobile/tools/{AGENT_ID}", json={"tools": detected}, headers=HDR, timeout=8)
+    print(f"[NEXO] {len(detected)} herramientas Termux registradas")
+except Exception as e: print(f"[NEXO] tools registro falló: {e}")
+
+last_hb = 0
+last_cmd = 0
+while True:
+    now = time.time()
+    if now - last_hb >= 30:
+        try:
+            m = metrics()
+            r = requests.post(f"{BACKEND}/api/mobile/heartbeat", json=m, headers=HDR, timeout=8)
+            cmds = r.json().get("commands", [])
+            for c in cmds: exec_cmd(c)
+        except Exception as e: print(f"[NEXO] heartbeat error: {e}")
+        last_hb = now
+    if now - last_cmd >= 10:
+        try:
+            r = requests.get(f"{BACKEND}/api/mobile/commands/{AGENT_ID}", headers=HDR, timeout=5)
+            for c in r.json().get("commands", []): exec_cmd(c)
+        except: pass
+        last_cmd = now
+    time.sleep(5)
+PYEOF
+    fi
+
+    ok "Agente instalado desde repo"
+fi
+
+# Start script
+cat > "$NEXO_DIR/start.sh" << 'STARTEOF'
+#!/data/data/com.termux/files/usr/bin/bash
+AGENT_DIR="$HOME/nexo_agent"
+PIDFILE="$AGENT_DIR/nexo_agent.pid"
+if [[ -f "$PIDFILE" ]] && kill -0 "$(cat $PIDFILE)" 2>/dev/null; then
+    echo "Agente ya corriendo (PID $(cat $PIDFILE))"
+    exit 0
+fi
+nohup python3 "$AGENT_DIR/nexo_mobile_agent.py" >> "$AGENT_DIR/logs/agent.log" 2>&1 &
+echo "Agente NEXO iniciado (PID $!)"
+STARTEOF
+chmod +x "$NEXO_DIR/start.sh"
+
+# Termux:Boot
+mkdir -p "$HOME/.termux/boot"
+cat > "$HOME/.termux/boot/nexo-agent.sh" << 'BOOTEOF'
+#!/data/data/com.termux/files/usr/bin/bash
+sleep 10
+termux-wake-lock
+bash "$HOME/nexo_agent/start.sh"
+BOOTEOF
+chmod +x "$HOME/.termux/boot/nexo-agent.sh"
+ok "Termux:Boot configurado (auto-inicio al encender)"
+
+# Arrancar agente ahora
+bash "$NEXO_DIR/start.sh" 2>/dev/null || true
+ok "Agente NEXO iniciado"
+
+# ════════════════════════════════════════════════════════════
+# PASO 8 — Ollama local (Gemma 4 1B — opcional)
+# ════════════════════════════════════════════════════════════
+step "8/9  Ollama / IA local en teléfono"
+
+WITH_LOCAL=false
+[[ "$*" == *"--with-local"* ]] && WITH_LOCAL=true
+
+if [[ "$WITH_LOCAL" == "true" ]]; then
+    info "Instalando llama.cpp + Gemma 4 1B (~700MB, 20-40 min)..."
+    pkg install -y -q cmake ninja clang make 2>/dev/null
+    LLAMACPP="$HOME/nexo_agent/ai/llama.cpp"
+    MODEL_DIR="$HOME/nexo_agent/ai/models"
+    mkdir -p "$MODEL_DIR"
+
+    if [[ ! -d "$LLAMACPP" ]]; then
+        git clone --depth=1 https://github.com/ggerganov/llama.cpp "$LLAMACPP" 2>&1 | tail -2
+    fi
+    cd "$LLAMACPP" && mkdir -p build && cd build
+    cmake .. -DCMAKE_BUILD_TYPE=Release -DGGML_NATIVE=OFF 2>&1 | tail -2
+    make -j2 llama-server 2>&1 | tail -3
+    ok "llama-server compilado"
+
+    MODEL_FILE="$MODEL_DIR/gemma-1b-q4.gguf"
+    if [[ ! -f "$MODEL_FILE" ]]; then
+        info "Descargando Gemma 3 1B Q4_K_M (~700MB)..."
+        curl -L --progress-bar \
+            "https://huggingface.co/lmstudio-community/gemma-3-1b-it-GGUF/resolve/main/gemma-3-1b-it-Q4_K_M.gguf" \
+            -o "$MODEL_FILE"
+        ok "Modelo descargado"
+    fi
+
+    cat > "$HOME/nexo_agent/ai/start_local_ai.sh" << LOCALEOF
+#!/data/data/com.termux/files/usr/bin/bash
+$LLAMACPP/build/bin/llama-server \\
+    --model $MODEL_FILE --host 0.0.0.0 --port 8080 \\
+    --ctx-size 2048 --threads 4 --n-predict 512 -ngl 0 &
+echo "IA local iniciada en http://localhost:8080"
+LOCALEOF
+    chmod +x "$HOME/nexo_agent/ai/start_local_ai.sh"
+    ln -sf "$HOME/nexo_agent/ai/start_local_ai.sh" "$PREFIX/bin/nexo-ai-local" 2>/dev/null || true
+    sed -i "s/LOCAL_MODEL_ENABLED=false/LOCAL_MODEL_ENABLED=true/" "$HOME/nexo_agent/ai/config.env" 2>/dev/null || true
+    ok "Gemma 4 1B configurada — inicia con: nexo-ai-local"
+else
+    info "Saltando IA local — para instalarla: bash $0 --with-local"
+    info "La IA usa la torre (Gemma 4 27B GPU) via Tailscale/LAN"
+fi
+
+# ════════════════════════════════════════════════════════════
+# PASO 9 — Registro final en la torre
+# ════════════════════════════════════════════════════════════
+step "9/9  Registro en la torre"
+
+for H in "$TOWER_PRIMARY" "$TOWER_LAN_IP"; do
+    [[ -z "$H" ]] && continue
+    # Registrar Discord commands
+    R=$(curl -s -X POST "http://$H:$TOWER_PORT/api/tower/discord/register" \
+        -H "X-API-Key: nexo_dev_key_2025" --connect-timeout 8 2>/dev/null)
+    if echo "$R" | grep -q '"ok":true'; then
+        ok "Slash commands Discord registrados"
+    fi
+
+    # Verificar estado IA
+    STATUS=$(curl -s --connect-timeout 5 "http://$H:$TOWER_PORT/api/ai/mobile/status" 2>/dev/null)
+    if echo "$STATUS" | grep -q '"available":true'; then
+        MODEL=$(echo "$STATUS" | grep -o '"models":\[[^]]*\]' | head -1)
+        ok "Torre Gemma 4 disponible"
+    fi
+    break
+done
+
+echo ""
+echo -e "${BOLD}╔═══════════════════════════════════════════════╗${NC}"
+echo -e "${BOLD}║      NEXO Phone — Setup 100% Completo        ║${NC}"
+echo -e "${BOLD}╚═══════════════════════════════════════════════╝${NC}"
+echo ""
+echo -e "  ${BOLD}Acceso remoto desde Discord:${NC}"
+echo -e "  ${CYAN}/ai pregunta: 'toma una foto'${NC}     → NEXO envía cmd al teléfono"
+echo -e "  ${CYAN}/ai pregunta: 'muestra ubicación'${NC}  → GPS → OmniGlobe"
+echo ""
+echo -e "  ${BOLD}Control desde Termux:${NC}"
+echo -e "  ${CYAN}nexo-ai 'pregunta'${NC}                → IA Gemma 4 torre"
+echo -e "  ${CYAN}nexo-ai --stream-start${NC}            → OBS stream"
+echo -e "  ${CYAN}nexo-ai --obs-scene globe${NC}         → cambiar escena"
+echo -e "  ${CYAN}nexo-ai --tower-status${NC}            → estado torre completo"
+echo ""
+echo -e "  ${BOLD}Agente en segundo plano:${NC}"
+echo -e "  ${CYAN}bash ~/nexo_agent/start.sh${NC}        → iniciar agente"
+echo -e "  ${CYAN}tail -f ~/nexo_agent/logs/agent.log${NC} → ver logs"
+echo ""
+[[ "$WITH_LOCAL" == "true" ]] && \
+echo -e "  ${CYAN}nexo-ai-local${NC}                     → Gemma 4 1B offline"
+echo ""
