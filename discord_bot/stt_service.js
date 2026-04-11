@@ -172,4 +172,57 @@ function detectOBSCommand(text) {
     return null;
 }
 
-module.exports = { transcribeFile, handleAudioStream, detectOBSCommand };
+// ── Globe scenario / command detector ─────────────────────────────────────────
+// Returns { type, payload } if the text is a globe command, else null.
+// type: 'scenario' | 'fly_to' | 'layer' | 'reset' | 'clear'
+function detectGlobeCommand(text) {
+    const t = text.toLowerCase().trim();
+
+    // ── Scenario triggers ──────────────────────────────────────────────────────
+    if (/hormuz|estrecho.*persia|iran.*bloque|bloque.*iran/.test(t))
+        return { type: 'scenario', name: 'hormuz_crisis' };
+    if (/taiw[aá]n|estrecho.*taiw|pla.*ejercicio|china.*taiwan/.test(t))
+        return { type: 'scenario', name: 'taiwan_strait' };
+    if (/ucrani.*grid|grid.*ucrani|red.*el[eé]ctric.*ucrani|ataque.*ucrani.*infra/.test(t))
+        return { type: 'scenario', name: 'ukraine_grid_strike' };
+
+    // ── Fly-to (navigate globe to location) ───────────────────────────────────
+    const flyMatch = t.match(/(?:ve a|navega a|lleva.*a|muéstrame|mostrar?|zoom.*a)\s+(.{3,40})/);
+    if (flyMatch) {
+        const loc = flyMatch[1].trim();
+        const GEO = {
+            'ucrania': { lat: 49.0, lng: 32.0 },   'ukraine': { lat: 49.0, lng: 32.0 },
+            'rusia':   { lat: 55.7, lng: 37.6 },   'russia':  { lat: 55.7, lng: 37.6 },
+            'israel':  { lat: 31.5, lng: 34.9 },   'gaza':    { lat: 31.4, lng: 34.4 },
+            'taiwan':  { lat: 24.5, lng: 120.5 },  'taiwán':  { lat: 24.5, lng: 120.5 },
+            'china':   { lat: 35.5, lng: 105.0 },  'iran':    { lat: 32.4, lng: 53.6 },
+            'irán':    { lat: 32.4, lng: 53.6 },   'siria':   { lat: 34.8, lng: 38.9 },
+            'hormuz':  { lat: 26.6, lng: 56.5 },   'suez':    { lat: 30.1, lng: 32.5 },
+            'mediterráneo': { lat: 35.0, lng: 18.0 }, 'atlantico': { lat: 30.0, lng: -40.0 },
+            'venezuela': { lat: 6.4, lng: -66.5 }, 'colombia': { lat: 4.6, lng: -74.1 },
+            'argentina': { lat: -34.6, lng: -58.4 },
+        };
+        for (const [key, coords] of Object.entries(GEO)) {
+            if (loc.includes(key)) return { type: 'fly_to', ...coords, altitude: 1.2 };
+        }
+    }
+
+    // ── Layer toggles ──────────────────────────────────────────────────────────
+    if (/(?:muestra|activa|pon).*buques|buques.*on/.test(t))   return { type: 'layer', layer: 'vessels',        visible: true };
+    if (/(?:oculta|apaga).*buques|buques.*off/.test(t))        return { type: 'layer', layer: 'vessels',        visible: false };
+    if (/(?:muestra|activa).*aeronaves|aviones.*on/.test(t))   return { type: 'layer', layer: 'aircraft',       visible: true };
+    if (/(?:oculta|apaga).*aeronaves|aviones.*off/.test(t))    return { type: 'layer', layer: 'aircraft',       visible: false };
+    if (/(?:muestra|activa).*eventos|alertas.*on/.test(t))     return { type: 'layer', layer: 'events',         visible: true };
+    if (/(?:muestra|activa).*infraestructura|infra.*on/.test(t)) return { type: 'layer', layer: 'infrastructure', visible: true };
+    if (/todas.*capas|activar.*todo|show.*all/.test(t))        return { type: 'all_layers' };
+
+    // ── Reset / clear ──────────────────────────────────────────────────────────
+    if (/reset.*globo|restablecer.*globo|vista.*inicial|globo.*inicio/.test(t))
+        return { type: 'reset' };
+    if (/limpiar.*globo|borrar.*globo|clear.*globe/.test(t))
+        return { type: 'clear' };
+
+    return null;
+}
+
+module.exports = { transcribeFile, handleAudioStream, detectOBSCommand, detectGlobeCommand };

@@ -446,6 +446,79 @@ async def obs_record(payload: RecordAction, x_api_key: str = Header(None)):
 # GET /api/tower/obs/scenes — list available OBS scenes
 # ──────────────────────────────────────────────────────────────
 
+@router.post("/obs/phone-source")
+async def obs_add_phone_source(x_api_key: str = Header(None)):
+    """
+    Add the phone as a Media Source in OBS (RTMP stream from Termux).
+
+    Setup required on the phone:
+      bash scripts/phone_obs_stream.sh   (starts RTMP stream to tower)
+    OR (smoother):
+      1. Install 'IP Webcam' app on Android
+      2. bash scripts/phone_obs_stream.sh --ipcam
+
+    This endpoint creates the OBS source pointing to the local RTMP ingest.
+    The Tower needs: nginx-rtmp OR just use OBS's built-in custom RTMP server.
+    """
+    _require_api_key(x_api_key)
+    try:
+        from NEXO_CORE.services.obs_manager import obs_manager
+
+        connected = await obs_manager.ensure_connected()
+        if not connected:
+            raise HTTPException(status_code=503, detail="OBS no conectado")
+
+        tower_ip = os.getenv("TAILSCALE_TOWER_IP", "127.0.0.1")
+        rtmp_url = f"rtmp://{tower_ip}/live/nexo_phone"
+
+        # Create/update a Media Source called NEXO_Phone in OBS
+        source_settings = {
+            "input":             rtmp_url,
+            "input_format":      "flv",
+            "reconnect_delay_sec": 2,
+            "restart_on_activate": True,
+            "is_local_file":     False,
+        }
+
+        try:
+            await asyncio.to_thread(
+                obs_manager._client.create_input,
+                sceneName=None,         # None = create unattached, then add below
+                inputName="NEXO_Phone",
+                inputKind="ffmpeg_source",
+                inputSettings=source_settings,
+                sceneItemEnabled=True,
+            )
+        except Exception:
+            # Source might already exist — try updating settings
+            try:
+                await asyncio.to_thread(
+                    obs_manager._client.set_input_settings,
+                    inputName="NEXO_Phone",
+                    inputSettings=source_settings,
+                    overlay=True,
+                )
+            except Exception as update_err:
+                raise HTTPException(status_code=500, detail=f"OBS source error: {update_err}")
+
+        return {
+            "ok": True,
+            "source": "NEXO_Phone",
+            "rtmp_url": rtmp_url,
+            "mensaje": "Fuente NEXO_Phone creada en OBS. Inicia el stream en el teléfono con: bash scripts/phone_obs_stream.sh",
+            "phone_setup": {
+                "step1": "En Termux: bash scripts/phone_obs_stream.sh",
+                "step2": "Para video fluido: instalar 'IP Webcam' y usar: bash scripts/phone_obs_stream.sh --ipcam",
+                "step3": "OBS debería recibir el stream en la fuente NEXO_Phone",
+            }
+        }
+
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
 @router.get("/obs/scenes")
 async def obs_list_scenes():
     """List all available OBS scenes."""

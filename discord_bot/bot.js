@@ -1,6 +1,6 @@
 require('dotenv').config();
 const { playTTS } = require('./tts_service');
-const { transcribeFile, detectOBSCommand } = require('./stt_service');
+const { transcribeFile, detectOBSCommand, detectGlobeCommand } = require('./stt_service');
 const {
   Client,
   GatewayIntentBits,
@@ -144,6 +144,53 @@ const commands = [
         .setDescription('Mensaje para notificación/TTS en el dispositivo')
         .setRequired(false)
     ),
+  new SlashCommandBuilder()
+    .setName('globe')
+    .setDescription('Controla el OmniGlobe 3D en tiempo real')
+    .addStringOption(opt =>
+      opt.setName('accion')
+        .setDescription('Acción sobre el globo')
+        .setRequired(true)
+        .addChoices(
+          { name: '🎬 Escenario: Estrecho de Hormuz',      value: 'scenario:hormuz_crisis' },
+          { name: '🎬 Escenario: Taiwán / PLA',            value: 'scenario:taiwan_strait' },
+          { name: '🎬 Escenario: Ucrania red eléctrica',   value: 'scenario:ukraine_grid_strike' },
+          { name: '🔄 Resetear vista',                     value: 'reset_view' },
+          { name: '🗑️ Limpiar elementos dinámicos',        value: 'clear_dynamic' },
+          { name: '⛵ Toggle buques',                      value: 'layer:vessels' },
+          { name: '✈ Toggle aeronaves',                   value: 'layer:aircraft' },
+          { name: '⚠ Toggle eventos',                     value: 'layer:events' },
+          { name: '↗ Toggle flujos/arcos',                 value: 'layer:arcs' },
+          { name: '⚡ Toggle infraestructura crítica',     value: 'layer:infrastructure' },
+        )
+    )
+    .addStringOption(opt =>
+      opt.setName('narrativa')
+        .setDescription('Texto para mostrar como overlay en el globo (opcional)')
+        .setRequired(false)
+    ),
+
+  new SlashCommandBuilder()
+    .setName('media')
+    .setDescription('Clasifica y sincroniza medios desde Google Photos / OneDrive → Drive')
+    .addStringOption(opt =>
+      opt.setName('accion')
+        .setDescription('Acción de sincronización')
+        .setRequired(false)
+        .addChoices(
+          { name: '📸 Clasificar Google Photos (30 items)',     value: 'sync:google_photos:30' },
+          { name: '📸 Clasificar Google Photos (100 items)',    value: 'sync:google_photos:100' },
+          { name: '💾 Clasificar OneDrive local (30 items)',    value: 'sync:onedrive:30' },
+          { name: '🔍 Clasificar 1 archivo (preview)',          value: 'classify' },
+          { name: '📊 Ver estado autenticación',                value: 'status' },
+        )
+    )
+    .addStringOption(opt =>
+      opt.setName('archivo')
+        .setDescription('Nombre de archivo para clasificar (solo con accion=classify)')
+        .setRequired(false)
+    ),
+
   new SlashCommandBuilder()
     .setName('social')
     .setDescription('Monitorea o analiza redes sociales')
@@ -402,6 +449,117 @@ client.on('interactionCreate', async interaction => {
       await interaction.editReply(msg);
     }
   }
+
+  // ─── /media ───────────────────────────────────────────────────────────────────
+  if (commandName === 'media') {
+    const accion  = options.getString('accion') || 'status';
+    const archivo = options.getString('archivo') || '';
+
+    try {
+      if (accion === 'status') {
+        const resp = await axios.get(`${FASTAPI_URL}/api/media/sync/status`, { timeout: 10000 });
+        const s = resp.data;
+        const embed = new EmbedBuilder()
+          .setTitle('📸 Media Sync — Estado')
+          .setColor(s.google_photos === 'ok' ? 0x10b981 : 0xf59e0b)
+          .addFields(
+            { name: 'Google Photos', value: s.google_photos === 'ok' ? '✅ Autenticado' : '❌ No autenticado', inline: true },
+            { name: 'Google Drive',  value: s.google_drive  === 'ok' ? '✅ Autenticado' : '❌ No autenticado', inline: true },
+            { name: 'OneDrive Local',value: s.onedrive_local === 'ok' ? '✅ Detectado'  : '⚠️ No configurado', inline: true },
+            { name: 'Carpeta raíz',  value: s.root_folder || '—', inline: false },
+          )
+          .setFooter({ text: 'POST /api/media/sync/run para sincronizar' });
+        await interaction.editReply({ embeds: [embed] });
+
+      } else if (accion === 'classify' && archivo) {
+        const resp = await axios.post(`${FASTAPI_URL}/api/media/sync/classify`, { filename: archivo, description: '' }, { timeout: 15000 });
+        await interaction.editReply(`📁 **${archivo}** → categoría: \`${resp.data.category}\``);
+
+      } else if (accion.startsWith('sync:')) {
+        const [, source, limit] = accion.split(':');
+        await interaction.editReply(`⏳ Iniciando clasificación de ${limit} items desde **${source}**...`);
+        const resp = await axios.post(
+          `${FASTAPI_URL}/api/media/sync/run`,
+          { source, limit: parseInt(limit), dry_run: false },
+          { headers: { 'X-API-Key': process.env.NEXO_API_KEY || 'nexo_dev_key_2025' }, timeout: 300000 }
+        );
+        const r = resp.data.report;
+        const cats = Object.entries(r.classified || {}).map(([k, v]) => `**${k}**: ${v.length}`).join(' · ');
+        const embed = new EmbedBuilder()
+          .setTitle('📸 Media Sync — Completado')
+          .setColor(0x10b981)
+          .addFields(
+            { name: 'Items procesados', value: String(r.processed),        inline: true },
+            { name: 'Duración',         value: `${r.duration_s}s`,          inline: true },
+            { name: 'Errores',          value: String(r.errors.length),     inline: true },
+            { name: 'Categorías',       value: cats || '—',                  inline: false },
+          )
+          .setFooter({ text: `Fuente: ${source}` });
+        await interaction.editReply({ embeds: [embed] });
+
+      } else {
+        await interaction.editReply('Selecciona una acción o especifica un archivo para clasificar.');
+      }
+    } catch (err) {
+      await interaction.editReply(`⚠️ Error: ${err.response?.data?.detail || err.message}`);
+    }
+  }
+
+  // ─── /globe ───────────────────────────────────────────────────────────────────
+  if (commandName === 'globe') {
+    const accion    = options.getString('accion');
+    const narrativa = options.getString('narrativa') || '';
+    const apiKey    = process.env.NEXO_API_KEY || 'nexo_dev_key_2025';
+    const headers   = { 'x-api-key': apiKey };
+
+    try {
+      let resultMsg = '';
+
+      // Scenario playback
+      if (accion.startsWith('scenario:')) {
+        const scenarioName = accion.split(':')[1];
+        const sr = await axios.post(`${FASTAPI_URL}/api/globe/scenario/${scenarioName}`, {}, { headers, timeout: 10000 });
+        resultMsg = `Escenario **${scenarioName.replace(/_/g, ' ').toUpperCase()}** activado — ${sr.data?.steps ?? 0} pasos.`;
+
+      // Layer toggle
+      } else if (accion.startsWith('layer:')) {
+        const layerName = accion.split(':')[1];
+        // Get current state then toggle
+        const histResp = await axios.get(`${FASTAPI_URL}/api/globe/history`, { headers, timeout: 5000 });
+        const lastLayerCmd = histResp.data?.commands?.filter(c => c.type === 'set_layer' && c.layer === layerName).pop();
+        const nowVisible = lastLayerCmd ? !lastLayerCmd.visible : false; // toggle
+        await axios.post(`${FASTAPI_URL}/api/globe/command`, { type: 'set_layer', layer: layerName, visible: nowVisible }, { headers, timeout: 5000 });
+        resultMsg = `Capa **${layerName}** ${nowVisible ? '✅ activada' : '❌ desactivada'}.`;
+
+      // Reset view
+      } else if (accion === 'reset_view') {
+        await axios.post(`${FASTAPI_URL}/api/globe/command`, { type: 'reset_view' }, { headers, timeout: 5000 });
+        resultMsg = '🔄 Vista del OmniGlobe restablecida.';
+
+      // Clear dynamic
+      } else if (accion === 'clear_dynamic') {
+        await axios.post(`${FASTAPI_URL}/api/globe/command`, { type: 'clear_dynamic' }, { headers, timeout: 5000 });
+        resultMsg = '🗑️ Elementos dinámicos limpiados.';
+      }
+
+      // Optional narrative overlay
+      if (narrativa) {
+        await axios.post(`${FASTAPI_URL}/api/globe/command`, { type: 'narrative', text: narrativa, clear_after_ms: 8000 }, { headers, timeout: 5000 });
+        resultMsg += `\n◈ Narrativa enviada al globo.`;
+      }
+
+      const embed = new EmbedBuilder()
+        .setTitle('◎ OmniGlobe — Comando Ejecutado')
+        .setColor(0x00e5ff)
+        .setDescription(resultMsg)
+        .setFooter({ text: `globe.command → ${FASTAPI_URL}/api/globe/* · ${new Date().toUTCString()}` });
+      await interaction.editReply({ embeds: [embed] });
+
+    } catch (err) {
+      const detail = err.response?.data?.detail || err.message;
+      await interaction.editReply(`⚠️ Error en OmniGlobe: ${detail}`);
+    }
+  }
 });
 
 function setupVoiceHandler(connection, textChannel) {
@@ -504,10 +662,13 @@ function handleUserVoice(connection, userId, textChannel) {
       const user = client.users.cache.get(userId);
       if (textChannel) textChannel.send(`🎙️ **${user?.username || userId}:** ${text}`).catch(() => {});
 
-      // ── OBS command detection (runs before AI) ────────────────────
+      // ── Command routing: OBS → Globe → AI (priority order) ──────
       let iaText;
-      const obsCmd = detectOBSCommand(text);
+      const obsCmd   = detectOBSCommand(text);
+      const globeCmd = !obsCmd ? detectGlobeCommand(text) : null;
+
       if (obsCmd) {
+        // ── OBS control ────────────────────────────────────────────
         console.log(`[NEXO VOICE] OBS cmd: ${obsCmd.endpoint}`);
         try {
           const obsResp = await axios.post(
@@ -515,11 +676,48 @@ function handleUserVoice(connection, userId, textChannel) {
             obsCmd.body,
             { headers: { 'X-API-Key': process.env.NEXO_API_KEY || 'nexo_dev_key_2025' }, timeout: 8000 }
           );
-          iaText = obsResp.data?.mensaje || obsResp.data?.message || `Comando OBS ejecutado.`;
+          iaText = obsResp.data?.mensaje || obsResp.data?.message || 'Comando OBS ejecutado.';
         } catch (obsErr) {
           iaText = `No pude ejecutar el comando OBS: ${obsErr.message}`;
         }
+
+      } else if (globeCmd) {
+        // ── OmniGlobe control ───────────────────────────────────────
+        console.log(`[NEXO VOICE] Globe cmd: ${globeCmd.type}`);
+        try {
+          const apiKey = process.env.NEXO_API_KEY || 'nexo_dev_key_2025';
+          const headers = { 'x-api-key': apiKey };
+
+          if (globeCmd.type === 'scenario') {
+            const sr = await axios.post(`${FASTAPI_URL}/api/globe/scenario/${globeCmd.name}`, {}, { headers, timeout: 8000 });
+            iaText = `Escenario ${globeCmd.name.replace(/_/g, ' ')} activado en el OmniGlobe.`;
+          } else if (globeCmd.type === 'fly_to') {
+            await axios.post(`${FASTAPI_URL}/api/globe/command`, { type: 'fly_to', lat: globeCmd.lat, lng: globeCmd.lng, altitude: globeCmd.altitude ?? 1.2 }, { headers, timeout: 5000 });
+            iaText = `OmniGlobe navegando a la ubicación.`;
+          } else if (globeCmd.type === 'layer') {
+            await axios.post(`${FASTAPI_URL}/api/globe/command`, { type: 'set_layer', layer: globeCmd.layer, visible: globeCmd.visible }, { headers, timeout: 5000 });
+            iaText = `Capa ${globeCmd.layer} ${globeCmd.visible ? 'activada' : 'desactivada'} en el globo.`;
+          } else if (globeCmd.type === 'all_layers') {
+            for (const layer of ['vessels', 'aircraft', 'events', 'arcs', 'infrastructure']) {
+              await axios.post(`${FASTAPI_URL}/api/globe/command`, { type: 'set_layer', layer, visible: true }, { headers, timeout: 3000 });
+            }
+            iaText = 'Todas las capas del OmniGlobe activadas.';
+          } else if (globeCmd.type === 'reset') {
+            await axios.post(`${FASTAPI_URL}/api/globe/command`, { type: 'reset_view' }, { headers, timeout: 5000 });
+            iaText = 'Vista del OmniGlobe restablecida.';
+          } else if (globeCmd.type === 'clear') {
+            await axios.post(`${FASTAPI_URL}/api/globe/command`, { type: 'clear_dynamic' }, { headers, timeout: 5000 });
+            iaText = 'Elementos dinámicos del OmniGlobe limpiados.';
+          }
+        } catch (globeErr) {
+          console.warn(`[NEXO VOICE] Globe cmd error: ${globeErr.message}`);
+          // Fall through to AI if globe command fails
+          const aiResult = await askNexoAI(text, userId, { remember: true, maxTokens: 600 });
+          iaText = aiResult.text || 'No pude procesar tu solicitud.';
+        }
+
       } else {
+        // ── AI response ─────────────────────────────────────────────
         const aiResult = await askNexoAI(text, userId, { remember: true, maxTokens: 600 });
         iaText = aiResult.text || 'No pude procesar tu solicitud.';
       }
