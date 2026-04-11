@@ -237,3 +237,124 @@ async def tools_catalog():
         cat = info["cat"]
         by_cat.setdefault(cat, []).append({"cmd": cmd, "desc": info["desc"]})
     return {"total": len(TERMUX_TOOLS_CATALOG), "by_category": by_cat}
+
+
+# ─── Comandos rápidos de control remoto (torre → phone) ──────────────────────
+# La torre es el dispositivo de confianza — acceso total a todos los dispositivos
+
+QUICK_COMMANDS = {
+    "silence": [
+        {"type": "volume", "payload": {"stream": "music",        "volume": 0}},
+        {"type": "volume", "payload": {"stream": "notification", "volume": 0}},
+        {"type": "volume", "payload": {"stream": "ring",         "volume": 0}},
+        {"type": "volume", "payload": {"stream": "alarm",        "volume": 0}},
+        {"type": "notify", "payload": {"title": "NEXO", "content": "🔇 Silenciado remotamente"}},
+    ],
+    "unsilence": [
+        {"type": "volume", "payload": {"stream": "music",        "volume": 7}},
+        {"type": "volume", "payload": {"stream": "notification", "volume": 5}},
+        {"type": "volume", "payload": {"stream": "ring",         "volume": 7}},
+        {"type": "volume", "payload": {"stream": "alarm",        "volume": 7}},
+        {"type": "notify", "payload": {"title": "NEXO", "content": "🔊 Volumen restaurado"}},
+    ],
+    "find": [
+        {"type": "volume",  "payload": {"stream": "ring", "volume": 15}},
+        {"type": "vibrate", "payload": {"duration_ms": 1000}},
+        {"type": "torch",   "payload": {"on": True}},
+        {"type": "notify",  "payload": {"title": "📍 NEXO — Localizando dispositivo",
+                                        "content": "Tu torre está buscando este teléfono"}},
+        {"type": "tts",     "payload": {"text": "NEXO soberano: localizando dispositivo"}},
+    ],
+    "locate": [
+        {"type": "location", "payload": {}},
+        {"type": "notify",   "payload": {"title": "NEXO GPS", "content": "Enviando ubicación a la torre..."}},
+    ],
+    "camera": [
+        {"type": "camera_photo", "payload": {"camera_id": 0}},
+        {"type": "notify",       "payload": {"title": "NEXO", "content": "Foto tomada y enviada"}},
+    ],
+    "screenshot": [
+        {"type": "screenshot", "payload": {}},
+    ],
+    "lock_screen": [
+        {"type": "exec",   "payload": {"command": "input keyevent 26 || am start -n com.android.settings/.Settings 2>/dev/null || true"}},
+        {"type": "notify", "payload": {"title": "NEXO", "content": "Pantalla bloqueada"}},
+    ],
+    "torch_on":  [{"type": "torch",   "payload": {"on": True}}],
+    "torch_off": [{"type": "torch",   "payload": {"on": False}}],
+    "ping":      [{"type": "ping",    "payload": {}}],
+    "wakeup": [
+        {"type": "vibrate", "payload": {"duration_ms": 500}},
+        {"type": "notify",  "payload": {"title": "◎ NEXO", "content": "Wake-up desde torre"}},
+        {"type": "tts",     "payload": {"text": "Atención. Mensaje de NEXO soberano."}},
+    ],
+}
+
+
+@router.post("/quick/{agent_id}/{action}")
+async def quick_command(agent_id: str, action: str,
+                        message: str = "",
+                        x_api_key: str = Header(None)):
+    """
+    Comandos rápidos predefinidos desde la torre.
+    Actions: silence | unsilence | find | locate | camera | screenshot |
+             lock_screen | torch_on | torch_off | ping | wakeup
+
+    La torre es el dispositivo de confianza — acceso total.
+    """
+    if not _api_key_ok(x_api_key):
+        raise HTTPException(status_code=401, detail="API Key inválida")
+
+    cmds = QUICK_COMMANDS.get(action)
+    if cmds is None:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Acción desconocida: '{action}'. Disponibles: {list(QUICK_COMMANDS)}",
+        )
+
+    now = datetime.now(timezone.utc).isoformat()
+    queued = []
+    targets = list(mobile_agents.keys()) if agent_id == "*" else [agent_id]
+
+    for target in targets:
+        for cmd in cmds:
+            c = {**cmd, "id": str(uuid.uuid4())[:8], "ts": now,
+                 "source": "tower_trusted"}
+            if message and c.get("type") == "notify":
+                c["payload"] = {**c["payload"], "content": message or c["payload"].get("content", "")}
+            command_queues.setdefault(target, []).append(c)
+        queued.append(target)
+
+    logger.info(f"[MOBILE] Quick '{action}' enviado a: {queued}")
+    return {
+        "ok": True,
+        "action": action,
+        "queued_commands": len(cmds),
+        "targets": queued,
+        "note": "Torre de confianza — acceso total",
+    }
+
+
+@router.get("/devices")
+async def list_devices():
+    """Lista todos los dispositivos registrados con su estado."""
+    devices = []
+    for aid, info in mobile_agents.items():
+        last = info.get("ultimo_contacto", "")
+        pending = len(command_queues.get(aid, []))
+        tools = agent_tools.get(aid, [])
+        devices.append({
+            "agent_id":        aid,
+            "ultimo_contacto": last,
+            "bateria":         info.get("bateria_pct", "?"),
+            "wifi":            info.get("wifi_ssid", "?"),
+            "cpu":             info.get("cpu_pct", "?"),
+            "pending_cmds":    pending,
+            "tools_count":     len(tools),
+            "online":          True,
+        })
+    return {
+        "devices":      devices,
+        "total":        len(devices),
+        "trusted_hub":  "torre — dispositivo de confianza principal",
+    }

@@ -507,3 +507,50 @@ print(result['text'].strip())
 const token = process.env.DISCORD_TOKEN.trim();
 console.log(`[NEXO INFO] Iniciando login (Token length: ${token.length})`);
 client.login(token);
+
+// ─── /phone command — control remoto del teléfono desde Discord ───────────────
+client.on('interactionCreate', async interaction => {
+  if (!interaction.isChatInputCommand() || interaction.commandName !== 'phone') return;
+  await interaction.deferReply();
+
+  const action  = interaction.options.getString('accion');
+  const agentId = interaction.options.getString('dispositivo') || 'telefono';
+  const message = interaction.options.getString('mensaje') || '';
+
+  try {
+    const resp = await axios.post(
+      `${FASTAPI_URL}/api/mobile/quick/${agentId}/${action}`,
+      {},
+      {
+        headers: { 'X-API-Key': process.env.NEXO_API_KEY || 'nexo_dev_key_2025' },
+        params:  message ? { message } : {},
+        timeout: 10000,
+      }
+    );
+
+    const ACTION_LABELS = {
+      silence:    '🔇 Silenciado',    unsilence: '🔊 Volumen restaurado',
+      find:       '📍 Buscando...',   locate:    '🗺️ Solicitando GPS',
+      camera:     '📷 Foto tomada',   screenshot:'🖼️ Captura',
+      lock_screen:'🔒 Bloqueando',    torch_on:  '🔦 Linterna ON',
+      torch_off:  '🔦 Linterna OFF',  ping:      '🏓 Ping enviado',
+      wakeup:     '🔔 Wake-up enviado',
+    };
+
+    const label = ACTION_LABELS[action] || action;
+    const embed = new EmbedBuilder()
+      .setTitle(`${label} → ${agentId}`)
+      .setColor(0x00e5ff)
+      .setDescription(`Comando enviado al dispositivo.\nSe ejecutará en el próximo ciclo del agente (~10s).`)
+      .addFields(
+        { name: 'Comandos encolados', value: String(resp.data.queued_commands || 1), inline: true },
+        { name: 'Dispositivo',        value: agentId,                                inline: true },
+      )
+      .setFooter({ text: 'Torre — dispositivo de confianza' })
+      .setTimestamp();
+
+    await interaction.editReply({ embeds: [embed] });
+  } catch (err) {
+    await interaction.editReply(`⚠️ Error: ${err.response?.data?.detail || err.message}`);
+  }
+});

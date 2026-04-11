@@ -29,6 +29,19 @@ COMMANDS=[
   {"name":"salir","description":"NEXO abandona el canal de voz","options":[]},
   {"name":"drive","description":"Busca en el Drive NEXO","options":[{"name":"consulta","description":"Qué buscar","type":3,"required":True}]},
   {"name":"geopolitica","description":"Consulta carpeta Geopolítica","options":[{"name":"tema","description":"Tema","type":3,"required":False}]},
+  {"name":"phone","description":"Control remoto del teléfono","options":[
+    {"name":"accion","description":"Acción","type":3,"required":True,
+     "choices":[
+       {"name":"Silenciar","value":"silence"},{"name":"Restaurar volumen","value":"unsilence"},
+       {"name":"Encontrar teléfono","value":"find"},{"name":"GPS","value":"locate"},
+       {"name":"Foto","value":"camera"},{"name":"Captura","value":"screenshot"},
+       {"name":"Bloquear","value":"lock_screen"},{"name":"Linterna ON","value":"torch_on"},
+       {"name":"Linterna OFF","value":"torch_off"},{"name":"Wake-up","value":"wakeup"},
+       {"name":"Ping","value":"ping"}
+     ]},
+    {"name":"dispositivo","description":"ID dispositivo","type":3,"required":False},
+    {"name":"mensaje","description":"Mensaje","type":3,"required":False}
+  ]},
 ]
 
 def register_commands():
