@@ -370,3 +370,96 @@ async def discord_register_commands(x_api_key: str = Header(None)):
         return result
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))
+
+
+# ──────────────────────────────────────────────────────────────
+# POST /api/tower/obs/scene — change OBS scene (voice command target)
+# ──────────────────────────────────────────────────────────────
+
+class SceneRequest(BaseModel):
+    scene: str
+
+
+@router.post("/obs/scene")
+async def obs_change_scene(payload: SceneRequest, x_api_key: str = Header(None)):
+    """Change the active OBS scene. Called by voice command pipeline."""
+    _require_api_key(x_api_key)
+    try:
+        from NEXO_CORE.services.obs_manager import obs_manager
+
+        connected = await obs_manager.ensure_connected()
+        if not connected:
+            raise HTTPException(status_code=503, detail="OBS no conectado — abre OBS y activa el WebSocket")
+
+        await asyncio.to_thread(
+            obs_manager._client.set_current_program_scene,
+            scene_name=payload.scene,
+        )
+        logger.info("[TOWER] Scene changed to: %s", payload.scene)
+        return {"ok": True, "scene": payload.scene, "mensaje": f"Escena cambiada a: {payload.scene}"}
+
+    except HTTPException:
+        raise
+    except Exception as exc:
+        # OBS may raise if scene doesn't exist — return friendly error
+        raise HTTPException(status_code=400, detail=f"Error cambiando escena: {exc}")
+
+
+# ──────────────────────────────────────────────────────────────
+# POST /api/tower/obs/record — start/stop OBS recording
+# ──────────────────────────────────────────────────────────────
+
+class RecordAction(BaseModel):
+    action: str = "start"   # start | stop | toggle
+
+
+@router.post("/obs/record")
+async def obs_record(payload: RecordAction, x_api_key: str = Header(None)):
+    """Start or stop OBS recording. Called by voice command pipeline."""
+    _require_api_key(x_api_key)
+    try:
+        from NEXO_CORE.services.obs_manager import obs_manager
+
+        connected = await obs_manager.ensure_connected()
+        if not connected:
+            raise HTTPException(status_code=503, detail="OBS no conectado")
+
+        if payload.action == "start":
+            await asyncio.to_thread(obs_manager._client.start_record)
+            msg = "Grabación iniciada"
+        elif payload.action == "stop":
+            await asyncio.to_thread(obs_manager._client.stop_record)
+            msg = "Grabación detenida"
+        else:
+            raise HTTPException(status_code=400, detail="action debe ser start o stop")
+
+        logger.info("[TOWER] Record %s", payload.action)
+        return {"ok": True, "action": payload.action, "mensaje": msg}
+
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
+# ──────────────────────────────────────────────────────────────
+# GET /api/tower/obs/scenes — list available OBS scenes
+# ──────────────────────────────────────────────────────────────
+
+@router.get("/obs/scenes")
+async def obs_list_scenes():
+    """List all available OBS scenes."""
+    try:
+        from NEXO_CORE.services.obs_manager import obs_manager
+
+        connected = await obs_manager.ensure_connected()
+        if not connected:
+            return {"obs_connected": False, "scenes": []}
+
+        scene_list = await asyncio.to_thread(obs_manager._client.get_scene_list)
+        scenes = [s.get("sceneName", s.get("scene_name", "")) for s in (scene_list.scenes or [])]
+        current = await obs_manager.get_current_scene()
+        return {"obs_connected": True, "scenes": scenes, "current": current}
+
+    except Exception as exc:
+        return {"obs_connected": False, "error": str(exc), "scenes": []}

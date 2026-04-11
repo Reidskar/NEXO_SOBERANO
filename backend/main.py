@@ -58,6 +58,7 @@ from backend.routes.phone_setup import router as phone_setup_router
 from backend.routes.nexo_integrations import router as integrations_router
 from backend.routes.tower_control import router as tower_router
 from backend.routes.mobile_ai import router as mobile_ai_router
+from backend.routes.media_sync import router as media_sync_router
 
 # ════════════════════════════════════════════════════════════════════
 # LOGGING
@@ -214,6 +215,7 @@ app.include_router(phone_setup_router)
 app.include_router(integrations_router)
 app.include_router(tower_router)
 app.include_router(mobile_ai_router)
+app.include_router(media_sync_router)
 
 # ════════════════════════════════════════════════════════════════════
 # WEBSOCKET ENDPOINT

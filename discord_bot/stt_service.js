@@ -95,17 +95,32 @@ async function handleAudioStream(receiver, userId, client, player, guildId) {
 
                 console.log(`[NEXO VOICE] STT Exitoso: "${textInput}"`);
 
-                const FASTAPI_URL = process.env.FASTAPI_URL || 'http://localhost:8000';
-                const nexoResponse = await axios.post(`${FASTAPI_URL}/agente/consultar-rag`, {
-                    pregunta: textInput,
-                    usuario_id: userId,
-                    contexto: "discord_voice"
-                }, {
-                    headers: { 'Authorization': `Bearer ${process.env.NEXO_API_KEY}` },
-                    timeout: 20000
-                });
+                const FASTAPI_URL = (process.env.FASTAPI_URL || 'http://localhost:8000').replace(/\/$/, '');
+                const agentId = `discord_voice_${userId}`;
 
-                const iaText = nexoResponse.data.respuesta || "No pude procesar tu solicitud.";
+                // ── OBS voice commands (detect before sending to AI) ──────
+                const obsCmd = detectOBSCommand(textInput);
+                let iaText;
+                if (obsCmd) {
+                    console.log(`[NEXO VOICE] OBS command detected: ${JSON.stringify(obsCmd)}`);
+                    try {
+                        const obsResp = await axios.post(
+                            `${FASTAPI_URL}/api/tower/${obsCmd.endpoint}`,
+                            obsCmd.body,
+                            { headers: { 'X-API-Key': process.env.NEXO_API_KEY || 'nexo_dev_key_2025' }, timeout: 8000 }
+                        );
+                        iaText = obsResp.data?.mensaje || obsResp.data?.message || `OBS: ${obsCmd.endpoint} ejecutado.`;
+                    } catch (obsErr) {
+                        iaText = `No pude ejecutar el comando OBS: ${obsErr.message}`;
+                    }
+                } else {
+                    const nexoResponse = await axios.post(
+                        `${FASTAPI_URL}/api/ai/mobile/query`,
+                        { prompt: textInput, agent_id: agentId, max_tokens: 600, remember: true },
+                        { timeout: 20000 }
+                    );
+                    iaText = nexoResponse.data?.text || nexoResponse.data?.respuesta || 'No pude procesar tu solicitud.';
+                }
                 console.log(`[NEXO VOICE] LLM Exitoso. Sintetizando TTS...`);
 
                 const connection = getVoiceConnection(guildId);
@@ -124,4 +139,37 @@ async function handleAudioStream(receiver, userId, client, player, guildId) {
     });
 }
 
-module.exports = { transcribeFile, handleAudioStream };
+// ── OBS voice command detector ─────────────────────────────────────────────
+// Returns { endpoint, body } if the text is an OBS command, else null.
+function detectOBSCommand(text) {
+    const t = text.toLowerCase().trim();
+
+    // Stream control
+    if (/inicia(r)?\s*(el\s*)?stream|empieza(r)?\s*(el\s*)?stream|start\s*stream/.test(t)) {
+        return { endpoint: 'stream', body: { action: 'start' } };
+    }
+    if (/para(r)?\s*(el\s*)?stream|detene(r)?\s*(el\s*)?stream|stop\s*stream|termina(r)?\s*(el\s*)?stream/.test(t)) {
+        return { endpoint: 'stream', body: { action: 'stop' } };
+    }
+
+    // Scene change: "cambia (a) escena (X)" / "pon escena (X)"
+    const sceneMatch = t.match(/(?:cambia(?:r)?|pon|switch|escena)\s+(?:a\s+)?(?:escena\s+)?(.+)/);
+    if (sceneMatch) {
+        const sceneName = sceneMatch[1].trim().replace(/\bescena\s*/i, '').trim();
+        if (sceneName.length > 1 && sceneName.length < 60) {
+            return { endpoint: 'obs/scene', body: { scene: sceneName } };
+        }
+    }
+
+    // Recording control
+    if (/inicia(r)?\s*(la\s*)?grabaci[oó]n|empieza(r)?\s*(la\s*)?grabaci[oó]n/.test(t)) {
+        return { endpoint: 'obs/record', body: { action: 'start' } };
+    }
+    if (/para(r)?\s*(la\s*)?grabaci[oó]n|detene(r)?\s*(la\s*)?grabaci[oó]n/.test(t)) {
+        return { endpoint: 'obs/record', body: { action: 'stop' } };
+    }
+
+    return null;
+}
+
+module.exports = { transcribeFile, handleAudioStream, detectOBSCommand };

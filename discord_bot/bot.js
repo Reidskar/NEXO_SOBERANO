@@ -1,6 +1,6 @@
 require('dotenv').config();
 const { playTTS } = require('./tts_service');
-const { transcribeFile } = require('./stt_service');
+const { transcribeFile, detectOBSCommand } = require('./stt_service');
 const {
   Client,
   GatewayIntentBits,
@@ -112,6 +112,37 @@ const commands = [
     .setDescription('Consulta la carpeta Geopolítica del Drive')
     .addStringOption(opt =>
       opt.setName('tema').setDescription('Tema geopolítico a consultar').setRequired(false)
+    ),
+  new SlashCommandBuilder()
+    .setName('phone')
+    .setDescription('Control remoto del teléfono (silenciar, localizar, cámara, etc.)')
+    .addStringOption(opt =>
+      opt.setName('accion')
+        .setDescription('Acción a ejecutar en el dispositivo')
+        .setRequired(true)
+        .addChoices(
+          { name: '🔇 Silenciar',          value: 'silence' },
+          { name: '🔊 Quitar silencio',     value: 'unsilence' },
+          { name: '📍 Localizar/buscar',    value: 'find' },
+          { name: '🗺️ GPS ubicación',       value: 'locate' },
+          { name: '📷 Tomar foto',          value: 'camera' },
+          { name: '🖼️ Captura pantalla',    value: 'screenshot' },
+          { name: '🔒 Bloquear pantalla',   value: 'lock_screen' },
+          { name: '🔦 Linterna ON',         value: 'torch_on' },
+          { name: '🔦 Linterna OFF',        value: 'torch_off' },
+          { name: '🏓 Ping al dispositivo', value: 'ping' },
+          { name: '🔔 Despertar pantalla',  value: 'wakeup' },
+        )
+    )
+    .addStringOption(opt =>
+      opt.setName('dispositivo')
+        .setDescription('ID del dispositivo (default: telefono)')
+        .setRequired(false)
+    )
+    .addStringOption(opt =>
+      opt.setName('mensaje')
+        .setDescription('Mensaje para notificación/TTS en el dispositivo')
+        .setRequired(false)
     ),
   new SlashCommandBuilder()
     .setName('social')
@@ -473,9 +504,26 @@ function handleUserVoice(connection, userId, textChannel) {
       const user = client.users.cache.get(userId);
       if (textChannel) textChannel.send(`🎙️ **${user?.username || userId}:** ${text}`).catch(() => {});
 
-      const aiResult = await askNexoAI(text, userId, { remember: true, maxTokens: 600 });
-      const iaText = aiResult.text || 'No pude procesar tu solicitud.';
-      console.log(`[NEXO VOICE] IA: "${iaText.substring(0, 80)}"`);
+      // ── OBS command detection (runs before AI) ────────────────────
+      let iaText;
+      const obsCmd = detectOBSCommand(text);
+      if (obsCmd) {
+        console.log(`[NEXO VOICE] OBS cmd: ${obsCmd.endpoint}`);
+        try {
+          const obsResp = await axios.post(
+            `${FASTAPI_URL}/api/tower/${obsCmd.endpoint}`,
+            obsCmd.body,
+            { headers: { 'X-API-Key': process.env.NEXO_API_KEY || 'nexo_dev_key_2025' }, timeout: 8000 }
+          );
+          iaText = obsResp.data?.mensaje || obsResp.data?.message || `Comando OBS ejecutado.`;
+        } catch (obsErr) {
+          iaText = `No pude ejecutar el comando OBS: ${obsErr.message}`;
+        }
+      } else {
+        const aiResult = await askNexoAI(text, userId, { remember: true, maxTokens: 600 });
+        iaText = aiResult.text || 'No pude procesar tu solicitud.';
+      }
+      console.log(`[NEXO VOICE] Respuesta: "${iaText.substring(0, 80)}"`);
 
       if (textChannel) textChannel.send(`🤖 **NEXO:** ${iaText}`).catch(() => {});
       await playTTS(connection, iaText);
