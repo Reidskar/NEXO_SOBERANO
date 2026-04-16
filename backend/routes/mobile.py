@@ -162,6 +162,17 @@ async def agentes():
         return {"agentes": {}, "fuente": "error", "error": str(e)}
 
 
+@router.get("/agent-script")
+async def agent_script():
+    """Sirve el script del agente móvil para descarga directa en Termux."""
+    from fastapi.responses import PlainTextResponse
+    from pathlib import Path
+    p = Path("mobile_agent/nexo_mobile_agent.py")
+    if p.exists():
+        return PlainTextResponse(p.read_text(encoding="utf-8"), media_type="text/plain")
+    return PlainTextResponse("# Script no encontrado", status_code=404)
+
+
 @router.post("/resultado")
 async def recibir_resultado(data: dict):
     """
