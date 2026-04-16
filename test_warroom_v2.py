@@ -41,7 +41,7 @@ def print_info(msg):
 # TESTING
 # ════════════════════════════════════════════════════════════════════
 
-API_BASE = "http://localhost:8000"
+API_BASE = "http://localhost:8080"
 
 def test_health():
     """Prueba que el backend está arriba"""

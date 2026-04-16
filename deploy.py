@@ -144,7 +144,7 @@ def deploy():
     # Wait for backend
     import time
     for i in range(30):
-        code, _, _ = run("docker-compose exec -T backend curl http://localhost:8000/", check=False)
+        code, _, _ = run("docker-compose exec -T backend curl http://localhost:8080/", check=False)
         if code == 0:
             break
         time.sleep(1)

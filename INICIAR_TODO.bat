@@ -49,27 +49,18 @@ echo.
 :: 5. Telegram Bot
 REM start "TelegramBot" .venv\Scripts\python.exe backend/services/telegram_bot.py
 
-:: 6. Agentes RTX 3060
-REM Iniciar live_stream_analyzer.py (CUDA float16)
-start "Live Stream Analyzer" .venv\Scripts\python.exe backend/services/live_stream_analyzer.py --cuda --float16
-REM Iniciar semantic_classifier.py
-start "Semantic Classifier" .venv\Scripts\python.exe backend/services/semantic_classifier.py
-REM Iniciar psychology_engine.py
-start "Psychology Engine" .venv\Scripts\python.exe backend/services/psychology_engine.py
+:: 6. Agentes — solo si el archivo existe (evita parpadeos de CMD)
+if exist "backend\services\live_stream_analyzer.py" (
+    start "Live Stream Analyzer" /MIN cmd /c ".venv\Scripts\python.exe backend/services/live_stream_analyzer.py >> logs\live_analyzer.log 2>&1"
+)
+if exist "backend\services\semantic_classifier.py" (
+    start "Semantic Classifier" /MIN cmd /c ".venv\Scripts\python.exe backend/services/semantic_classifier.py >> logs\semantic.log 2>&1"
+)
 
-:: 7. Rebranding global
-REM Ejecutar script de rebranding
-start "Rebranding" .venv\Scripts\python.exe scripts/rebranding_global.py
-
-:: 8. Verificación de conectividad
-REM Ping interno al puerto 8000
-curl http://localhost:8000/api/health
-REM Revisar logs del túnel
-REM start "Cloudflared Logs" cloudflared.exe logs
-
-:: 9. Corrección automática de errores
-REM Ejecutar script de limpieza de procesos redundantes
-start "Clean Processes" .venv\Scripts\python.exe scripts/kill_redundant_processes.py
+:: 7-9. Scripts opcionales — desactivados hasta tener archivo
+REM start "Psychology Engine"  .venv\Scripts\python.exe backend/services/psychology_engine.py
+REM start "Rebranding"         .venv\Scripts\python.exe scripts/rebranding_global.py
+REM start "Clean Processes"    .venv\Scripts\python.exe scripts/kill_redundant_processes.py
 
 echo.
 echo  Stack completo iniciado. Presiona cualquier tecla para salir...

@@ -25,19 +25,23 @@ class OBSManager:
         self._last_connect_log = now
         return True
 
+    def _connect_sync(self):
+        """Sync helper — runs in a thread to avoid blocking the event loop."""
+        import obsws_python as obs
+        return obs.ReqClient(
+            host=config.OBS_HOST,
+            port=config.OBS_PORT,
+            password=config.OBS_PASSWORD,
+            timeout=3,
+        )
+
     async def connect(self) -> bool:
         if not config.OBS_ENABLED:
             state_manager.set_obs_connected(False)
             return False
         try:
-            import obsws_python as obs
-
-            self._client = obs.ReqClient(
-                host=config.OBS_HOST,
-                port=config.OBS_PORT,
-                password=config.OBS_PASSWORD,
-                timeout=3,
-            )
+            # Run the blocking TCP connect in a thread so the event loop stays free
+            self._client = await asyncio.to_thread(self._connect_sync)
             state_manager.set_obs_connected(True)
             logger.info("OBS connected at %s:%s", config.OBS_HOST, config.OBS_PORT)
             return True

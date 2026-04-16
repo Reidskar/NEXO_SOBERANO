@@ -11,7 +11,7 @@ module.exports = {
       watch: false,
       restart_delay: 5000,
       max_restarts: 10,
-      env: { NODE_ENV: "production" }
+      env: { NODE_ENV: "production" },
     },
     {
       name: "crucix-intel",
@@ -20,22 +20,25 @@ module.exports = {
       watch: false,
       restart_delay: 10000,
       max_restarts: 5,
-      env: { NODE_ENV: "production", PORT: "3117" }
+      env: { NODE_ENV: "production", PORT: "3117" },
     },
     {
       name: "nexo-api",
       script: ".venv\\Scripts\\uvicorn.exe",
-      args: "backend.main:app --host 0.0.0.0 --port 8000",
+      args: "backend.main:app --host 0.0.0.0 --port 8080 --workers 1",
       cwd: "C:\\Users\\Admn\\Desktop\\NEXO_SOBERANO",
       interpreter: "none",
       watch: false,
       restart_delay: 5000,
-      max_restarts: 10,
+      max_restarts: 20,
       autorestart: true,
+      exp_backoff_restart_delay: 100,
       env: {
         NODE_ENV: "production",
-        PORT: "8000"
-      }
+        PORT: "8080",
+        PYTHONIOENCODING: "utf-8",
+        PYTHONPATH: "C:\\Users\\Admn\\Desktop\\NEXO_SOBERANO",
+      },
     },
     {
       name: "public-site",
@@ -47,7 +50,7 @@ module.exports = {
       restart_delay: 5000,
       max_restarts: 10,
       autorestart: true,
-      env: { NODE_ENV: "production" }
+      env: { NODE_ENV: "production" },
     },
     {
       name: "mcp-gateway",
@@ -62,8 +65,8 @@ module.exports = {
       env: {
         NODE_ENV: "production",
         MCP_GATEWAY_AUTH_TOKEN: "nexo_mcp_2026_secure",
-        DISCORD_TOKEN: process.env.DISCORD_TOKEN || ""
-      }
-    }
-  ]
-}
+        DISCORD_TOKEN: process.env.DISCORD_TOKEN || "",
+      },
+    },
+  ],
+};

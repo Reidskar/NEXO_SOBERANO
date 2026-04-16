@@ -24,6 +24,9 @@ google-auth-httplib2
 google-auth-oauthlib
 
 # AI & Processing
+# Gemma 4 local (CPU): instalar torch por separado con --index-url https://download.pytorch.org/whl/cpu
+transformers>=4.50.0
+accelerate
 openai
 google-generativeai
 google-genai

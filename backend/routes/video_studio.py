@@ -42,7 +42,7 @@ ELEVEN_VOICE_ES = lambda: os.getenv("ELEVENLABS_VOICE_ES", os.getenv("ELEVENLABS
 ELEVEN_VOICE_EN = lambda: os.getenv("ELEVENLABS_VOICE_EN", "EXAVITQu4vr4xnSDxMaL")
 ELEVEN_VOICE_PT = lambda: os.getenv("ELEVENLABS_VOICE_PT", "VR6AewLTigWG4xSOukaG")
 
-JOBS_DIR = Path(os.getenv("NEXO_JOBS_DIR", "/tmp/nexo_video_jobs"))
+JOBS_DIR = Path(os.getenv("NEXO_JOBS_DIR", r"C:\Users\Admn\Desktop\NEXO_SOBERANO\exports\video_jobs"))
 JOBS_DIR.mkdir(parents=True, exist_ok=True)
 
 VOICE_IDS = {"es": ELEVEN_VOICE_ES, "en": ELEVEN_VOICE_EN, "pt": ELEVEN_VOICE_PT}
@@ -117,15 +117,45 @@ def add_step(job_id: str, paso: str, estado: str = "ok", detalle: str = "") -> N
 # ─── Helpers ──────────────────────────────────────────────────────────────────
 
 async def _openai_chat(messages: List[Dict], max_tokens: int = 1500) -> str:
-    import openai
-    client = openai.AsyncOpenAI(api_key=OPENAI_KEY())
-    resp = await client.chat.completions.create(
-        model="gpt-4o",
-        messages=messages,
-        max_tokens=max_tokens,
-        temperature=0.7,
-    )
-    return resp.choices[0].message.content or ""
+    """Genera texto con OpenAI GPT-4o; si no hay key, usa Ollama local."""
+    if OPENAI_KEY():
+        try:
+            import openai
+            client = openai.AsyncOpenAI(api_key=OPENAI_KEY())
+            resp = await client.chat.completions.create(
+                model="gpt-4o",
+                messages=messages,
+                max_tokens=max_tokens,
+                temperature=0.7,
+            )
+            return resp.choices[0].message.content or ""
+        except Exception as e:
+            logger.warning(f"OpenAI falló: {e} — usando Ollama")
+    # Fallback: Ollama local (gemma3:12b — rápido y capaz para guiones)
+    import aiohttp, json as _json
+    ollama_url = os.getenv("OLLAMA_URL", "http://localhost:11434")
+    model_name = os.getenv("OLLAMA_MODEL_VIDEO", "gemma3:12b")  # modelo específico para video
+    # Construir mensajes pasando system + user por separado (mejor que concatenar)
+    ollama_messages = [m for m in messages if m.get("role") in ("system", "user", "assistant")]
+    if not ollama_messages:
+        ollama_messages = [{"role": "user", "content": str(messages)}]
+    logger.info(f"[VIDEO] Ollama guión con {model_name}, {sum(len(m['content']) for m in ollama_messages)} chars")
+    try:
+        async with aiohttp.ClientSession() as s:
+            async with s.post(f"{ollama_url}/api/chat", json={
+                "model": model_name,
+                "messages": ollama_messages,
+                "stream": False,
+                "options": {"temperature": 0.7, "num_predict": max_tokens}
+            }, timeout=aiohttp.ClientTimeout(total=240)) as r:
+                raw = await r.text(encoding="utf-8")
+                d = _json.loads(raw)
+                result = d.get("message", {}).get("content", "").strip()
+                logger.info(f"[VIDEO] Guión generado: {len(result)} chars")
+                return result
+    except Exception as e:
+        logger.error(f"[VIDEO] Ollama guión falló: {e}")
+        return ""
 
 
 async def _tts_elevenlabs(text: str, idioma: str, output_path: str) -> bool:
@@ -169,6 +199,76 @@ async def _tts_openai(text: str, output_path: str) -> bool:
         return False
 
 
+async def _tts_piper(text: str, idioma: str, output_path: str) -> bool:
+    """
+    TTS local con Piper TTS. Gratis, offline, ultra-rápido (0.05x RT).
+    Sin dependencias Python — corre como subprocess.
+    Voces instaladas: es_ES-davefx-medium
+    """
+    import asyncio, subprocess
+
+    piper_dir  = os.getenv("PIPER_DIR",
+        r"C:\Users\Admn\Desktop\NEXO_SOBERANO\tools\piper\piper")
+    voices_dir = os.getenv("PIPER_VOICES_DIR",
+        r"C:\Users\Admn\Desktop\NEXO_SOBERANO\tools\piper\voices")
+
+    piper_exe = os.path.join(piper_dir, "piper.exe")
+    if not Path(piper_exe).exists():
+        logger.warning(f"[TTS] Piper no encontrado en {piper_exe}")
+        return False
+
+    # Mapeo de modelos por idioma
+    models = {
+        "es": os.path.join(voices_dir, "es_ES-davefx-medium.onnx"),
+        "en": os.path.join(voices_dir, "en_US-lessac-medium.onnx"),
+        "pt": os.path.join(voices_dir, "es_ES-davefx-medium.onnx"),  # fallback ES
+    }
+    model = models.get(idioma, models["es"])
+    if not Path(model).exists():
+        model = next(Path(voices_dir).glob("*.onnx"), None)
+        if not model:
+            logger.warning("[TTS] No hay modelos Piper en voices/")
+            return False
+        model = str(model)
+
+    # Piper lee de stdin y escribe WAV a --output_file
+    wav_path = output_path.replace(".mp3", ".wav")
+    try:
+        def _run():
+            proc = subprocess.run(
+                [piper_exe, "--model", model, "--output_file", wav_path],
+                input=text.encode("utf-8"),
+                capture_output=True,
+                timeout=60,
+            )
+            return proc.returncode == 0 and Path(wav_path).exists()
+
+        ok = await asyncio.to_thread(_run)
+        if ok:
+            # Renombrar a output_path si es .wav o convertir
+            if output_path.endswith(".wav"):
+                import shutil
+                if wav_path != output_path:
+                    shutil.move(wav_path, output_path)
+            else:
+                # Convertir WAV → MP3 con ffmpeg si está disponible
+                import shutil as _sh
+                ffmpeg = _sh.which("ffmpeg")
+                if ffmpeg:
+                    subprocess.run([ffmpeg, "-y", "-i", wav_path, "-b:a", "192k", output_path],
+                                   capture_output=True, timeout=30)
+                    Path(wav_path).unlink(missing_ok=True)
+                else:
+                    import shutil
+                    shutil.move(wav_path, output_path)
+            logger.info(f"[TTS] Piper generó audio: {output_path}")
+            return True
+        return False
+    except Exception as e:
+        logger.error(f"[TTS] Piper error: {e}")
+        return False
+
+
 def _build_video_ffmpeg(
     audio_path: Optional[str],
     output_path: str,
@@ -183,9 +283,13 @@ def _build_video_ffmpeg(
     - Subtítulos generados desde el guión
     - Formato reel: 1080x1920 (9:16)  |  youtube: 1920x1080 (16:9)
     """
-    ffmpeg = shutil.which("ffmpeg")
-    if not ffmpeg:
-        logger.error("ffmpeg no disponible")
+    ffmpeg = (
+        os.getenv("FFMPEG_PATH") or
+        shutil.which("ffmpeg") or
+        r"C:\Users\Admn\AppData\Local\Microsoft\WinGet\Packages\Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe\ffmpeg-8.0.1-full_build\bin\ffmpeg.exe"
+    )
+    if not ffmpeg or not Path(ffmpeg).exists():
+        logger.error(f"ffmpeg no disponible en: {ffmpeg}")
         return False
 
     w, h = (1080, 1920) if formato == "reel" else (1920, 1080)
@@ -343,9 +447,6 @@ class PublicarRequest(BaseModel):
 @router.post("/generar-guion")
 async def generar_guion(req: GuionRequest):
     """Genera guión de video a partir del contenido del día."""
-    if not OPENAI_KEY():
-        raise HTTPException(503, "OPENAI_API_KEY no configurada")
-
     dur_label = "60 segundos (máximo 150 palabras)" if req.formato == "reel" else "3 a 5 minutos (máximo 600 palabras)"
     domain_hint = {
         "geo": "Geopolítica y relaciones internacionales",
@@ -358,8 +459,16 @@ async def generar_guion(req: GuionRequest):
 
     system = (
         "Eres el guionista de NEXO SOBERANO, un sistema de inteligencia estratégica. "
-        "Escribes guiones para videos de alto impacto que explican situaciones geopolíticas complejas "
-        "de forma clara, directa y con autoridad. Usas un tono analítico, sobrio y preciso."
+        "Escribes guiones para videos de alto impacto con maestría en:\n"
+        "- PSICOANÁLISIS: Activas el inconsciente del espectador. Usas palabras que evocan miedo, "
+        "curiosidad y pertenencia. Conectas el evento externo con la experiencia interna del individuo.\n"
+        "- METACOGNICIÓN: Haces que el espectador piense sobre su propio pensamiento. "
+        "Cuestionas narrativas establecidas. Activas el modo crítico.\n"
+        "- PSICOLOGÍA DE MASAS (Le Bon, Freud, Bernays): Entiendes que el espectador no consume solo — "
+        "pertenece a una tribu. Usas lenguaje que une a 'los que ven' contra 'los que no ven'.\n"
+        "- MARKETING ESTRATÉGICO: Cada oración tiene un propósito. El gancho captura. "
+        "El desarrollo convence. El cierre retiene y llama a compartir.\n"
+        "Tono: analítico, sobrio, con autoridad. Nunca sensacionalista. Siempre basado en datos."
     )
     user = (
         f"Escribe un guión narrado para un video de {dur_label} sobre el siguiente contenido.\n"
@@ -367,11 +476,11 @@ async def generar_guion(req: GuionRequest):
         f"Formato: {req.formato}\n\n"
         f"CONTENIDO BASE:\n{req.contenido[:4000]}\n\n"
         "El guión debe:\n"
-        "- Comenzar con un gancho de 1 oración impactante\n"
-        "- Desarrollar los puntos clave con datos concretos\n"
-        "- Terminar con una conclusión o llamado a reflexión\n"
-        "- Estar optimizado para ser NARRADO en voz (sin listas, sin viñetas)\n"
-        "- Estar en párrafos cortos separados por salto de línea\n"
+        "- GANCHO (1 oración): Una verdad incómoda o paradoja que active la disonancia cognitiva\n"
+        "- DESARROLLO: Puntos clave con datos concretos. Conecta lo macro (geopolítica) con lo micro (impacto personal)\n"
+        "- CIERRE: Conclusión que genere sensación de haber 'despertado'. Llamado implícito a compartir.\n"
+        "- Estar optimizado para ser NARRADO en voz (sin listas, sin viñetas, sin emojis)\n"
+        "- Párrafos cortos de 1-2 oraciones separados por salto de línea\n"
         f"- Estar en {IDIOMA_LABELS.get(req.idioma_base, 'Español')}\n\n"
         "Solo entrega el guión, sin encabezados ni explicaciones."
     )
@@ -488,21 +597,29 @@ async def _run_pipeline(job_id: str, contenido: str, publicar: bool):
                 add_step(job_id, f"Traducción {idioma}", "ok")
 
         # 3. TTS para cada idioma
+        # Prioridad: Kokoro (gratis/local) → ElevenLabs → OpenAI
         update_job(job_id, estado="sintetizando_voz")
         audios: Dict[str, Optional[str]] = {}
         for idioma in job["idiomas"]:
             guion_idioma = job["guiones"].get(idioma, "")
             if not guion_idioma:
                 continue
-            audio_path = str(JOBS_DIR / f"{job_id}_{idioma}_audio.mp3")
-            ok_eleven = await _tts_elevenlabs(guion_idioma, idioma, audio_path)
-            if not ok_eleven:
-                ok_openai = await _tts_openai(guion_idioma, audio_path)
-                audios[idioma] = audio_path if ok_openai else None
-            else:
-                audios[idioma] = audio_path
-            add_step(job_id, f"TTS {idioma}", "ok" if audios.get(idioma) else "warning",
-                     "Con audio" if audios.get(idioma) else "Sin audio")
+            audio_ext = "wav"  # Kokoro genera WAV; ElevenLabs/OpenAI generan MP3
+            audio_path = str(JOBS_DIR / f"{job_id}_{idioma}_audio.{audio_ext}")
+
+            # Intento 1: Piper local (gratis, 0.05x realtime)
+            ok = await _tts_piper(guion_idioma, idioma, audio_path)
+            if not ok:
+                # Intento 2: ElevenLabs
+                audio_path = str(JOBS_DIR / f"{job_id}_{idioma}_audio.mp3")
+                ok = await _tts_elevenlabs(guion_idioma, idioma, audio_path)
+            if not ok:
+                # Intento 3: OpenAI
+                ok = await _tts_openai(guion_idioma, audio_path)
+
+            audios[idioma] = audio_path if ok else None
+            add_step(job_id, f"TTS {idioma}", "ok" if ok else "warning",
+                     "Con audio" if ok else "Sin audio — video mudo")
 
         job = update_job(job_id, audios=audios)
 
@@ -652,3 +769,80 @@ async def descargar_video(job_id: str, idioma: str):
         media_type="video/mp4",
         filename=f"NEXO_{job_id}_{idioma}.mp4",
     )
+
+
+# ─── POST /api/video/auto-reel ──────────────────────────────────────────────
+
+class AutoReelRequest(BaseModel):
+    formato: str = Field(default="reel", description="'reel' o 'youtube'")
+    idiomas: List[str] = Field(default=["es"])
+    dominio: str = Field(default="libre")
+    max_drive_files: int = Field(default=10)
+    publicar: bool = False
+    titulo: Optional[str] = None
+
+
+@router.post("/auto-reel")
+async def auto_reel(req: AutoReelRequest, background_tasks: BackgroundTasks):
+    """
+    Pipeline automático: toma el contenido más reciente del Drive (carpetas geopolítica)
+    + inteligencia del día → genera reel/youtube completo con narración y subtítulos.
+    """
+    # 1. Recolectar contenido del Drive
+    drive_content_parts: List[str] = []
+
+    try:
+        from services.connectors.google_connector import list_recent_files_detailed
+        files = list_recent_files_detailed(max_results=req.max_drive_files)
+        for f in files[:req.max_drive_files]:
+            nombre = f.get("name", "")
+            desc = f.get("description", "") or ""
+            if nombre or desc:
+                drive_content_parts.append(f"• {nombre}: {desc}"[:200])
+    except Exception as e:
+        logger.warning(f"[AUTO-REEL] Error obteniendo Drive: {e}")
+
+    # 2. Agregar inteligencia del día (magazine si existe)
+    from pathlib import Path as _Path
+    today = datetime.now().strftime("%Y%m%d")
+    magazine_path = _Path(f"reports/magazine_{today}.md")
+    if magazine_path.exists():
+        drive_content_parts.insert(0, magazine_path.read_text(encoding="utf-8")[:3000])
+
+    # 3. Fallback: usar últimas sesiones de la bóveda
+    if not drive_content_parts:
+        import sqlite3 as _sq
+        try:
+            conn = _sq.connect("boveda.db")
+            conn.row_factory = _sq.Row
+            rows = conn.execute(
+                "SELECT categoria, resumen_ia FROM evidencia ORDER BY fecha_ingesta DESC LIMIT 10"
+            ).fetchall()
+            conn.close()
+            for r in rows:
+                drive_content_parts.append(f"[{r['categoria']}] {r['resumen_ia']}")
+        except Exception:
+            pass
+
+    if not drive_content_parts:
+        raise HTTPException(400, "No hay contenido disponible. Sube archivos al Drive primero.")
+
+    contenido = "\n\n".join(drive_content_parts)
+    titulo = req.titulo or f"NEXO SOBERANO — {datetime.now().strftime('%d/%m/%Y')}"
+
+    # 4. Crear job y lanzar pipeline
+    job = new_job(tipo=req.formato, idiomas=req.idiomas, formato=req.formato, titulo=titulo)
+    job["dominio"] = req.dominio
+    job["auto_generated"] = True
+    save_job(job)
+
+    background_tasks.add_task(_run_pipeline, job["id"], contenido, req.publicar)
+
+    return {
+        "ok": True,
+        "job_id": job["id"],
+        "contenido_preview": contenido[:500],
+        "fuentes": len(drive_content_parts),
+        "mensaje": f"Auto-reel iniciado. Formato: {req.formato}. Idiomas: {req.idiomas}.",
+        "track": f"/api/video/jobs/{job['id']}",
+    }

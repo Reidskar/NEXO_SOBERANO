@@ -39,7 +39,7 @@ DRIVE_POLL_SECONDS   = int(os.getenv("OSINT_DRIVE_INTERVAL",   "300"))   # 5 min
 MIN_TEXT_LENGTH = 60
 
 # ─── Backend webhook URL (same server) ───────────────────────────────────────
-_BASE_URL = os.getenv("NEXO_SUPERVISOR_BASE_URL", "http://127.0.0.1:8000")
+_BASE_URL = os.getenv("NEXO_SUPERVISOR_BASE_URL", "http://127.0.0.1:8080")
 _API_KEY  = os.getenv("NEXO_API_KEY", "nexo_dev_key_2025")
 
 

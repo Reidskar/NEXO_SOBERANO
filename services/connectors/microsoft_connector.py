@@ -10,13 +10,18 @@ from core.auth_manager import get_microsoft_token
 GRAPH_BASE = "https://graph.microsoft.com/v1.0"
 
 class MicrosoftConnector:
+    # Class-level flag: once disabled due to placeholder creds, never retry
+    _class_auth_disabled: bool = False
+    _class_auth_disabled_reason: str = ""
+
     def __init__(self):
         self.logger = logging.getLogger('MicrosoftConnector')
         self.token_data = {}
         self.headers = {}
-        self._auth_disabled = False
-        self._auth_disabled_reason = ""
-        self._refresh_token()
+        self._auth_disabled = MicrosoftConnector._class_auth_disabled
+        self._auth_disabled_reason = MicrosoftConnector._class_auth_disabled_reason
+        if not self._auth_disabled:
+            self._refresh_token()
 
     def _refresh_token(self):
         if self._auth_disabled:
@@ -38,6 +43,9 @@ class MicrosoftConnector:
             ):
                 self._auth_disabled = True
                 self._auth_disabled_reason = msg[:200]
+                # Propagate to class level so future instances skip the network call
+                MicrosoftConnector._class_auth_disabled = True
+                MicrosoftConnector._class_auth_disabled_reason = self._auth_disabled_reason
                 self.logger.warning(
                     "Microsoft Connector deshabilitado por credenciales incompletas/placeholder: %s",
                     self._auth_disabled_reason,

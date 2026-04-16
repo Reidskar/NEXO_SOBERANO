@@ -5,7 +5,7 @@ export default function Footer() {
     <footer style={{
       marginTop: 120,
       borderTop: '1px solid rgba(200,169,110,0.1)',
-      padding: '60px 60px 40px',
+      padding: '60px max(20px, min(60px, 5vw)) 40px',
     }}>
       <div style={{ maxWidth: 1200, margin: '0 auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 48 }}>
 

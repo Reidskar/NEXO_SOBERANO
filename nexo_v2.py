@@ -194,57 +194,16 @@ class GestorCostos:
 _costos = GestorCostos()
 
 # ════════════════════════════════════════════════════════════════════
-# MÓDULO 3: MOTOR DE EMBEDDINGS (local gratis O Gemini)
+# MÓDULO 3: MOTOR DE EMBEDDINGS (Gemini 768-dim via ai_core)
 # ════════════════════════════════════════════════════════════════════
 
-_embed_model = None
-
-def _get_embed_local():
-    """Carga all-MiniLM-L6-v2 en memoria (primera vez tarda ~30s, luego instantáneo)."""
-    global _embed_model
-    if _embed_model is None:
-        try:
-            from sentence_transformers import SentenceTransformer
-            log.info("  ⚙️  Cargando modelo local de embeddings (all-MiniLM-L6-v2)...")
-            _embed_model = SentenceTransformer(CFG["EMBED_LOCAL"])
-            log.info("  ✅ Modelo local listo.")
-        except ImportError:
-            log.info("  ⚠️  sentence-transformers no instalado. Usando Gemini para embeddings.")
-            _embed_model = "gemini"
-    return _embed_model
-
 def generar_embedding(texto: str) -> Optional[List[float]]:
-    """
-    Genera embedding. Prioridad: modelo local (GPU, gratis) → Gemini (API, si falla).
-    """
-    model = _get_embed_local()
-
-    if model != "gemini":
-        try:
-            import numpy as np
-            emb = model.encode(texto[:2000])
-            # Normalizar embedding
-            norm = np.linalg.norm(emb)
-            emb = emb / float(norm)
-            return emb.tolist()
-        except Exception as e:
-            log.info(f"  ⚠️  Embedding local falló: {e}. Intentando Gemini...")
-
-    # Fallback: Gemini embeddings
-    if not CFG["GEMINI_KEY"]:
-        return None
+    """Genera embedding 768-dim usando Gemini via ai_core centralizado."""
     try:
-        import google.generativeai as genai
-        genai.configure(api_key=CFG["GEMINI_KEY"])
-        time.sleep(0.2)
-        r = genai.embed_content(
-            model=CFG["EMBED_GEMINI"],
-            content=texto[:2048],
-            task_type="retrieval_document"
-        )
-        return r['embedding']
+        from utils.ai_core import embed_text_gemini2
+        return embed_text_gemini2(texto[:2048])
     except Exception as e:
-        log.info(f"  ❌ Embedding Gemini falló: {e}")
+        log.info(f"  ❌ Embedding falló: {e}")
         return None
 
 # ════════════════════════════════════════════════════════════════════
@@ -300,7 +259,7 @@ def extraer_texto_local(ruta: Path) -> str:
         if ext == '.docx':
             try:
                 from docx import Document
-                return '\n'.join(p.text for p in Document(ruta)).paragraphs if p.text.strip())
+                return '\n'.join(p.text for p in Document(ruta).paragraphs if p.text.strip())
             except ImportError:
                 return "[Instala python-docx: pip install python-docx]"
 
@@ -316,14 +275,17 @@ def _ocr_vision(ruta: Path, mime: str) -> str:
     if not CFG["GEMINI_KEY"]:
         return "[Sin API key para OCR]"
     try:
-        import google.generativeai as genai
-        genai.api_key = CFG["GEMINI_KEY"]
-        model = genai.GenerativeModel(CFG["MODELO_PRO"])
+        from google import genai
+        from google.genai import types as genai_types
+        client = genai.Client(api_key=CFG["GEMINI_KEY"])
         datos = ruta.read_bytes()
-        resp  = model.generate_content([
-            "Transcribe TODO el texto visible. Incluye números, fechas y nombres exactamente.",
-            {"mime_type": mime, "data": datos}
-        ])
+        resp = client.models.generate_content(
+            model=CFG["MODELO_PRO"],
+            contents=[
+                "Transcribe TODO el texto visible. Incluye números, fechas y nombres exactamente.",
+                genai_types.Part.from_bytes(data=datos, mime_type=mime),
+            ],
+        )
         # Estimar tokens para el contador de costos
         tokens_est = len(datos) // 1000  # aprox
         _costos.registrar(CFG["MODELO_PRO"], tokens_est, len(resp.text)//4, "ocr_vision")
@@ -366,9 +328,8 @@ def clasificar(texto_muestra: str, nombre_archivo: str) -> Dict:
     modelo_id = CFG["MODELO_PRO"] if _es_alta_prioridad(nombre_archivo) else CFG["MODELO_FLASH"]
 
     try:
-        import google.generativeai as genai
-        genai.api_key = CFG["GEMINI_KEY"]
-        model = genai.GenerativeModel(modelo_id)
+        from google import genai
+        client = genai.Client(api_key=CFG["GEMINI_KEY"])
 
         prompt = f"""Analiza este fragmento de documento geopolítico/económico.
 Responde ÚNICAMENTE con JSON válido, sin texto adicional:
@@ -377,7 +338,7 @@ Responde ÚNICAMENTE con JSON válido, sin texto adicional:
 Nombre del archivo: {nombre_archivo}
 Contenido (primeros 800 chars): {texto_muestra[:800]}"""
 
-        resp = model.generate_content(prompt)
+        resp = client.models.generate_content(model=modelo_id, contents=prompt)
         texto = resp.text.strip().replace('```json','').replace('```','')
 
         # Registrar costo real
@@ -571,9 +532,8 @@ def consultar_rag(pregunta: str, categoria: Optional[str] = None) -> Dict:
                     "\n".join(f"• {t[:200]}..." for t, _, _ in pares)
     else:
         try:
-            import google.generativeai as genai
-            genai.configure(api_key=CFG["GEMINI_KEY"])
-            model = genai.GenerativeModel(CFG["MODELO_FLASH"])
+            from google import genai
+            client = genai.Client(api_key=CFG["GEMINI_KEY"])
 
             prompt = f"""Eres el sistema de inteligencia del Nexo Soberano.
 
@@ -591,7 +551,7 @@ PREGUNTA: {pregunta}
 
 Análisis:"""
 
-            resp = model.generate_content(prompt)
+            resp = client.models.generate_content(model=CFG["MODELO_FLASH"], contents=prompt)
             respuesta = resp.text
             _costos.registrar(CFG["MODELO_FLASH"], len(prompt)//4, len(respuesta)//4, "rag_consulta")
 
@@ -1042,16 +1002,16 @@ def cmd_setup():
 
     ok = skip = err = 0
     for i, ruta in enumerate(archivos, 1):
-        log.info(f"[{i}/{len(archivos)}] {ruta.name[:55]:<55}", end=" ", flush=True)
+        tag = f"[{i}/{len(archivos)}] {ruta.name[:55]:<55}"
         r = procesar_archivo(ruta)
         if r["ok"]:
-            log.info(f"✅ {r['chunks']} chunks [{r['categoria']}] [{r['impacto']}]")
+            log.info(f"{tag} ✅ {r['chunks']} chunks [{r['categoria']}] [{r['impacto']}]")
             ok += 1
         elif "Ya existe" in r["razon"]:
-            log.info(f"⏭️  Ya indexado")
+            log.info(f"{tag} ⏭️  Ya indexado")
             skip += 1
         else:
-            log.info(f"❌ {r['razon']}")
+            log.info(f"{tag} ❌ {r['razon']}")
             err += 1
 
     log.info(f"\n{'─'*60}")
@@ -1081,32 +1041,32 @@ def cmd_sync():
     sincronizar_nube()
 
 def cmd_test():
-    log.info("🧪 Test 1: SQLite...", end=" ", flush=True)
+    log.info("🧪 Test 1: SQLite...")
     try:
         db = get_db()
         n = db.execute("SELECT COUNT(*) FROM evidencia").fetchone()[0]
-        log.info(f"✅ {n} documentos en bóveda")
+        log.info(f"  ✅ {n} documentos en bóveda")
     except Exception as e:
-        log.info(f"❌ {e}"); return
+        log.info(f"  ❌ {e}"); return
 
-    log.info("🧪 Test 2: Embedding local...", end=" ", flush=True)
+    log.info("🧪 Test 2: Embedding local...")
     try:
         emb = generar_embedding("test de embedding geopolítico")
-        log.info(f"✅ {len(emb)} dimensiones") # pyright: ignore[reportArgumentType]
+        log.info(f"  ✅ {len(emb)} dimensiones") # pyright: ignore[reportArgumentType]
     except Exception as e:
-        log.info(f"❌ {e}")
+        log.info(f"  ❌ {e}")
 
-    log.info("🧪 Test 3: ChromaDB...", end=" ", flush=True)
+    log.info("🧪 Test 3: ChromaDB...")
     try:
         col = get_coleccion()
-        log.info(f"✅ {col.count()} chunks indexados")
+        log.info(f"  ✅ {col.count()} chunks indexados")
     except Exception as e:
-        log.info(f"❌ {e}"); return
+        log.info(f"  ❌ {e}"); return
 
     if get_coleccion().count() > 0:
-        log.info("🧪 Test 4: Consulta RAG...", end=" ", flush=True)
+        log.info("🧪 Test 4: Consulta RAG...")
         r = consultar_rag("¿Qué información hay disponible?")
-        log.info(f"✅ {r['chunks']} chunks · {r['ms']}ms")
+        log.info(f"  ✅ {r['chunks']} chunks · {r['ms']}ms")
         log.info(f"   → {r['respuesta'][:120]}...")
 
     log.info(f"\n💰 {_costos.resumen_hoy()}")
@@ -1116,6 +1076,7 @@ def cmd_test():
 # ════════════════════════════════════════════════════════════════════
 
 if __name__ == "__main__":
+    log.setLevel(logging.INFO)
     cmds = {"setup": cmd_setup, "run": cmd_run, "sync": cmd_sync, "test": cmd_test}
     cmd  = sys.argv[1] if len(sys.argv) > 1 else "run"
 

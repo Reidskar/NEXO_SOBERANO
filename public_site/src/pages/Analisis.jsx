@@ -18,7 +18,7 @@ export default function Analisis() {
 
   return (
     <main style={{ paddingTop: 64 }}>
-      <div ref={headerRef} style={{ padding: '80px 60px 0', maxWidth: 700 }}>
+      <div ref={headerRef} className="page-pad page-pad-v" style={{ maxWidth: 700, paddingBottom: 0 }}>
         <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, letterSpacing: '.2em', color: '#c8a96e', marginBottom: 16 }}>
           — ARCHIVO DE ANÁLISIS
         </div>

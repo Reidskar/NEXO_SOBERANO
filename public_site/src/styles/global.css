@@ -40,3 +40,39 @@ html.lenis { height: auto; }
 .lenis.lenis-smooth { scroll-behavior: auto; }
 .lenis.lenis-smooth [data-lenis-prevent] { overscroll-behavior: contain; }
 .lenis.lenis-stopped { overflow: hidden; }
+
+/* Responsive page padding utility */
+.page-pad {
+  padding-left: 60px;
+  padding-right: 60px;
+}
+.page-pad-v {
+  padding-top: 80px;
+  padding-bottom: 48px;
+}
+.section-pad {
+  padding: 120px 60px;
+}
+@media (max-width: 768px) {
+  .page-pad {
+    padding-left: 20px;
+    padding-right: 20px;
+  }
+  .page-pad-v {
+    padding-top: 48px;
+    padding-bottom: 32px;
+  }
+  .section-pad {
+    padding: 64px 20px;
+  }
+}
+
+/* Event row mobile */
+@media (max-width: 600px) {
+  .event-row {
+    grid-template-columns: 70px 1fr !important;
+  }
+  .event-row .event-country {
+    display: none;
+  }
+}

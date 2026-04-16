@@ -8,7 +8,7 @@ import os
 from datetime import datetime
 from PIL import Image, ImageDraw, ImageFont
 
-BACKEND = os.getenv("NEXO_BACKEND", "http://localhost:8000")
+BACKEND = os.getenv("NEXO_BACKEND", "http://localhost:8080")
 OUTPUT_PATH = os.getenv("KINDLE_PATH", "E:\\documents\\nexo_status.png")
 WIDTH, HEIGHT = 758, 1024
 

@@ -33,12 +33,12 @@ APP_DESCRIPTION = "Backend consolidado para El Anarcocapital"
 MAX_TOKENS_DIA = int(os.getenv("NEXO_MAX_TOKENS_DIA", "900000"))
 
 HOST = os.getenv("NEXO_HOST", "0.0.0.0")
-# Permite PORT (Railway, Vercel) o NEXO_PORT (custom), fallback a 8000
-_port_env = os.getenv("PORT") or os.getenv("NEXO_PORT") or "8000"
+# Permite PORT (Railway, Vercel) o NEXO_PORT (custom), fallback a 8080
+_port_env = os.getenv("PORT") or os.getenv("NEXO_PORT") or "8080"
 try:
     PORT = int(_port_env)
 except Exception:
-    PORT = 8000
+    PORT = 8080
 LOG_LEVEL = os.getenv("NEXO_LOG_LEVEL", "INFO").upper()
 LOG_FILE_NAME = os.getenv("NEXO_LOG_FILE", "nexo_core.log")
 
@@ -79,7 +79,7 @@ AI_INNOVATION_SCOUT_SECONDS = float(os.getenv("AI_INNOVATION_SCOUT_SECONDS", "36
 
 _cors_raw = os.getenv(
     "NEXO_CORS_ORIGINS",
-    "http://localhost:3000,http://localhost:5173,http://127.0.0.1:3000,http://127.0.0.1:5173,http://localhost:8000",
+    "http://localhost:3000,http://localhost:5173,http://127.0.0.1:3000,http://127.0.0.1:5173,http://localhost:8080",
 )
 CORS_ORIGINS: List[str] = [item.strip() for item in _cors_raw.split(",") if item.strip()]
 
@@ -95,3 +95,19 @@ PROTECTED_PATH_PREFIXES: List[str] = [item.strip() for item in _protected_paths_
 
 RATE_LIMIT_READ_PER_MIN = int(os.getenv("NEXO_RATE_LIMIT_READ_PER_MIN", "240"))
 RATE_LIMIT_WRITE_PER_MIN = int(os.getenv("NEXO_RATE_LIMIT_WRITE_PER_MIN", "60"))
+
+# --- Ollama / IA Local ---
+FORCE_LOCAL_AI = os.getenv("FORCE_LOCAL_AI", "false").lower() == "true"
+OLLAMA_ENABLED = os.getenv("OLLAMA_ENABLED", "true").lower() == "true"
+OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434")
+OLLAMA_MODEL_RAG = os.getenv("OLLAMA_MODEL_RAG", "gemma3:12b")
+OLLAMA_MODEL_FAST = os.getenv("OLLAMA_MODEL_FAST", "gemma3:1b")
+
+# --- LLM Cloud ---
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
+MODELO_FLASH = os.getenv("GEMINI_MODEL_FLASH", "gemini-2.5-flash-lite")
+MODELO_PRO = os.getenv("GEMINI_MODEL_PRO", "gemini-2.5-pro")
+MODELO_LIVE = os.getenv("GEMINI_MODEL_LIVE", "gemini-3.1-flash-live-preview")
+ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
+CLAUDE_MODEL = os.getenv("CLAUDE_MODEL", "claude-sonnet-4-6")
+LLM_PROVIDER = os.getenv("NEXO_LLM_PROVIDER", "auto")

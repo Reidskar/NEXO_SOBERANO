@@ -103,7 +103,7 @@ class NexoDashboard(tk.Tk):
         tk.Button(controls, text="Iniciar", command=self.start_system, bg=self.palette["ok"], fg="white", relief="flat", padx=14).pack(side="left", padx=4)
         tk.Button(controls, text="Detener", command=self.stop_system, bg=self.palette["err"], fg="white", relief="flat", padx=14).pack(side="left", padx=4)
         tk.Button(controls, text="Web", command=lambda: self._open_url("http://localhost:3000/"), bg=self.palette["info"], fg="#0b1020", relief="flat", padx=14).pack(side="left", padx=4)
-        tk.Button(controls, text="API", command=lambda: self._open_url("http://localhost:8000/"), bg=self.palette["violet"], fg="white", relief="flat", padx=14).pack(side="left", padx=4)
+        tk.Button(controls, text="API", command=lambda: self._open_url("http://localhost:8080/"), bg=self.palette["violet"], fg="white", relief="flat", padx=14).pack(side="left", padx=4)
 
         body = tk.Frame(self, bg=self.palette["bg"])
         body.pack(fill="both", expand=True, padx=14, pady=(0, 12))
@@ -324,7 +324,7 @@ class NexoDashboard(tk.Tk):
             self._set_badge(self.frontend_badge, "Frontend: Revisar", self.palette["warn"])
 
         try:
-            urlopen("http://localhost:8000/api/estado", timeout=1)
+            urlopen("http://localhost:8080/api/estado", timeout=1)
             self._set_badge(self.ia_badge, "IA/API: RESPONDE", self.palette["ok"])
         except URLError:
             if self.running:

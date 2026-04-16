@@ -37,7 +37,7 @@ def _check_qdrant() -> str:
 def _check_backend() -> str:
     try:
         import urllib.request
-        with urllib.request.urlopen("http://127.0.0.1:8000/api/health", timeout=3) as r:
+        with urllib.request.urlopen("http://127.0.0.1:8080/api/health", timeout=3) as r:
             return "ok" if r.status < 400 else f"http_{r.status}"
     except Exception as e:
         return f"error: {e}"

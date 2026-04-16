@@ -111,7 +111,7 @@ export default function FeaturedAnalysis() {
   }, { scope: sectionRef })
 
   return (
-    <section ref={sectionRef} style={{ padding: '120px 60px', position: 'relative' }}>
+    <section ref={sectionRef} className="section-pad" style={{ position: 'relative' }}>
       {/* Section header */}
       <div ref={titleRef} style={{ marginBottom: 60 }}>
         <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, letterSpacing: '.2em', color: '#c8a96e', marginBottom: 16 }}>

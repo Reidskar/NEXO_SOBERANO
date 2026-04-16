@@ -22,7 +22,7 @@ QDRANT_URL = os.getenv("QDRANT_URL", "http://localhost:6333")
 QDRANT_API_KEY = os.getenv("QDRANT_API_KEY", "")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 COLLECTION_NAME = "nexo_drive_docs"
-VECTOR_SIZE = 768          # text-embedding-004 de Gemini
+VECTOR_SIZE = 768          # gemini-embedding-001 con output_dimensionality=768
 CHUNK_SIZE = 1500          # chars por chunk
 CHUNK_OVERLAP = 200
 
@@ -49,32 +49,20 @@ def _doc_id(file_id: str, chunk_idx: int) -> str:
 
 
 async def _embed_text(text: str) -> Optional[list[float]]:
-    """Genera embedding con Gemini text-embedding-004."""
+    """Genera embedding con gemini-embedding-001 via ai_core centralizado."""
     try:
-        import google.generativeai as genai
-        genai.configure(api_key=GEMINI_API_KEY)
-        result = genai.embed_content(
-            model="models/text-embedding-004",
-            content=text,
-            task_type="retrieval_document"
-        )
-        return result["embedding"]
+        from utils.ai_core import embed_text_gemini2
+        return embed_text_gemini2(text, api_key=GEMINI_API_KEY)
     except Exception as e:
         logger.error(f"Embedding error: {e}")
         return None
 
 
 async def _embed_query(text: str) -> Optional[list[float]]:
-    """Embedding para búsqueda (task_type diferente optimiza recall)."""
+    """Embedding para búsqueda via ai_core centralizado."""
     try:
-        import google.generativeai as genai
-        genai.configure(api_key=GEMINI_API_KEY)
-        result = genai.embed_content(
-            model="models/text-embedding-004",
-            content=text,
-            task_type="retrieval_query"
-        )
-        return result["embedding"]
+        from utils.ai_core import embed_query_gemini2
+        return embed_query_gemini2(text, api_key=GEMINI_API_KEY)
     except Exception as e:
         logger.error(f"Query embedding error: {e}")
         return None

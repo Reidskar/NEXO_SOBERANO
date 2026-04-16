@@ -9,6 +9,15 @@ from pathlib import Path
 from NEXO_CORE import config
 
 
+class _WinSafeRotatingHandler(RotatingFileHandler):
+    """RotatingFileHandler que no crashea en Windows si el archivo está bloqueado."""
+    def doRollover(self):
+        try:
+            super().doRollover()
+        except PermissionError:
+            pass  # Windows file lock — seguir sin rotar
+
+
 
 class PrivacyFilter(logging.Filter):
     PATTERNS = [
@@ -46,11 +55,15 @@ def setup_logging() -> None:
 
     log_file_path = Path(config.LOG_DIR) / config.LOG_FILE_NAME
     log_file_path.parent.mkdir(parents=True, exist_ok=True)
-    file_handler = RotatingFileHandler(
-        str(log_file_path), maxBytes=10 * 1024 * 1024, backupCount=5, encoding="utf-8"
+    file_handler = _WinSafeRotatingHandler(
+        str(log_file_path), maxBytes=10 * 1024 * 1024, backupCount=5, encoding="utf-8", delay=True
     )
     file_handler.setFormatter(formatter)
     file_handler.addFilter(privacy_filter)
 
     root_logger.addHandler(stream_handler)
     root_logger.addHandler(file_handler)
+
+    # Silenciar spam de librerías externas
+    logging.getLogger("googleapiclient.discovery_cache").setLevel(logging.WARNING)
+    logging.getLogger("googleapiclient.discovery").setLevel(logging.WARNING)

@@ -21,7 +21,7 @@ export default function Comunidad() {
 
   return (
     <main ref={ref} style={{ paddingTop: 140, minHeight: '100vh' }}>
-      <div style={{ padding: '0 60px', maxWidth: 800, margin: '0 auto', textAlign: 'center' }}>
+      <div className="page-pad" style={{ maxWidth: 800, margin: '0 auto', textAlign: 'center' }}>
         <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, letterSpacing: '.2em', color: '#c8a96e', marginBottom: 16 }}>
           — COMUNIDAD
         </div>

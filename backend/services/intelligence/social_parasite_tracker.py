@@ -2,13 +2,28 @@ import os
 import json
 import logging
 import asyncio
+import aiohttp
 from typing import Dict, List
-from google import genai
 
-from backend import config
 from backend.services.vector_db import get_pool
 
 logger = logging.getLogger(__name__)
+
+async def _ollama_async(prompt: str, max_tokens: int = 500) -> str:
+    url = os.getenv("OLLAMA_URL", "http://localhost:11434")
+    model = os.getenv("OLLAMA_MODEL_BALANCED", "gemma3:4b")
+    try:
+        async with aiohttp.ClientSession() as s:
+            async with s.post(f"{url}/api/chat", json={
+                "model": model,
+                "messages": [{"role": "user", "content": prompt}],
+                "stream": False,
+                "options": {"temperature": 0.1, "num_predict": max_tokens}
+            }, timeout=aiohttp.ClientTimeout(total=60)) as r:
+                d = await r.json()
+                return d.get("message", {}).get("content", "").strip()
+    except Exception as e:
+        return json.dumps([{"actor": "Error", "parasite_index": 0.5, "reasoning": f"Ollama error: {e}"}])
 
 class SocialParasiteTracker:
     """
@@ -16,21 +31,13 @@ class SocialParasiteTracker:
     Mide objetivamente el daño de actores basado en Economía Austríaca.
     """
     def __init__(self):
-        self.api_key = os.getenv("GEMINI_API_KEY")
-        if self.api_key:
-            genai.configure(api_key=self.api_key)
-            self.model = genai.GenerativeModel(config.MODELO_FLASH)
-        else:
-            logger.error("❌ GEMINI_API_KEY no configurada. SocialParasiteTracker necesita Gemini.")
+        pass  # Sin dependencia de API externa
 
     async def evaluate_entities(self, articles: List[str], country: str) -> List[Dict]:
         """
         Analiza las acciones o discursos de figuras públicas y genera un ranking
         basado en la entropía y dependencia colectivista.
         """
-        if not self.api_key:
-            return [{"actor": "Desconocido", "parasite_index": 0.0, "reasoning": "API no configurada"}]
-            
         combined_text = "\n---\n".join(articles[:5])
         
         prompt = f"""
@@ -56,8 +63,7 @@ class SocialParasiteTracker:
         """
         
         try:
-            response = await asyncio.to_thread(self.model.generate_content, prompt)
-            raw_text = response.text
+            raw_text = await _ollama_async(prompt, max_tokens=400)
             if "```json" in raw_text:
                 raw_text = raw_text.split("```json")[1].split("```")[0]
             elif "```" in raw_text:

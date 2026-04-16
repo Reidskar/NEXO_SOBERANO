@@ -52,7 +52,7 @@ class SummaryRequest(BaseModel):
 
 
 @router.get("/health", dependencies=[Depends(enforce_rate_limit)])
-def knowledge_health():
+async def knowledge_health():
     return {
         "ok": True,
         "service": "notebooklm-bridge-embedded",
@@ -63,7 +63,7 @@ def knowledge_health():
 
 
 @router.post("/notebooks/create", dependencies=[Depends(enforce_rate_limit)])
-def notebooks_create(payload: NotebookCreateRequest, x_nexo_api_key: Optional[str] = Header(default=None)):
+async def notebooks_create(payload: NotebookCreateRequest, x_nexo_api_key: Optional[str] = Header(default=None)):
     _require_bridge_key(x_nexo_api_key)
     notebook = {
         "id": f"nb_{uuid.uuid4().hex[:10]}",
@@ -76,7 +76,7 @@ def notebooks_create(payload: NotebookCreateRequest, x_nexo_api_key: Optional[st
 
 
 @router.post("/notebooks/source/add", dependencies=[Depends(enforce_rate_limit)])
-def notebooks_source_add(payload: AddSourceRequest, x_nexo_api_key: Optional[str] = Header(default=None)):
+async def notebooks_source_add(payload: AddSourceRequest, x_nexo_api_key: Optional[str] = Header(default=None)):
     _require_bridge_key(x_nexo_api_key)
     source = {
         "id": f"src_{uuid.uuid4().hex[:10]}",
@@ -95,7 +95,7 @@ def notebooks_source_add(payload: AddSourceRequest, x_nexo_api_key: Optional[str
 
 
 @router.post("/drive/sync-folder", dependencies=[Depends(enforce_rate_limit)])
-def drive_sync_folder(payload: DriveSyncRequest, x_nexo_api_key: Optional[str] = Header(default=None)):
+async def drive_sync_folder(payload: DriveSyncRequest, x_nexo_api_key: Optional[str] = Header(default=None)):
     _require_bridge_key(x_nexo_api_key)
     job_id = f"job_{uuid.uuid4().hex[:10]}"
     job = {
@@ -122,7 +122,7 @@ def drive_sync_folder(payload: DriveSyncRequest, x_nexo_api_key: Optional[str] =
 
 
 @router.get("/jobs/{job_id}", dependencies=[Depends(enforce_rate_limit)])
-def jobs_status(job_id: str, x_nexo_api_key: Optional[str] = Header(default=None)):
+async def jobs_status(job_id: str, x_nexo_api_key: Optional[str] = Header(default=None)):
     _require_bridge_key(x_nexo_api_key)
     if job_id not in _JOBS:
         raise HTTPException(status_code=404, detail="Job not found")
@@ -130,7 +130,7 @@ def jobs_status(job_id: str, x_nexo_api_key: Optional[str] = Header(default=None
 
 
 @router.post("/summaries/generate", dependencies=[Depends(enforce_rate_limit)])
-def summaries_generate(payload: SummaryRequest, x_nexo_api_key: Optional[str] = Header(default=None)):
+async def summaries_generate(payload: SummaryRequest, x_nexo_api_key: Optional[str] = Header(default=None)):
     _require_bridge_key(x_nexo_api_key)
     result = {
         "status": "INSUFFICIENT_EVIDENCE" if payload.strict_evidence else "DRAFT",

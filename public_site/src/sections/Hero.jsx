@@ -2,7 +2,7 @@
  * Hero — Sección principal con globo 3D y GSAP
  * Patrón: fromTo + stagger + ScrollTrigger (gsap-skills)
  */
-import { useRef, Suspense } from 'react'
+import { useRef, Suspense, useState, useEffect } from 'react'
 import { useGSAP } from '@gsap/react'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
@@ -11,7 +11,9 @@ import { ArrowDown } from 'lucide-react'
 
 gsap.registerPlugin(ScrollTrigger)
 
+// Only import on desktop — avoids loading 826KB three.js on mobile
 const Globe3D = lazy(() => import('../components/Globe3D.jsx'))
+const isDesktop = () => typeof window !== 'undefined' && window.innerWidth > 768
 
 export default function Hero() {
   const sectionRef = useRef()
@@ -20,6 +22,14 @@ export default function Hero() {
   const ctaRef     = useRef()
   const globeRef   = useRef()
   const tagsRef    = useRef()
+  const [desktop, setDesktop] = useState(isDesktop)
+
+  useEffect(() => {
+    const mq = window.matchMedia('(min-width: 769px)')
+    const handler = e => setDesktop(e.matches)
+    mq.addEventListener('change', handler)
+    return () => mq.removeEventListener('change', handler)
+  }, [])
 
   useGSAP(() => {
     // Tag line stagger
@@ -66,17 +76,19 @@ export default function Hero() {
       position: 'relative', minHeight: '100vh',
       display: 'flex', alignItems: 'center', overflow: 'hidden',
     }}>
-      {/* Globe — right side */}
-      <div ref={globeRef} style={{
-        position: 'absolute', right: '-5%', top: '50%',
-        transform: 'translateY(-50%)',
-        width: '55vw', height: '55vw', maxWidth: 700, maxHeight: 700,
-        pointerEvents: 'none',
-      }}>
-        <Suspense fallback={null}>
-          <Globe3D style={{ width: '100%', height: '100%' }} />
-        </Suspense>
-      </div>
+      {/* Globe — right side, desktop only (avoids loading three.js on mobile) */}
+      {desktop && (
+        <div ref={globeRef} className="hero-globe" style={{
+          position: 'absolute', right: '-5%', top: '50%',
+          transform: 'translateY(-50%)',
+          width: '55vw', height: '55vw', maxWidth: 700, maxHeight: 700,
+          pointerEvents: 'none',
+        }}>
+          <Suspense fallback={null}>
+            <Globe3D style={{ width: '100%', height: '100%' }} />
+          </Suspense>
+        </div>
+      )}
 
       {/* Radial gradient overlay */}
       <div style={{
@@ -86,10 +98,10 @@ export default function Hero() {
       }} />
 
       {/* Content */}
-      <div style={{ position: 'relative', zIndex: 10, padding: '0 60px', maxWidth: 700 }}>
+      <div className="hero-content" style={{ position: 'relative', zIndex: 10, maxWidth: 700 }}>
         {/* Tags */}
-        <div ref={tagsRef} style={{ display: 'flex', gap: 10, marginBottom: 28 }}>
-          {['INTELIGENCIA SOBERANA', 'ANÁLISIS GEOPOLÍTICO', 'DATOS EN TIEMPO REAL'].map(t => (
+        <div ref={tagsRef} className="hero-tags" style={{ display: 'flex', gap: 8, marginBottom: 28, flexWrap: 'wrap' }}>
+          {['INTELIGENCIA SOBERANA', 'GEOPOLÍTICA', 'TIEMPO REAL'].map(t => (
             <span key={t} className="hero-tag" style={{
               fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '.15em',
               color: '#c8a96e', padding: '4px 10px',
@@ -148,7 +160,7 @@ export default function Hero() {
         </div>
 
         {/* Scroll indicator */}
-        <div style={{ position: 'absolute', bottom: 40, left: 60, display: 'flex', alignItems: 'center', gap: 10 }}>
+        <div className="hero-scroll-indicator" style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 48 }}>
           <ArrowDown size={14} color="#3a3530" style={{ animation: 'scrollBounce 2s infinite' }} />
           <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: '#3a3530', letterSpacing: '.12em' }}>SCROLL</span>
         </div>
@@ -163,6 +175,13 @@ export default function Hero() {
 
       <style>{`
         @keyframes scrollBounce { 0%,100%{transform:translateY(0)} 50%{transform:translateY(8px)} }
+        .hero-content { padding: 0 60px; }
+        @media (max-width: 768px) {
+          .hero-content { padding: 80px 24px 40px; }
+          .hero-globe { display: none !important; }
+          .hero-tags { margin-bottom: 20px; }
+          .hero-scroll-indicator { display: none !important; }
+        }
       `}</style>
     </section>
   )

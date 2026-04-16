@@ -331,6 +331,7 @@ async def procesar_query(request: QueryRequest):
         raise HTTPException(status_code=400, detail="Query vacía")
 
     try:
+        import asyncio
         from NEXO_CORE.services.multi_ai_service import consultar_ia
 
         # Construir contexto con historial si hay user_id
@@ -342,7 +343,9 @@ async def procesar_query(request: QueryRequest):
         else:
             query_con_contexto = q
 
-        respuesta = consultar_ia(query_con_contexto)
+        # consultar_ia es síncrona — correr en executor para no bloquear el event loop
+        loop = asyncio.get_event_loop()
+        respuesta = await loop.run_in_executor(None, consultar_ia, query_con_contexto)
 
         if request.user_id:
             conversation_history[request.user_id].append(

@@ -150,39 +150,23 @@ class ResearchGuide:
         answer = self._ai_ask(question, context, session["topic"])
         return {"ok": True, "answer": answer}
 
-    # ── IA (Gemini → Ollama fallback) ─────────────────────────────────────────
-
-    def _get_model(self, flash: bool = True):
-        import google.generativeai as genai
-        api_key = os.getenv("GEMINI_API_KEY", "")
-        if not api_key:
-            raise ValueError("GEMINI_API_KEY no configurada")
-        genai.configure(api_key=api_key)
-        model_name = "gemini-2.0-flash" if flash else "gemini-2.0-pro"
-        return genai.GenerativeModel(model_name)
+    # ── IA (Ollama local) ─────────────────────────────────────────────────────
 
     def _ai_generate(self, prompt: str) -> str:
-        """Genera texto con Gemini; si falla, usa Ollama local."""
-        # Intento 1: Gemini
+        """Genera texto con Ollama local (gemma3:12b). Sin costo de API."""
+        import requests as _req
+        url = os.getenv("OLLAMA_URL", "http://localhost:11434")
+        model = os.getenv("OLLAMA_MODEL_RAG", "gemma3:12b")
         try:
-            model = self._get_model()
-            resp = model.generate_content(prompt)
-            return resp.text
+            resp = _req.post(f"{url}/api/chat", json={
+                "model": model,
+                "messages": [{"role": "user", "content": prompt}],
+                "stream": False,
+                "options": {"temperature": 0.1, "num_predict": 800}
+            }, timeout=120)
+            return resp.json().get("message", {}).get("content", "").strip()
         except Exception as e:
-            logger.warning(f"[RESEARCH] Gemini falló: {e} — usando Ollama")
-        # Intento 2: Ollama local
-        try:
-            import asyncio
-            from NEXO_CORE.services.ollama_service import ollama_service
-            loop = asyncio.new_event_loop()
-            resp = loop.run_until_complete(
-                ollama_service.consultar(prompt=prompt, modelo="general", temperature=0.1)
-            )
-            loop.close()
-            if resp.success:
-                return resp.text
-        except Exception as e2:
-            logger.error(f"[RESEARCH] Ollama también falló: {e2}")
+            logger.error(f"[RESEARCH] Ollama falló: {e}")
         return ""
 
     def _generate_plan(self, topic: str, scope: str, depth: str, language: str) -> dict:

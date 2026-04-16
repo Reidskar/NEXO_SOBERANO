@@ -327,42 +327,8 @@ class ContentPipeline:
             return ""
 
     def _classify(self, file_path: Path, transcript: str, tag: str) -> dict:
-        """Clasifica contenido con Gemini."""
-        try:
-            import google.generativeai as genai
-            api_key = os.getenv("GEMINI_API_KEY", "")
-            if not api_key:
-                return {"categoria_jerarquica": [tag], "nombre_inteligente": file_path.stem}
-            genai.configure(api_key=api_key)
-            model = genai.GenerativeModel("gemini-2.0-flash")
-            ts = datetime.now().strftime("%Y-%m-%d")
-            prompt = f"""Eres NEXO SOBERANO, agente de inteligencia estratégica.
-Analiza este contenido y responde SOLO con JSON válido:
-
-TRANSCRIPT: {transcript[:1500]}
-TAG_INICIAL: {tag}
-FECHA: {ts}
-
-Responde este JSON exacto:
-{{
-  "analisis": "análisis breve del contenido",
-  "etiqueta": "MIL|ECO|GEO|POL|PSY|GEN",
-  "nombre_inteligente": "[TAG]_{ts}_[Concepto-Breve]",
-  "categoria_jerarquica": ["CARPETA_PRINCIPAL", "Subcarpeta"],
-  "impacto": "Crítico|Alto|Medio|Bajo",
-  "keywords": ["kw1","kw2","kw3"],
-  "resolucion": "CERTEZA|REVISION"
-}}"""
-            resp = model.generate_content(prompt)
-            raw = resp.text.strip()
-            if raw.startswith("```"):
-                raw = raw.split("```")[1]
-                if raw.startswith("json"):
-                    raw = raw[4:]
-            return json.loads(raw)
-        except Exception as e:
-            logger.warning(f"[PIPELINE] Clasificación Gemini fallida: {e} — intentando Ollama")
-            return self._classify_ollama(file_path, transcript, tag)
+        """Clasifica contenido con Ollama local. Sin costo de API."""
+        return self._classify_ollama(file_path, transcript, tag)
 
     def _classify_ollama(self, file_path: Path, transcript: str, tag: str) -> dict:
         """Fallback de clasificación usando Ollama local (qwen3.5)."""

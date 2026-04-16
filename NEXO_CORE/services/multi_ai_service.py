@@ -52,27 +52,57 @@ def consultar_ia(query: str) -> str:
     except Exception as e:
         logger.warning(f"[Multi-AI] Falla en motor RAG síncrono: {e}")
 
-    # --- FALLBACK FINAL A GEMINI DIRECTO ---
-    # Si el motor RAG falló o no devolvió una respuesta válida, usamos Gemini directamente
-    try:
-        force_local = os.getenv("FORCE_LOCAL_AI", "false").lower() == "true"
-        if force_local:
-             return "Error IA SOBERANA: El motor RAG local falló y las APIs en la nube están deshabilitadas por seguridad (FORCE_LOCAL_AI=true)."
+    # --- FALLBACK FINAL: OLLAMA LOCAL → GEMINI CLOUD ---
+    force_local = os.getenv("FORCE_LOCAL_AI", "false").lower() == "true"
+    prompt_emergencia = f"Responde como NEXO SOBERANO (Oficial de Inteligencia). Query: {query}"
 
+    # Intentar Ollama local primero (siempre disponible, sin costo)
+    try:
+        import requests as _req
+        ollama_url = os.getenv("OLLAMA_URL", "http://localhost:11434")
+        ollama_model = os.getenv("OLLAMA_MODEL_RAG", "gemma3:12b")
+        payload = {
+            "model": ollama_model,
+            "messages": [
+                {"role": "system", "content": "Eres NEXO SOBERANO, un Oficial de Inteligencia. Responde de forma precisa."},
+                {"role": "user", "content": prompt_emergencia}
+            ],
+            "stream": False,
+            "options": {"temperature": 0.1}
+        }
+        resp = _req.post(f"{ollama_url}/api/chat", json=payload, timeout=25)
+        resp.raise_for_status()
+        text = resp.json().get("message", {}).get("content", "").strip()
+        if text:
+            try:
+                get_cost_tracker().track_ai_call(
+                    "ollama_local", ollama_model,
+                    len(prompt_emergencia) // 4, len(text) // 4,
+                    "multi_ai_fallback"
+                )
+            except Exception:
+                pass
+            return text
+    except Exception as e:
+        logger.warning(f"[Multi-AI] Ollama fallback falló: {e}")
+
+    if force_local:
+        return "Error IA SOBERANA: Ollama no disponible y FORCE_LOCAL_AI=true bloquea APIs cloud."
+
+    # Gemini cloud como último recurso
+    try:
         if not config.GEMINI_API_KEY:
-             return "Error: GEMINI_API_KEY no configurada y el motor RAG falló."
-             
-        import google.generativeai as genai
-        
-        genai.configure(api_key=config.GEMINI_API_KEY)
-        model = genai.GenerativeModel(config.MODELO_FLASH)
-        
-        # Prompt de emergencia ultra-rápido
-        prompt_emergencia = f"Responde como NEXO SOBERANO (Oficial de Inteligencia). Query: {query}"
-        resp = model.generate_content(prompt_emergencia)
-        
+             return "Error: GEMINI_API_KEY no configurada y Ollama no disponible."
+
+        from google import genai as new_genai
+
+        client = new_genai.Client(api_key=config.GEMINI_API_KEY)
+        resp = client.models.generate_content(
+            model=config.MODELO_FLASH,
+            contents=prompt_emergencia,
+        )
+
         if resp.text:
-            # Registro de costo para el fallback directo
             try:
                 tokens_in = len(prompt_emergencia) // 4
                 tokens_out = len(resp.text) // 4
@@ -87,5 +117,5 @@ def consultar_ia(query: str) -> str:
 if __name__ == "__main__":
     # Test rápido si se ejecuta directamente
     logging.basicConfig(level=logging.INFO)
-    log.info("Probando Multi-AI Service...")
-    log.info(consultar_ia("hola, ¿cuál es tu estatus?"))
+    logger.info("Probando Multi-AI Service...")
+    logger.info(consultar_ia("hola, ¿cuál es tu estatus?"))

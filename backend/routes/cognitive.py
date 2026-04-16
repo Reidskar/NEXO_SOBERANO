@@ -59,6 +59,47 @@ async def process_turn(body: ProcessRequest, x_api_key: str = Header(None)):
     return result
 
 
+@router.post("/api/cognitive/voz")
+async def process_voz(body: ProcessRequest, x_api_key: str = Header(None)):
+    """
+    Path rápido para voz en tiempo real — va directo a Ollama sin tools ni self-eval.
+    Objetivo: respuesta < 8s.
+    """
+    _auth(x_api_key)
+    import asyncio
+    try:
+        from NEXO_CORE.services.ollama_service import ollama_service
+        prompt = f"""Eres NEXO, un analista de inteligencia conciso que responde por audio.
+Una oración directa, sin listas, sin formato. Tono natural, como en conversación.
+
+Mensaje: "{body.text}"
+
+Responde en UNA oración oral, máximo 25 palabras."""
+
+        resp = await asyncio.wait_for(
+            ollama_service.consultar(prompt, modelo="fast", temperature=0.2),
+            timeout=12.0
+        )
+        text = resp.text.strip() if resp.success else ""
+        # Limpiar thinking tags
+        if "<think>" in text:
+            text = text.split("</think>")[-1].strip()
+        if not text:
+            text = "Procesando tu consulta."
+        return {
+            "response": text[:300],
+            "intent": "CONVERSACION",
+            "tools_used": [],
+            "urgent": False,
+            "model": "ollama_fast",
+        }
+    except asyncio.TimeoutError:
+        return {"response": "Dame un segundo, estoy procesando.", "intent": "CONVERSACION", "tools_used": [], "urgent": False}
+    except Exception as e:
+        logger.error(f"[VOZ FAST] Error: {e}")
+        return {"response": "Error procesando respuesta.", "intent": "CONVERSACION", "tools_used": [], "urgent": False}
+
+
 @router.get("/api/cognitive/session")
 def get_session(channel_id: str, x_api_key: str = Header(None)):
     _auth(x_api_key)

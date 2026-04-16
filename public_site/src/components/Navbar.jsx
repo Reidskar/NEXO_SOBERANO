@@ -79,17 +79,54 @@ export default function Navbar() {
 
       {/* Mobile menu btn */}
       <button
-        style={{ display: 'none', background: 'none', border: 'none', cursor: 'pointer', color: '#c8a96e' }}
+        style={{ display: 'none', background: 'none', border: 'none', cursor: 'pointer', color: '#c8a96e', padding: 8 }}
         className="mobile-menu-btn"
         onClick={() => setMenuOpen(o => !o)}
       >
-        {menuOpen ? <X size={20} /> : <Menu size={20} />}
+        {menuOpen ? <X size={22} /> : <Menu size={22} />}
       </button>
+
+      {/* Mobile dropdown */}
+      {menuOpen && (
+        <div className="mobile-dropdown" style={{
+          position: 'fixed', top: 64, left: 0, right: 0,
+          background: 'rgba(3,7,15,0.98)', borderBottom: '1px solid rgba(200,169,110,0.15)',
+          backdropFilter: 'blur(20px)', zIndex: 7999,
+          display: 'flex', flexDirection: 'column', padding: '16px 24px 24px',
+          gap: 4,
+        }}>
+          {NAV.map(n => (
+            <Link key={n.href} to={n.href}
+              onClick={() => setMenuOpen(false)}
+              style={{
+                fontFamily: 'var(--font-mono)', fontSize: 13, letterSpacing: '.08em',
+                color: location.pathname.startsWith(n.href) ? '#c8a96e' : '#f0ece4',
+                padding: '14px 0',
+                borderBottom: '1px solid rgba(255,255,255,0.05)',
+              }}
+            >
+              {n.label}
+            </Link>
+          ))}
+          <a href="https://nexo.elanarcocapital.com" target="_blank" rel="noopener"
+            style={{
+              marginTop: 16, padding: '14px 0',
+              fontFamily: 'var(--font-mono)', fontSize: 12, letterSpacing: '.1em',
+              color: '#c8a96e',
+            }}
+          >
+            NEXO →
+          </a>
+        </div>
+      )}
 
       <style>{`
         @media (max-width: 768px) {
           .desktop-nav { display: none !important; }
           .mobile-menu-btn { display: flex !important; }
+        }
+        @media (min-width: 769px) {
+          .mobile-dropdown { display: none !important; }
         }
       `}</style>
     </nav>

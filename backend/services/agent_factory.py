@@ -43,7 +43,7 @@ logger = logging.getLogger(__name__)
 AGENTS_DIR = Path("exports/agents")
 AGENTS_DIR.mkdir(parents=True, exist_ok=True)
 
-NEXO_URL = os.getenv("NEXO_INTERNAL_URL", "http://127.0.0.1:8000")
+NEXO_URL = os.getenv("NEXO_INTERNAL_URL", "http://127.0.0.1:8080")
 NEXO_KEY = os.getenv("NEXO_API_KEY", "NEXO_LOCAL_2026_OK")
 DISCORD_WEBHOOK = os.getenv("DISCORD_WEBHOOK_URL", "")
 API_HEADERS = {"x-api-key": NEXO_KEY}

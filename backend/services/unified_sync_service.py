@@ -180,9 +180,6 @@ def _classify_category(name: str, mime_type: str) -> str:
     return "OTROS"
 
 
-    return GEOPOLITICA_BUCKETS["otros_conflictos"]
-
-
 async def _apply_intelligent_analysis(file_path: str, name: str, mime_type: str) -> Optional[Dict]:
     """Llama al MediaProcessor para obtener análisis profundo y ruta inteligente."""
     try:
@@ -552,6 +549,20 @@ class UnifiedSyncService:
                 continue
 
             try:
+                # 0. Descargar bytes de la foto
+                payload = self._with_retries(
+                    "google_photos.download",
+                    self.gc.download_photo_bytes,
+                    photo,
+                    attempts=limits.retry_attempts,
+                    backoff_seconds=limits.retry_backoff_seconds,
+                )
+                if not payload:
+                    result["google_photos"]["skipped"] += 1
+                    result["google_photos"]["items"].append({"id": source_id, "name": name, "status": "skipped", "reason": "empty_payload"})
+                    continue
+                content_sha1 = hashlib.sha1(payload).hexdigest()
+
                 # 1. Analisis Inteligente Pre-ingesta
                 intelligent_data = None
                 # Guardar temporalmente para que Gemini pueda leerlo

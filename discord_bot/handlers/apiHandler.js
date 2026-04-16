@@ -6,7 +6,7 @@ const axios = require('axios');
 
 class APIHandler {
   constructor(baseURL, apiKey) {
-    this.baseURL = baseURL || process.env.NEXO_BACKEND || 'http://127.0.0.1:8000';
+    this.baseURL = baseURL || process.env.NEXO_BACKEND || 'http://127.0.0.1:8080';
     this.apiKey = apiKey || process.env.NEXO_API_KEY || 'NEXO_LOCAL_2026_OK';
     this.timeout = parseInt(process.env.REQUEST_TIMEOUT) || 10000;
 

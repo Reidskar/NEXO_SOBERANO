@@ -1,804 +1,965 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="es">
-
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>NEXO Control Center</title>
-  <link rel="stylesheet" href="/static/nexo_theme.css">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link
-    href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&family=Syne:wght@600;700;800&display=swap"
-    rel="stylesheet">
-  <style>
-    :root {
-      color-scheme: dark;
-      --nexo-bg-deep: #080B12;
-      --nexo-bg-surface: #0D1117;
-      --nexo-bg-elevated: #131A24;
-      --nexo-bg-glass: rgba(13, 17, 23, 0.85);
-      --nexo-accent-blue: #1E6FFF;
-      --nexo-accent-cyan: #00D4FF;
-      --nexo-text-primary: #E8EDF5;
-      --nexo-text-muted: #6B7A9A;
-      --nexo-text-dim: #3A4258;
-      --nexo-success: #00C27A;
-      --nexo-warning: #F5A623;
-      --nexo-danger: #E03A4A;
-      --nexo-border: rgba(30, 111, 255, 0.12);
-      --nexo-border-glow: rgba(30, 111, 255, 0.35);
-      --font-display: 'Syne', sans-serif;
-      --font-body: 'DM Sans', sans-serif;
-      --font-mono: 'Space Mono', monospace;
-    }
-
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-
-    body {
-      font-family: var(--font-body);
-      background: var(--nexo-bg-deep);
-      color: var(--nexo-text-primary);
-      padding-top: 52px;
-    }
-
-    /* HEADER */
-    .nexo-header {
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      height: 52px;
-      z-index: 9999;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 0 24px;
-      background: var(--nexo-bg-surface);
-      border-bottom: 1px solid var(--nexo-border);
-      backdrop-filter: blur(12px);
-    }
-
-    .nexo-logo {
-      font-family: var(--font-display);
-      font-size: 14px;
-      font-weight: 700;
-      color: var(--nexo-text-primary);
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-
-    .status-pulse {
-      width: 8px;
-      height: 8px;
-      background: var(--nexo-success);
-      border-radius: 50%;
-      animation: pulse-dot 2s ease-in-out infinite;
-    }
-
-    .system-vitals {
-      display: flex;
-      gap: 16px;
-      align-items: center;
-    }
-
-    .vital {
-      font-family: var(--font-mono);
-      font-size: 11px;
-      color: var(--nexo-text-muted);
-      letter-spacing: 0.05em;
-    }
-
-    .system-clock {
-      font-family: var(--font-mono);
-      font-size: 12px;
-      color: var(--nexo-accent-cyan);
-      letter-spacing: 0.1em;
-    }
-
-    @keyframes pulse-dot {
-
-      0%,
-      100% {
-        opacity: 1;
-        box-shadow: 0 0 10px var(--nexo-success);
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>NEXO Control Center</title>
+    <link rel="stylesheet" href="/static/nexo_theme.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&family=Syne:wght@600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        color-scheme: dark;
+        --nexo-bg-deep: #080b12;
+        --nexo-bg-surface: #0d1117;
+        --nexo-bg-elevated: #131a24;
+        --nexo-bg-glass: rgba(13, 17, 23, 0.85);
+        --nexo-accent-blue: #1e6fff;
+        --nexo-accent-cyan: #00d4ff;
+        --nexo-text-primary: #e8edf5;
+        --nexo-text-muted: #6b7a9a;
+        --nexo-text-dim: #3a4258;
+        --nexo-success: #00c27a;
+        --nexo-warning: #f5a623;
+        --nexo-danger: #e03a4a;
+        --nexo-border: rgba(30, 111, 255, 0.12);
+        --nexo-border-glow: rgba(30, 111, 255, 0.35);
+        --font-display: "Syne", sans-serif;
+        --font-body: "DM Sans", sans-serif;
+        --font-mono: "Space Mono", monospace;
       }
 
-      50% {
-        opacity: .5;
-        box-shadow: 0 0 3px var(--nexo-success);
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
       }
-    }
 
-    /* FOOTER */
-    .nexo-footer {
-      padding: 16px 24px;
-      border-top: 1px solid var(--nexo-border);
-      font-family: var(--font-mono);
-      font-size: 11px;
-      color: var(--nexo-text-dim);
-      letter-spacing: 0.05em;
-      text-align: center;
-      background: var(--nexo-bg-surface);
-    }
-
-    .container {
-      max-width: 1200px;
-      margin: 0 auto;
-      padding: 20px;
-    }
-
-    .topbar {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 12px;
-      margin-bottom: 16px;
-    }
-
-    .title {
-      font-family: var(--font-display);
-      font-size: 1.4rem;
-      font-weight: 700;
-      color: var(--nexo-accent-cyan);
-    }
-
-    .actions {
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-    }
-
-    button {
-      border: none;
-      border-radius: 8px;
-      padding: 10px 14px;
-      font-weight: 600;
-      cursor: pointer;
-      background: var(--nexo-accent-blue);
-      color: #fff;
-      font-family: var(--font-body);
-      font-size: 0.85rem;
-      transition: all 0.2s ease;
-    }
-
-    button:hover {
-      opacity: 0.85;
-    }
-
-    button.secondary {
-      background: var(--nexo-bg-elevated);
-      border: 1px solid var(--nexo-border);
-      color: var(--nexo-text-muted);
-    }
-
-    button.secondary:hover {
-      border-color: var(--nexo-border-glow);
-      color: var(--nexo-text-primary);
-    }
-
-    button:disabled {
-      opacity: 0.55;
-      cursor: wait;
-    }
-
-    .grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
-      gap: 12px;
-      margin-bottom: 16px;
-    }
-
-    .card {
-      background: var(--nexo-bg-glass);
-      backdrop-filter: blur(12px);
-      border: 1px solid var(--nexo-border);
-      border-radius: 12px;
-      padding: 14px;
-      position: relative;
-      overflow: hidden;
-      transition: border-color .25s ease, transform .25s ease;
-    }
-
-    .card::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      height: 1px;
-      background: linear-gradient(90deg, transparent, var(--nexo-accent-blue), transparent);
-    }
-
-    .card:hover {
-      border-color: var(--nexo-border-glow);
-      transform: translateY(-2px);
-    }
-
-    .card h3 {
-      margin: 0 0 8px;
-      font-size: 0.85rem;
-      font-family: var(--font-body);
-      color: var(--nexo-text-muted);
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-    }
-
-    .value {
-      font-size: 1.3rem;
-      font-weight: 700;
-      margin-bottom: 6px;
-      font-family: var(--font-display);
-    }
-
-    .meta {
-      color: var(--nexo-text-muted);
-      font-size: 0.85rem;
-      line-height: 1.35;
-    }
-
-    .panel {
-      background: var(--nexo-bg-glass);
-      backdrop-filter: blur(12px);
-      border: 1px solid var(--nexo-border);
-      border-radius: 12px;
-      padding: 14px;
-      margin-bottom: 12px;
-    }
-
-    .panel h4 {
-      margin: 0 0 10px;
-      color: var(--nexo-accent-cyan);
-      font-family: var(--font-display);
-    }
-
-    .line {
-      display: flex;
-      justify-content: space-between;
-      gap: 12px;
-      padding: 8px 0;
-      border-bottom: 1px solid var(--nexo-border);
-      font-size: 0.92rem;
-    }
-
-    .line:last-child {
-      border-bottom: none;
-    }
-
-    .badge {
-      padding: 2px 8px;
-      border-radius: 999px;
-      font-size: 0.78rem;
-      font-weight: 700;
-    }
-
-    .ok {
-      background: rgba(0, 194, 122, 0.15);
-      color: var(--nexo-success);
-      border: 1px solid rgba(0, 194, 122, 0.3);
-    }
-
-    .warn {
-      background: rgba(245, 166, 35, 0.15);
-      color: var(--nexo-warning);
-      border: 1px solid rgba(245, 166, 35, 0.3);
-    }
-
-    .err {
-      background: rgba(224, 58, 74, 0.15);
-      color: var(--nexo-danger);
-      border: 1px solid rgba(224, 58, 74, 0.3);
-    }
-
-    pre {
-      background: var(--nexo-bg-deep);
-      border: 1px solid var(--nexo-border);
-      border-radius: 8px;
-      padding: 10px;
-      overflow: auto;
-      max-height: 360px;
-      font-size: 0.82rem;
-      margin: 0;
-      font-family: var(--font-mono);
-    }
-
-    .small {
-      font-size: 0.8rem;
-      color: var(--nexo-text-muted);
-    }
-
-    a {
-      color: var(--nexo-accent-cyan);
-    }
-  </style>
-</head>
-
-<body>
-
-  <header class="nexo-header">
-    <div class="nexo-logo">
-      <span class="status-pulse"></span>
-      NEXO <strong>SOBERANO</strong>
-    </div>
-    <div class="system-vitals">
-      <span class="vital" id="backend-status">Backend ●</span>
-      <span class="vital" id="discord-status">Discord ●</span>
-      <span class="vital" id="docker-status">Docker ●</span>
-    </div>
-    <div class="system-clock" id="clock"></div>
-  </header>
-
-  <div class="container">
-    <div class="topbar">
-      <div>
-        <div class="title">NEXO Control Center</div>
-        <div class="small" id="updatedAt">Actualizando...</div>
-      </div>
-      <div class="actions">
-        <button class="secondary" id="refreshBtn">Refrescar</button>
-        <button id="runBtn">Iniciar clasificación Drive</button>
-        <button id="runUnifiedBtn">Sync completo (Workspace+M365)</button>
-        <button id="runEvolutionBtn">Evolución IA (auto)</button>
-        <button id="runFodaBtn">Informe FODA crítico</button>
-        <button id="runExtractorBtn">Extraer código para otras IA</button>
-        <button class="secondary" id="downloadExtractorBtn">Descargar contexto</button>
-        <button class="secondary" id="copyPromptBtn">Copiar prompt IA</button>
-      </div>
-    </div>
-
-    <div class="grid">
-      <div class="card">
-        <h3>Backend</h3>
-        <div class="value" id="backendStatus">-</div>
-        <div class="meta" id="backendMeta">-</div>
-      </div>
-      <div class="card">
-        <h3>Preflight general</h3>
-        <div class="value" id="preflightStatus">-</div>
-        <div class="meta" id="preflightMeta">-</div>
-      </div>
-      <div class="card">
-        <h3>Clasificación Drive</h3>
-        <div class="value" id="syncStatus">-</div>
-        <div class="meta" id="syncMeta">-</div>
-      </div>
-      <div class="card">
-        <h3>IA (RAG)</h3>
-        <div class="value" id="aiStatus">-</div>
-        <div class="meta" id="aiMeta">-</div>
-      </div>
-      <div class="card">
-        <h3>Google Workspace</h3>
-        <div class="value" id="workspaceStatus">-</div>
-        <div class="meta" id="workspaceMeta">-</div>
-      </div>
-      <div class="card">
-        <h3>Microsoft 365</h3>
-        <div class="value" id="m365Status">-</div>
-        <div class="meta" id="m365Meta">-</div>
-      </div>
-      <div class="card">
-        <h3>Sync Unificado</h3>
-        <div class="value" id="unifiedStatus">-</div>
-        <div class="meta" id="unifiedMeta">-</div>
-      </div>
-      <div class="card">
-        <h3>Extractor Código</h3>
-        <div class="value" id="extractorStatus">-</div>
-        <div class="meta" id="extractorMeta">-</div>
-      </div>
-      <div class="card">
-        <h3>Evolución IA</h3>
-        <div class="value" id="evolutionStatus">-</div>
-        <div class="meta" id="evolutionMeta">-</div>
-      </div>
-      <div class="card">
-        <h3>FODA crítico IA</h3>
-        <div class="value" id="fodaStatus">-</div>
-        <div class="meta" id="fodaMeta">-</div>
-      </div>
-      <div class="card">
-        <h3>Último resumen</h3>
-        <div class="value" id="summaryValue">-</div>
-        <div class="meta" id="summaryMeta">-</div>
-      </div>
-    </div>
-
-    <div class="panel">
-      <h4>Administración unificada (IA + Web + Archivos)</h4>
-      <div id="appsLinks" class="small">Cargando enlaces...</div>
-    </div>
-
-    <div class="panel">
-      <h4>Analítica visual</h4>
-      <div id="chartDrive" class="small">Cargando gráfico Drive...</div>
-      <div id="chartCloud" class="small" style="margin-top:10px;">Cargando gráfico Cloud...</div>
-      <div id="chartUnified" class="small" style="margin-top:10px;">Cargando gráfico Sync...</div>
-      <div id="chartDriveTopics" class="small" style="margin-top:10px;">Cargando gráfico IA Topics...</div>
-      <div id="chartDriveActivity" class="small" style="margin-top:10px;">Cargando gráfico actividad 7D...</div>
-    </div>
-
-    <div class="panel">
-      <h4>Evolución continua (IA + código + UX)</h4>
-      <div id="evolutionHints" class="small">Sin recomendaciones aún.</div>
-    </div>
-
-    <div class="panel">
-      <h4>Informe FODA crítico (consenso final Claude - modo ahorro)</h4>
-      <pre id="fodaReport">Sin informe FODA aún.</pre>
-    </div>
-
-    <div class="panel">
-      <h4>Errores recientes</h4>
-      <div id="errorsList" class="small">Sin datos todavía.</div>
-    </div>
-
-    <div class="panel">
-      <h4>Reportes JSON disponibles</h4>
-      <div id="reportsList" class="small">Cargando...</div>
-    </div>
-
-    <div class="panel">
-      <h4>Detalle de reporte seleccionado</h4>
-      <pre id="reportDetail">{}</pre>
-    </div>
-  </div>
-
-  <footer class="nexo-footer">
-    El Anarcocapital v3.0.0 · Sistema Operativo · © 2026 Camilo Estefano
-  </footer>
-
-  <script>
-    function startNexoClock() {
-      const el = document.getElementById('clock');
-      if (!el) return;
-      const tick = () => el.textContent = new Date()
-        .toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
-      tick(); setInterval(tick, 1000);
-    }
-    function setStatus(name, state) {
-      const el = document.getElementById(name + '-status');
-      if (!el) return;
-      el.style.color = ({ ok: '#00C27A', warn: '#F5A623', error: '#E03A4A', loading: '#6B7A9A' })[state] || '#6B7A9A';
-    }
-    function startHealthPolling() {
-      const poll = async () => {
-        try {
-          const r = await fetch('http://localhost:8000/api/health', { signal: AbortSignal.timeout(4000) });
-          const d = await r.json();
-          setStatus('backend', d.status === 'ok' ? 'ok' : 'warn');
-          setStatus('discord', d.discord ? 'ok' : 'warn');
-          setStatus('docker', d.docker ? 'ok' : 'warn');
-        } catch { setStatus('backend', 'error'); }
-      };
-      poll(); setInterval(poll, 15000);
-    }
-    startNexoClock(); startHealthPolling();
-
-    const qs = (id) => document.getElementById(id);
-    const LOCAL_DEV_DEFAULT_API_KEY = 'NEXO_LOCAL_2026_OK';
-
-    function getApiKey() {
-      const fromStorage = (localStorage.getItem('nexo_v3_api_key') || '').trim();
-      if (fromStorage) return fromStorage;
-      const isLocal = ['127.0.0.1', 'localhost'].includes(window.location.hostname);
-      return isLocal ? LOCAL_DEV_DEFAULT_API_KEY : '';
-    }
-
-    function getApiHeaders() {
-      const key = getApiKey();
-      if (!key) return {};
-      return { 'X-NEXO-API-KEY': key, 'X-NEXO-KEY': key };
-    }
-
-    function badge(status) {
-      if (["ok", "done", "ready", true].includes(status)) return '<span class="badge ok">OK</span>';
-      if (["running", "already_running"].includes(status)) return '<span class="badge warn">RUNNING</span>';
-      if (["error", false].includes(status)) return '<span class="badge err">ERROR</span>';
-      return '<span class="badge warn">' + String(status).toUpperCase() + '</span>';
-    }
-
-    function isAuthPendingIssue(message) {
-      const text = String(message || "").toLowerCase();
-      return ["token google", "scope", "insufficient", "permission_denied", "oauth", "autoriza", "authorize"].some((k) => text.includes(k));
-    }
-
-    function renderBars(containerId, title, labels, values) {
-      const total = Math.max(1, ...(values || [0]));
-      const rows = (labels || []).map((label, idx) => {
-        const value = Number(values[idx] || 0);
-        const width = Math.max(2, Math.round((value / total) * 100));
-        return `<div class="line"><div style="width:210px">${label}</div><div style="flex:1;background:#101620;border-radius:6px;overflow:hidden;height:12px"><div style="height:12px;width:${width}%;background:#1E6FFF"></div></div><div style="width:56px;text-align:right">${value}</div></div>`;
-      }).join("");
-      qs(containerId).innerHTML = `<div class="small" style="margin-bottom:6px">${title}</div>${rows || '<span class="small">Sin datos</span>'}`;
-    }
-
-    async function apiGet(url) {
-      const r = await fetch(url, { cache: "no-store", headers: getApiHeaders() });
-      if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
-      return r.json();
-    }
-
-    async function apiPost(url, payload = {}) {
-      const r = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json", ...getApiHeaders() }, body: JSON.stringify(payload || {}) });
-      if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
-      return r.json();
-    }
-
-    function notifyResult(title, payload) {
-      const text = typeof payload === "string" ? payload : JSON.stringify(payload || {}, null, 2);
-      alert(`${title}\n\n${text.substring(0, 1200)}`);
-    }
-
-    async function loadReport(name) {
-      const payload = await apiGet(`/agente/control-center/report/${encodeURIComponent(name)}`);
-      qs("reportDetail").textContent = JSON.stringify(payload.data || {}, null, 2);
-    }
-
-    async function refreshAll() {
-      try {
-        const [status, reports, errors, analytics, unified, evolution, foda] = await Promise.all([
-          apiGet("/agente/control-center/status"),
-          apiGet("/agente/control-center/reports"),
-          apiGet("/agente/control-center/errors?limit=30"),
-          apiGet("/agente/control-center/analytics"),
-          apiGet("/agente/control-center/sync-unified-status"),
-          apiGet("/api/ai/evolution-status"),
-          apiGet("/api/ai/foda-status"),
-        ]);
-
-        qs("updatedAt").textContent = `Última actualización: ${new Date().toLocaleString()}`;
-
-        qs("backendStatus").innerHTML = badge(status?.health?.status || "error");
-        qs("backendMeta").textContent = status?.health?.service || "sin servicio";
-
-        const preReady = !!status?.preflight?.ready;
-        qs("preflightStatus").innerHTML = badge(preReady ? "ready" : "error");
-        const ffmpeg = status?.preflight?.ffmpeg?.found ? "ffmpeg OK" : "ffmpeg faltante";
-        qs("preflightMeta").textContent = `${ffmpeg} | tokens Drive: ${status?.preflight?.files?.drive_token_write ? "sí" : "no"} | YouTube: ${status?.preflight?.files?.youtube_token_upload ? "sí" : "no"}`;
-
-        const syncState = status?.sync?.status?.status || "unknown";
-        qs("syncStatus").innerHTML = badge(syncState);
-        const totals = status?.sync?.status?.totals || status?.sync?.last_report?.totals || {};
-        qs("syncMeta").textContent = `analyzed=${totals.analyzed ?? 0} | classified=${totals.classified ?? 0} | skipped=${totals.skipped ?? 0} | errors=${totals.errors ?? 0}`;
-
-        const rag = status?.ai?.health || {};
-        const ragLoaded = rag?.rag_loaded === true;
-        qs("aiStatus").innerHTML = badge(ragLoaded ? "ok" : "warn");
-        qs("aiMeta").textContent = `docs=${rag?.total_documentos ?? 0} | presupuesto=${status?.ai?.budget?.presupuesto_restante_usd ?? "n/d"}`;
-
-        const workspace = analytics?.workspace || {};
-        const workspaceIssue = workspace?.drive_error || workspace?.photos_error || "";
-        const workspaceBadge = workspace?.ok ? "ok" : (isAuthPendingIssue(workspaceIssue) ? "warn" : "error");
-        qs("workspaceStatus").innerHTML = badge(workspaceBadge);
-        qs("workspaceMeta").textContent = workspaceBadge === "warn"
-          ? "Autorización Google pendiente (Drive/Photos)"
-          : `Drive=${workspace.drive_recent ?? 0} | Photos=${workspace.photos_recent ?? 0}`;
-
-        const m365 = analytics?.microsoft365 || {};
-        qs("m365Status").innerHTML = badge(!!m365.ok);
-        qs("m365Meta").textContent = `OneDrive=${m365.onedrive_recent ?? 0} | MB=${m365.onedrive_total_size_mb ?? 0}`;
-
-        const unifiedStatus = unified?.status?.status || "unknown";
-        const unifiedError = unified?.status?.error || "";
-        const unifiedBadge = unifiedStatus === "error" && isAuthPendingIssue(unifiedError) ? "warn" : unifiedStatus;
-        qs("unifiedStatus").innerHTML = badge(unifiedBadge);
-        const us = unified?.report?.summary || {};
-        qs("unifiedMeta").textContent = unifiedBadge === "warn"
-          ? "Pendiente token/scope Google para sync completo"
-          : `Drive=${us?.google_drive?.classified ?? 0} | Photos=${us?.google_photos?.imported ?? 0} | OneDrive=${us?.onedrive?.imported ?? 0}`;
-
-        const extractor = status?.extractor || {};
-        const extractorState = extractor?.status?.status || (extractor?.lock ? "running" : "idle");
-        qs("extractorStatus").innerHTML = badge(extractorState === "idle" ? "ok" : extractorState);
-        const er = extractor?.report || {};
-        qs("extractorMeta").textContent = `files=${er?.files_scanned ?? 0} | output=${extractor?.output_file ?? 'n/d'}`;
-
-        const evoData = evolution?.data || {};
-        const evoOk = !!evolution?.has_data && !!evoData?.ok;
-        const evoMode = evoData?.mode?.apply_code_fix ? "fix:on" : "fix:off";
-        const evoScan = evoData?.scan_summary || {};
-        qs("evolutionStatus").innerHTML = badge(evoOk ? "ok" : (evolution?.has_data ? "warn" : "idle"));
-        qs("evolutionMeta").textContent = evolution?.has_data
-          ? `${evoMode} | score=${evoScan?.quality_score ?? "n/d"} | crit=${evoScan?.critical ?? "n/d"}`
-          : "sin ciclos aún";
-
-        const hints = Array.isArray(evoData?.hints) ? evoData.hints : [];
-        qs("evolutionHints").innerHTML = hints.length
-          ? hints.map((h) => `<div class="line"><div>• ${h}</div></div>`).join("")
-          : '<span class="small">Ejecuta “Evolución IA (auto)” para generar mejoras sobre código, sistema y UX.</span>';
-
-        const fodaData = foda?.data || {};
-        const fodaConsensus = fodaData?.consensus || {};
-        const fodaHas = !!foda?.has_data;
-        const fodaBadge = !fodaHas ? "idle" : (fodaConsensus?.ok ? "ok" : "warn");
-        const decider = fodaConsensus?.decider || "n/d";
-        const reviews = Array.isArray(fodaData?.reviews) ? fodaData.reviews : [];
-        const reviewOk = reviews.filter((r) => !!r?.ok).length;
-        qs("fodaStatus").innerHTML = badge(fodaBadge);
-        qs("fodaMeta").textContent = fodaHas
-          ? `decisor=${decider} | revisores=${reviewOk}/${reviews.length || 0}`
-          : "sin informe crítico";
-        qs("fodaReport").textContent = fodaHas
-          ? String(fodaConsensus?.content || "Sin consenso disponible")
-          : "Ejecuta “Informe FODA crítico” para evaluación profesional multi-IA y consenso final de Claude en modo ahorro.";
-
-        const rounds = status?.sync?.last_report?.rounds || [];
-        qs("summaryValue").textContent = `${rounds.length} rondas`;
-        qs("summaryMeta").textContent = (status?.sync?.last_report?.timestamp || "sin timestamp");
-
-        const errList = errors?.errors || [];
-        if (!errList.length) {
-          qs("errorsList").innerHTML = '<span class="badge ok">SIN ERRORES</span>';
-        } else {
-          qs("errorsList").innerHTML = errList
-            .map(e => `<div class="line"><div>${e.source} / ${e.type}</div><div>${e.error || "errors=" + e.errors}</div></div>`)
-            .join("");
+      body {
+        font-family: var(--font-body);
+        background: var(--nexo-bg-deep);
+        color: var(--nexo-text-primary);
+        padding-top: 52px;
+      }
+
+      /* HEADER */
+      .nexo-header {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 52px;
+        z-index: 9999;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 24px;
+        background: var(--nexo-bg-surface);
+        border-bottom: 1px solid var(--nexo-border);
+        backdrop-filter: blur(12px);
+      }
+
+      .nexo-logo {
+        font-family: var(--font-display);
+        font-size: 14px;
+        font-weight: 700;
+        color: var(--nexo-text-primary);
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .status-pulse {
+        width: 8px;
+        height: 8px;
+        background: var(--nexo-success);
+        border-radius: 50%;
+        animation: pulse-dot 2s ease-in-out infinite;
+      }
+
+      .system-vitals {
+        display: flex;
+        gap: 16px;
+        align-items: center;
+      }
+
+      .vital {
+        font-family: var(--font-mono);
+        font-size: 11px;
+        color: var(--nexo-text-muted);
+        letter-spacing: 0.05em;
+      }
+
+      .system-clock {
+        font-family: var(--font-mono);
+        font-size: 12px;
+        color: var(--nexo-accent-cyan);
+        letter-spacing: 0.1em;
+      }
+
+      @keyframes pulse-dot {
+        0%,
+        100% {
+          opacity: 1;
+          box-shadow: 0 0 10px var(--nexo-success);
         }
 
-        const reps = reports?.reports || [];
-        if (!reps.length) {
-          qs("reportsList").textContent = "No hay reportes en logs.";
-        } else {
-          qs("reportsList").innerHTML = reps
-            .map(r => `<div class="line"><button class="secondary" onclick="loadReport('${r.name}')">${r.name}</button><div>${(r.size || 0)} bytes</div></div>`)
-            .join("");
-          if (reps[0]?.name) {
-            await loadReport(reps[0].name);
+        50% {
+          opacity: 0.5;
+          box-shadow: 0 0 3px var(--nexo-success);
+        }
+      }
+
+      /* FOOTER */
+      .nexo-footer {
+        padding: 16px 24px;
+        border-top: 1px solid var(--nexo-border);
+        font-family: var(--font-mono);
+        font-size: 11px;
+        color: var(--nexo-text-dim);
+        letter-spacing: 0.05em;
+        text-align: center;
+        background: var(--nexo-bg-surface);
+      }
+
+      .container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 20px;
+      }
+
+      .topbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 16px;
+      }
+
+      .title {
+        font-family: var(--font-display);
+        font-size: 1.4rem;
+        font-weight: 700;
+        color: var(--nexo-accent-cyan);
+      }
+
+      .actions {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+
+      button {
+        border: none;
+        border-radius: 8px;
+        padding: 10px 14px;
+        font-weight: 600;
+        cursor: pointer;
+        background: var(--nexo-accent-blue);
+        color: #fff;
+        font-family: var(--font-body);
+        font-size: 0.85rem;
+        transition: all 0.2s ease;
+      }
+
+      button:hover {
+        opacity: 0.85;
+      }
+
+      button.secondary {
+        background: var(--nexo-bg-elevated);
+        border: 1px solid var(--nexo-border);
+        color: var(--nexo-text-muted);
+      }
+
+      button.secondary:hover {
+        border-color: var(--nexo-border-glow);
+        color: var(--nexo-text-primary);
+      }
+
+      button:disabled {
+        opacity: 0.55;
+        cursor: wait;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+        gap: 12px;
+        margin-bottom: 16px;
+      }
+
+      .card {
+        background: var(--nexo-bg-glass);
+        backdrop-filter: blur(12px);
+        border: 1px solid var(--nexo-border);
+        border-radius: 12px;
+        padding: 14px;
+        position: relative;
+        overflow: hidden;
+        transition:
+          border-color 0.25s ease,
+          transform 0.25s ease;
+      }
+
+      .card::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 1px;
+        background: linear-gradient(
+          90deg,
+          transparent,
+          var(--nexo-accent-blue),
+          transparent
+        );
+      }
+
+      .card:hover {
+        border-color: var(--nexo-border-glow);
+        transform: translateY(-2px);
+      }
+
+      .card h3 {
+        margin: 0 0 8px;
+        font-size: 0.85rem;
+        font-family: var(--font-body);
+        color: var(--nexo-text-muted);
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+      }
+
+      .value {
+        font-size: 1.3rem;
+        font-weight: 700;
+        margin-bottom: 6px;
+        font-family: var(--font-display);
+      }
+
+      .meta {
+        color: var(--nexo-text-muted);
+        font-size: 0.85rem;
+        line-height: 1.35;
+      }
+
+      .panel {
+        background: var(--nexo-bg-glass);
+        backdrop-filter: blur(12px);
+        border: 1px solid var(--nexo-border);
+        border-radius: 12px;
+        padding: 14px;
+        margin-bottom: 12px;
+      }
+
+      .panel h4 {
+        margin: 0 0 10px;
+        color: var(--nexo-accent-cyan);
+        font-family: var(--font-display);
+      }
+
+      .line {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 8px 0;
+        border-bottom: 1px solid var(--nexo-border);
+        font-size: 0.92rem;
+      }
+
+      .line:last-child {
+        border-bottom: none;
+      }
+
+      .badge {
+        padding: 2px 8px;
+        border-radius: 999px;
+        font-size: 0.78rem;
+        font-weight: 700;
+      }
+
+      .ok {
+        background: rgba(0, 194, 122, 0.15);
+        color: var(--nexo-success);
+        border: 1px solid rgba(0, 194, 122, 0.3);
+      }
+
+      .warn {
+        background: rgba(245, 166, 35, 0.15);
+        color: var(--nexo-warning);
+        border: 1px solid rgba(245, 166, 35, 0.3);
+      }
+
+      .err {
+        background: rgba(224, 58, 74, 0.15);
+        color: var(--nexo-danger);
+        border: 1px solid rgba(224, 58, 74, 0.3);
+      }
+
+      pre {
+        background: var(--nexo-bg-deep);
+        border: 1px solid var(--nexo-border);
+        border-radius: 8px;
+        padding: 10px;
+        overflow: auto;
+        max-height: 360px;
+        font-size: 0.82rem;
+        margin: 0;
+        font-family: var(--font-mono);
+      }
+
+      .small {
+        font-size: 0.8rem;
+        color: var(--nexo-text-muted);
+      }
+
+      a {
+        color: var(--nexo-accent-cyan);
+      }
+    </style>
+  </head>
+
+  <body>
+    <header class="nexo-header">
+      <div class="nexo-logo">
+        <span class="status-pulse"></span>
+        NEXO <strong>SOBERANO</strong>
+      </div>
+      <div class="system-vitals">
+        <span class="vital" id="backend-status">Backend ●</span>
+        <span class="vital" id="discord-status">Discord ●</span>
+        <span class="vital" id="docker-status">Docker ●</span>
+      </div>
+      <div class="system-clock" id="clock"></div>
+    </header>
+
+    <div class="container">
+      <div class="topbar">
+        <div>
+          <div class="title">NEXO Control Center</div>
+          <div class="small" id="updatedAt">Actualizando...</div>
+        </div>
+        <div class="actions">
+          <button class="secondary" id="refreshBtn">Refrescar</button>
+          <button id="runBtn">Iniciar clasificación Drive</button>
+          <button id="runUnifiedBtn">Sync completo (Workspace+M365)</button>
+          <button id="runEvolutionBtn">Evolución IA (auto)</button>
+          <button id="runFodaBtn">Informe FODA crítico</button>
+          <button id="runExtractorBtn">Extraer código para otras IA</button>
+          <button class="secondary" id="downloadExtractorBtn">
+            Descargar contexto
+          </button>
+          <button class="secondary" id="copyPromptBtn">Copiar prompt IA</button>
+        </div>
+      </div>
+
+      <div class="grid">
+        <div class="card">
+          <h3>Backend</h3>
+          <div class="value" id="backendStatus">-</div>
+          <div class="meta" id="backendMeta">-</div>
+        </div>
+        <div class="card">
+          <h3>Preflight general</h3>
+          <div class="value" id="preflightStatus">-</div>
+          <div class="meta" id="preflightMeta">-</div>
+        </div>
+        <div class="card">
+          <h3>Clasificación Drive</h3>
+          <div class="value" id="syncStatus">-</div>
+          <div class="meta" id="syncMeta">-</div>
+        </div>
+        <div class="card">
+          <h3>IA (RAG)</h3>
+          <div class="value" id="aiStatus">-</div>
+          <div class="meta" id="aiMeta">-</div>
+        </div>
+        <div class="card">
+          <h3>Google Workspace</h3>
+          <div class="value" id="workspaceStatus">-</div>
+          <div class="meta" id="workspaceMeta">-</div>
+        </div>
+        <div class="card">
+          <h3>Microsoft 365</h3>
+          <div class="value" id="m365Status">-</div>
+          <div class="meta" id="m365Meta">-</div>
+        </div>
+        <div class="card">
+          <h3>Sync Unificado</h3>
+          <div class="value" id="unifiedStatus">-</div>
+          <div class="meta" id="unifiedMeta">-</div>
+        </div>
+        <div class="card">
+          <h3>Extractor Código</h3>
+          <div class="value" id="extractorStatus">-</div>
+          <div class="meta" id="extractorMeta">-</div>
+        </div>
+        <div class="card">
+          <h3>Evolución IA</h3>
+          <div class="value" id="evolutionStatus">-</div>
+          <div class="meta" id="evolutionMeta">-</div>
+        </div>
+        <div class="card">
+          <h3>FODA crítico IA</h3>
+          <div class="value" id="fodaStatus">-</div>
+          <div class="meta" id="fodaMeta">-</div>
+        </div>
+        <div class="card">
+          <h3>Último resumen</h3>
+          <div class="value" id="summaryValue">-</div>
+          <div class="meta" id="summaryMeta">-</div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h4>Administración unificada (IA + Web + Archivos)</h4>
+        <div id="appsLinks" class="small">Cargando enlaces...</div>
+      </div>
+
+      <div class="panel">
+        <h4>Analítica visual</h4>
+        <div id="chartDrive" class="small">Cargando gráfico Drive...</div>
+        <div id="chartCloud" class="small" style="margin-top: 10px">
+          Cargando gráfico Cloud...
+        </div>
+        <div id="chartUnified" class="small" style="margin-top: 10px">
+          Cargando gráfico Sync...
+        </div>
+        <div id="chartDriveTopics" class="small" style="margin-top: 10px">
+          Cargando gráfico IA Topics...
+        </div>
+        <div id="chartDriveActivity" class="small" style="margin-top: 10px">
+          Cargando gráfico actividad 7D...
+        </div>
+      </div>
+
+      <div class="panel">
+        <h4>Evolución continua (IA + código + UX)</h4>
+        <div id="evolutionHints" class="small">Sin recomendaciones aún.</div>
+      </div>
+
+      <div class="panel">
+        <h4>Informe FODA crítico (consenso final Claude - modo ahorro)</h4>
+        <pre id="fodaReport">Sin informe FODA aún.</pre>
+      </div>
+
+      <div class="panel">
+        <h4>Errores recientes</h4>
+        <div id="errorsList" class="small">Sin datos todavía.</div>
+      </div>
+
+      <div class="panel">
+        <h4>Reportes JSON disponibles</h4>
+        <div id="reportsList" class="small">Cargando...</div>
+      </div>
+
+      <div class="panel">
+        <h4>Detalle de reporte seleccionado</h4>
+        <pre id="reportDetail">{}</pre>
+      </div>
+    </div>
+
+    <footer class="nexo-footer">
+      El Anarcocapital v3.0.0 · Sistema Operativo · © 2026 Camilo Estefano
+    </footer>
+
+    <script>
+      function startNexoClock() {
+        const el = document.getElementById("clock");
+        if (!el) return;
+        const tick = () =>
+          (el.textContent = new Date().toLocaleTimeString("es-CL", {
+            hour: "2-digit",
+            minute: "2-digit",
+            second: "2-digit",
+            hour12: false,
+          }));
+        tick();
+        setInterval(tick, 1000);
+      }
+      function setStatus(name, state) {
+        const el = document.getElementById(name + "-status");
+        if (!el) return;
+        el.style.color =
+          {
+            ok: "#00C27A",
+            warn: "#F5A623",
+            error: "#E03A4A",
+            loading: "#6B7A9A",
+          }[state] || "#6B7A9A";
+      }
+      function startHealthPolling() {
+        const poll = async () => {
+          try {
+            const r = await fetch("http://localhost:8080/api/health", {
+              signal: AbortSignal.timeout(4000),
+            });
+            const d = await r.json();
+            setStatus("backend", d.status === "ok" ? "ok" : "warn");
+            setStatus("discord", d.discord ? "ok" : "warn");
+            setStatus("docker", d.docker ? "ok" : "warn");
+          } catch {
+            setStatus("backend", "error");
           }
-        }
+        };
+        poll();
+        setInterval(poll, 15000);
+      }
+      startNexoClock();
+      startHealthPolling();
 
-        const web = status?.web || {};
-        const links = [
-          ["Control Center", web.control_center],
-          ["API Docs", web.api_docs],
-          ["Admin Dashboard", web.admin_dashboard],
-          ["Warroom", web.warroom],
-          ["Sync completo (API)", "/agente/control-center/run-unified-sync"],
-          ["Extractor código (API)", "/agente/control-center/run-code-extractor"],
-          ["Estado extractor (API)", "/agente/control-center/extractor-status"],
-        ].filter(x => !!x[1]);
-        qs("appsLinks").innerHTML = links
-          .map(([label, href]) => `<div class="line"><div>${label}</div><div><a href="${href}" style="color:#00a8e8" target="_blank">${href}</a></div></div>`)
+      const qs = (id) => document.getElementById(id);
+      const LOCAL_DEV_DEFAULT_API_KEY = "NEXO_LOCAL_2026_OK";
+
+      function getApiKey() {
+        const fromStorage = (
+          localStorage.getItem("nexo_v3_api_key") || ""
+        ).trim();
+        if (fromStorage) return fromStorage;
+        const isLocal = ["127.0.0.1", "localhost"].includes(
+          window.location.hostname,
+        );
+        return isLocal ? LOCAL_DEV_DEFAULT_API_KEY : "";
+      }
+
+      function getApiHeaders() {
+        const key = getApiKey();
+        if (!key) return {};
+        return { "X-NEXO-API-KEY": key, "X-NEXO-KEY": key };
+      }
+
+      function badge(status) {
+        if (["ok", "done", "ready", true].includes(status))
+          return '<span class="badge ok">OK</span>';
+        if (["running", "already_running"].includes(status))
+          return '<span class="badge warn">RUNNING</span>';
+        if (["error", false].includes(status))
+          return '<span class="badge err">ERROR</span>';
+        return (
+          '<span class="badge warn">' + String(status).toUpperCase() + "</span>"
+        );
+      }
+
+      function isAuthPendingIssue(message) {
+        const text = String(message || "").toLowerCase();
+        return [
+          "token google",
+          "scope",
+          "insufficient",
+          "permission_denied",
+          "oauth",
+          "autoriza",
+          "authorize",
+        ].some((k) => text.includes(k));
+      }
+
+      function renderBars(containerId, title, labels, values) {
+        const total = Math.max(1, ...(values || [0]));
+        const rows = (labels || [])
+          .map((label, idx) => {
+            const value = Number(values[idx] || 0);
+            const width = Math.max(2, Math.round((value / total) * 100));
+            return `<div class="line"><div style="width:210px">${label}</div><div style="flex:1;background:#101620;border-radius:6px;overflow:hidden;height:12px"><div style="height:12px;width:${width}%;background:#1E6FFF"></div></div><div style="width:56px;text-align:right">${value}</div></div>`;
+          })
           .join("");
-
-        const charts = analytics?.charts || {};
-        renderBars("chartDrive", "Drive: análisis actual", charts?.drive_sync?.labels || [], charts?.drive_sync?.values || []);
-        renderBars("chartCloud", "Workspace vs Microsoft 365", charts?.workspace_vs_m365?.labels || [], charts?.workspace_vs_m365?.values || []);
-        renderBars("chartUnified", "Sync unificado histórico", charts?.unified_sync?.labels || [], charts?.unified_sync?.values || []);
-        renderBars("chartDriveTopics", "IA sobre Drive: tópicos detectados", charts?.drive_ai_topics?.labels || [], charts?.drive_ai_topics?.values || []);
-        renderBars("chartDriveActivity", "Drive: actividad últimos 7 días", charts?.drive_activity_7d?.labels || [], charts?.drive_activity_7d?.values || []);
-      } catch (e) {
-        qs("updatedAt").textContent = `Error al cargar: ${e.message}`;
+        qs(containerId).innerHTML =
+          `<div class="small" style="margin-bottom:6px">${title}</div>${rows || '<span class="small">Sin datos</span>'}`;
       }
-    }
 
-    qs("refreshBtn").addEventListener("click", refreshAll);
-    qs("runBtn").addEventListener("click", async () => {
-      const btn = qs("runBtn");
-      btn.disabled = true;
-      try {
-        const result = await apiPost("/agente/control-center/run-drive-classification");
-        notifyResult("Clasificación Drive iniciada", result);
-      } catch (e) {
-        alert("No se pudo iniciar la clasificación: " + e.message);
-      } finally {
-        btn.disabled = false;
-        await refreshAll();
-      }
-    });
-
-    qs("runUnifiedBtn").addEventListener("click", async () => {
-      const btn = qs("runUnifiedBtn");
-      btn.disabled = true;
-      try {
-        const result = await apiPost("/agente/control-center/run-unified-sync", {
-          dry_run: false,
-          photos_limit: 20,
-          drive_limit: 80,
-          onedrive_limit: 30,
-          onedrive_max_mb: 50,
-          youtube_per_channel: 0,
-          youtube_channels: [],
-          drive_include_trashed: true,
-          drive_full_scan: false,
-          drive_auto_rename: true,
-          retry_attempts: 2,
-          retry_backoff_seconds: 1.0
+      async function apiGet(url) {
+        const r = await fetch(url, {
+          cache: "no-store",
+          headers: getApiHeaders(),
         });
-        notifyResult("Sync unificado iniciado", result);
-      } catch (e) {
-        alert("No se pudo iniciar sync unificado: " + e.message);
-      } finally {
-        btn.disabled = false;
-        await refreshAll();
+        if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
+        return r.json();
       }
-    });
 
-    qs("runEvolutionBtn").addEventListener("click", async () => {
-      const btn = qs("runEvolutionBtn");
-      btn.disabled = true;
-      try {
-        const result = await apiPost("/api/ai/evolution-cycle?apply_code_fix=true", {});
-        notifyResult("Ciclo de evolución ejecutado", {
-          ok: result?.ok,
-          timestamp: result?.timestamp,
-          duration_seconds: result?.duration_seconds,
-          scan_summary: result?.scan_summary,
-          hints: result?.hints,
+      async function apiPost(url, payload = {}) {
+        const r = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", ...getApiHeaders() },
+          body: JSON.stringify(payload || {}),
         });
-      } catch (e) {
-        alert("No se pudo ejecutar evolución IA: " + e.message);
-      } finally {
-        btn.disabled = false;
-        await refreshAll();
+        if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
+        return r.json();
       }
-    });
 
-    qs("runFodaBtn").addEventListener("click", async () => {
-      const btn = qs("runFodaBtn");
-      btn.disabled = true;
-      try {
-        const result = await apiPost("/api/ai/foda-critical", {
-          objetivo: "Revisión profesional y técnica crítica del sistema NEXO para priorizar arreglos, mejoras, optimización y protección.",
-          incluir_evolucion: true,
-          incluir_alertas: true,
-          decisor_final: "claude",
-          modo_ahorro: true,
-        });
-        notifyResult("Informe FODA crítico generado", {
-          ok: result?.ok,
-          timestamp: result?.timestamp,
-          decider: result?.consensus?.decider,
-          consensus_ok: result?.consensus?.ok,
-          providers: result?.providers,
-        });
-      } catch (e) {
-        alert("No se pudo generar informe FODA crítico: " + e.message);
-      } finally {
-        btn.disabled = false;
-        await refreshAll();
+      function notifyResult(title, payload) {
+        const text =
+          typeof payload === "string"
+            ? payload
+            : JSON.stringify(payload || {}, null, 2);
+        alert(`${title}\n\n${text.substring(0, 1200)}`);
       }
-    });
 
-    qs("runExtractorBtn").addEventListener("click", async () => {
-      const btn = qs("runExtractorBtn");
-      btn.disabled = true;
-      try {
-        const result = await apiPost("/agente/control-center/run-code-extractor");
-        notifyResult("Extractor iniciado", result);
-      } catch (e) {
-        alert("No se pudo iniciar extractor: " + e.message);
-      } finally {
-        btn.disabled = false;
-        await refreshAll();
+      async function loadReport(name) {
+        const payload = await apiGet(
+          `/agente/control-center/report/${encodeURIComponent(name)}`,
+        );
+        qs("reportDetail").textContent = JSON.stringify(
+          payload.data || {},
+          null,
+          2,
+        );
       }
-    });
 
-    qs("downloadExtractorBtn").addEventListener("click", () => {
-      window.open("/agente/control-center/extractor-download", "_blank");
-    });
+      async function refreshAll() {
+        try {
+          const [status, reports, errors, analytics, unified, evolution, foda] =
+            await Promise.all([
+              apiGet("/agente/control-center/status"),
+              apiGet("/agente/control-center/reports"),
+              apiGet("/agente/control-center/errors?limit=30"),
+              apiGet("/agente/control-center/analytics"),
+              apiGet("/agente/control-center/sync-unified-status"),
+              apiGet("/api/ai/evolution-status"),
+              apiGet("/api/ai/foda-status"),
+            ]);
 
-    qs("copyPromptBtn").addEventListener("click", async () => {
-      try {
-        const payload = await apiGet("/agente/control-center/extractor-prompt");
-        await navigator.clipboard.writeText(payload?.prompt || "");
-        alert("Prompt copiado al portapapeles.");
-      } catch (e) {
-        alert("No se pudo copiar el prompt: " + e.message);
+          qs("updatedAt").textContent =
+            `Última actualización: ${new Date().toLocaleString()}`;
+
+          qs("backendStatus").innerHTML = badge(
+            status?.health?.status || "error",
+          );
+          qs("backendMeta").textContent =
+            status?.health?.service || "sin servicio";
+
+          const preReady = !!status?.preflight?.ready;
+          qs("preflightStatus").innerHTML = badge(preReady ? "ready" : "error");
+          const ffmpeg = status?.preflight?.ffmpeg?.found
+            ? "ffmpeg OK"
+            : "ffmpeg faltante";
+          qs("preflightMeta").textContent =
+            `${ffmpeg} | tokens Drive: ${status?.preflight?.files?.drive_token_write ? "sí" : "no"} | YouTube: ${status?.preflight?.files?.youtube_token_upload ? "sí" : "no"}`;
+
+          const syncState = status?.sync?.status?.status || "unknown";
+          qs("syncStatus").innerHTML = badge(syncState);
+          const totals =
+            status?.sync?.status?.totals ||
+            status?.sync?.last_report?.totals ||
+            {};
+          qs("syncMeta").textContent =
+            `analyzed=${totals.analyzed ?? 0} | classified=${totals.classified ?? 0} | skipped=${totals.skipped ?? 0} | errors=${totals.errors ?? 0}`;
+
+          const rag = status?.ai?.health || {};
+          const ragLoaded = rag?.rag_loaded === true;
+          qs("aiStatus").innerHTML = badge(ragLoaded ? "ok" : "warn");
+          qs("aiMeta").textContent =
+            `docs=${rag?.total_documentos ?? 0} | presupuesto=${status?.ai?.budget?.presupuesto_restante_usd ?? "n/d"}`;
+
+          const workspace = analytics?.workspace || {};
+          const workspaceIssue =
+            workspace?.drive_error || workspace?.photos_error || "";
+          const workspaceBadge = workspace?.ok
+            ? "ok"
+            : isAuthPendingIssue(workspaceIssue)
+              ? "warn"
+              : "error";
+          qs("workspaceStatus").innerHTML = badge(workspaceBadge);
+          qs("workspaceMeta").textContent =
+            workspaceBadge === "warn"
+              ? "Autorización Google pendiente (Drive/Photos)"
+              : `Drive=${workspace.drive_recent ?? 0} | Photos=${workspace.photos_recent ?? 0}`;
+
+          const m365 = analytics?.microsoft365 || {};
+          qs("m365Status").innerHTML = badge(!!m365.ok);
+          qs("m365Meta").textContent =
+            `OneDrive=${m365.onedrive_recent ?? 0} | MB=${m365.onedrive_total_size_mb ?? 0}`;
+
+          const unifiedStatus = unified?.status?.status || "unknown";
+          const unifiedError = unified?.status?.error || "";
+          const unifiedBadge =
+            unifiedStatus === "error" && isAuthPendingIssue(unifiedError)
+              ? "warn"
+              : unifiedStatus;
+          qs("unifiedStatus").innerHTML = badge(unifiedBadge);
+          const us = unified?.report?.summary || {};
+          qs("unifiedMeta").textContent =
+            unifiedBadge === "warn"
+              ? "Pendiente token/scope Google para sync completo"
+              : `Drive=${us?.google_drive?.classified ?? 0} | Photos=${us?.google_photos?.imported ?? 0} | OneDrive=${us?.onedrive?.imported ?? 0}`;
+
+          const extractor = status?.extractor || {};
+          const extractorState =
+            extractor?.status?.status || (extractor?.lock ? "running" : "idle");
+          qs("extractorStatus").innerHTML = badge(
+            extractorState === "idle" ? "ok" : extractorState,
+          );
+          const er = extractor?.report || {};
+          qs("extractorMeta").textContent =
+            `files=${er?.files_scanned ?? 0} | output=${extractor?.output_file ?? "n/d"}`;
+
+          const evoData = evolution?.data || {};
+          const evoOk = !!evolution?.has_data && !!evoData?.ok;
+          const evoMode = evoData?.mode?.apply_code_fix ? "fix:on" : "fix:off";
+          const evoScan = evoData?.scan_summary || {};
+          qs("evolutionStatus").innerHTML = badge(
+            evoOk ? "ok" : evolution?.has_data ? "warn" : "idle",
+          );
+          qs("evolutionMeta").textContent = evolution?.has_data
+            ? `${evoMode} | score=${evoScan?.quality_score ?? "n/d"} | crit=${evoScan?.critical ?? "n/d"}`
+            : "sin ciclos aún";
+
+          const hints = Array.isArray(evoData?.hints) ? evoData.hints : [];
+          qs("evolutionHints").innerHTML = hints.length
+            ? hints
+                .map((h) => `<div class="line"><div>• ${h}</div></div>`)
+                .join("")
+            : '<span class="small">Ejecuta “Evolución IA (auto)” para generar mejoras sobre código, sistema y UX.</span>';
+
+          const fodaData = foda?.data || {};
+          const fodaConsensus = fodaData?.consensus || {};
+          const fodaHas = !!foda?.has_data;
+          const fodaBadge = !fodaHas
+            ? "idle"
+            : fodaConsensus?.ok
+              ? "ok"
+              : "warn";
+          const decider = fodaConsensus?.decider || "n/d";
+          const reviews = Array.isArray(fodaData?.reviews)
+            ? fodaData.reviews
+            : [];
+          const reviewOk = reviews.filter((r) => !!r?.ok).length;
+          qs("fodaStatus").innerHTML = badge(fodaBadge);
+          qs("fodaMeta").textContent = fodaHas
+            ? `decisor=${decider} | revisores=${reviewOk}/${reviews.length || 0}`
+            : "sin informe crítico";
+          qs("fodaReport").textContent = fodaHas
+            ? String(fodaConsensus?.content || "Sin consenso disponible")
+            : "Ejecuta “Informe FODA crítico” para evaluación profesional multi-IA y consenso final de Claude en modo ahorro.";
+
+          const rounds = status?.sync?.last_report?.rounds || [];
+          qs("summaryValue").textContent = `${rounds.length} rondas`;
+          qs("summaryMeta").textContent =
+            status?.sync?.last_report?.timestamp || "sin timestamp";
+
+          const errList = errors?.errors || [];
+          if (!errList.length) {
+            qs("errorsList").innerHTML =
+              '<span class="badge ok">SIN ERRORES</span>';
+          } else {
+            qs("errorsList").innerHTML = errList
+              .map(
+                (e) =>
+                  `<div class="line"><div>${e.source} / ${e.type}</div><div>${e.error || "errors=" + e.errors}</div></div>`,
+              )
+              .join("");
+          }
+
+          const reps = reports?.reports || [];
+          if (!reps.length) {
+            qs("reportsList").textContent = "No hay reportes en logs.";
+          } else {
+            qs("reportsList").innerHTML = reps
+              .map(
+                (r) =>
+                  `<div class="line"><button class="secondary" onclick="loadReport('${r.name}')">${r.name}</button><div>${r.size || 0} bytes</div></div>`,
+              )
+              .join("");
+            if (reps[0]?.name) {
+              await loadReport(reps[0].name);
+            }
+          }
+
+          const web = status?.web || {};
+          const links = [
+            ["Control Center", web.control_center],
+            ["API Docs", web.api_docs],
+            ["Admin Dashboard", web.admin_dashboard],
+            ["Warroom", web.warroom],
+            ["Sync completo (API)", "/agente/control-center/run-unified-sync"],
+            [
+              "Extractor código (API)",
+              "/agente/control-center/run-code-extractor",
+            ],
+            [
+              "Estado extractor (API)",
+              "/agente/control-center/extractor-status",
+            ],
+          ].filter((x) => !!x[1]);
+          qs("appsLinks").innerHTML = links
+            .map(
+              ([label, href]) =>
+                `<div class="line"><div>${label}</div><div><a href="${href}" style="color:#00a8e8" target="_blank">${href}</a></div></div>`,
+            )
+            .join("");
+
+          const charts = analytics?.charts || {};
+          renderBars(
+            "chartDrive",
+            "Drive: análisis actual",
+            charts?.drive_sync?.labels || [],
+            charts?.drive_sync?.values || [],
+          );
+          renderBars(
+            "chartCloud",
+            "Workspace vs Microsoft 365",
+            charts?.workspace_vs_m365?.labels || [],
+            charts?.workspace_vs_m365?.values || [],
+          );
+          renderBars(
+            "chartUnified",
+            "Sync unificado histórico",
+            charts?.unified_sync?.labels || [],
+            charts?.unified_sync?.values || [],
+          );
+          renderBars(
+            "chartDriveTopics",
+            "IA sobre Drive: tópicos detectados",
+            charts?.drive_ai_topics?.labels || [],
+            charts?.drive_ai_topics?.values || [],
+          );
+          renderBars(
+            "chartDriveActivity",
+            "Drive: actividad últimos 7 días",
+            charts?.drive_activity_7d?.labels || [],
+            charts?.drive_activity_7d?.values || [],
+          );
+        } catch (e) {
+          qs("updatedAt").textContent = `Error al cargar: ${e.message}`;
+        }
       }
-    });
 
-    refreshAll();
-    setInterval(refreshAll, 10000);
-  </script>
-</body>
+      qs("refreshBtn").addEventListener("click", refreshAll);
+      qs("runBtn").addEventListener("click", async () => {
+        const btn = qs("runBtn");
+        btn.disabled = true;
+        try {
+          const result = await apiPost(
+            "/agente/control-center/run-drive-classification",
+          );
+          notifyResult("Clasificación Drive iniciada", result);
+        } catch (e) {
+          alert("No se pudo iniciar la clasificación: " + e.message);
+        } finally {
+          btn.disabled = false;
+          await refreshAll();
+        }
+      });
 
+      qs("runUnifiedBtn").addEventListener("click", async () => {
+        const btn = qs("runUnifiedBtn");
+        btn.disabled = true;
+        try {
+          const result = await apiPost(
+            "/agente/control-center/run-unified-sync",
+            {
+              dry_run: false,
+              photos_limit: 20,
+              drive_limit: 80,
+              onedrive_limit: 30,
+              onedrive_max_mb: 50,
+              youtube_per_channel: 0,
+              youtube_channels: [],
+              drive_include_trashed: true,
+              drive_full_scan: false,
+              drive_auto_rename: true,
+              retry_attempts: 2,
+              retry_backoff_seconds: 1.0,
+            },
+          );
+          notifyResult("Sync unificado iniciado", result);
+        } catch (e) {
+          alert("No se pudo iniciar sync unificado: " + e.message);
+        } finally {
+          btn.disabled = false;
+          await refreshAll();
+        }
+      });
+
+      qs("runEvolutionBtn").addEventListener("click", async () => {
+        const btn = qs("runEvolutionBtn");
+        btn.disabled = true;
+        try {
+          const result = await apiPost(
+            "/api/ai/evolution-cycle?apply_code_fix=true",
+            {},
+          );
+          notifyResult("Ciclo de evolución ejecutado", {
+            ok: result?.ok,
+            timestamp: result?.timestamp,
+            duration_seconds: result?.duration_seconds,
+            scan_summary: result?.scan_summary,
+            hints: result?.hints,
+          });
+        } catch (e) {
+          alert("No se pudo ejecutar evolución IA: " + e.message);
+        } finally {
+          btn.disabled = false;
+          await refreshAll();
+        }
+      });
+
+      qs("runFodaBtn").addEventListener("click", async () => {
+        const btn = qs("runFodaBtn");
+        btn.disabled = true;
+        try {
+          const result = await apiPost("/api/ai/foda-critical", {
+            objetivo:
+              "Revisión profesional y técnica crítica del sistema NEXO para priorizar arreglos, mejoras, optimización y protección.",
+            incluir_evolucion: true,
+            incluir_alertas: true,
+            decisor_final: "claude",
+            modo_ahorro: true,
+          });
+          notifyResult("Informe FODA crítico generado", {
+            ok: result?.ok,
+            timestamp: result?.timestamp,
+            decider: result?.consensus?.decider,
+            consensus_ok: result?.consensus?.ok,
+            providers: result?.providers,
+          });
+        } catch (e) {
+          alert("No se pudo generar informe FODA crítico: " + e.message);
+        } finally {
+          btn.disabled = false;
+          await refreshAll();
+        }
+      });
+
+      qs("runExtractorBtn").addEventListener("click", async () => {
+        const btn = qs("runExtractorBtn");
+        btn.disabled = true;
+        try {
+          const result = await apiPost(
+            "/agente/control-center/run-code-extractor",
+          );
+          notifyResult("Extractor iniciado", result);
+        } catch (e) {
+          alert("No se pudo iniciar extractor: " + e.message);
+        } finally {
+          btn.disabled = false;
+          await refreshAll();
+        }
+      });
+
+      qs("downloadExtractorBtn").addEventListener("click", () => {
+        window.open("/agente/control-center/extractor-download", "_blank");
+      });
+
+      qs("copyPromptBtn").addEventListener("click", async () => {
+        try {
+          const payload = await apiGet(
+            "/agente/control-center/extractor-prompt",
+          );
+          await navigator.clipboard.writeText(payload?.prompt || "");
+          alert("Prompt copiado al portapapeles.");
+        } catch (e) {
+          alert("No se pudo copiar el prompt: " + e.message);
+        }
+      });
+
+      refreshAll();
+      setInterval(refreshAll, 10000);
+    </script>
+  </body>
 </html>

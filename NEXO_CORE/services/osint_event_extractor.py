@@ -112,16 +112,9 @@ async def extract_osint_event(
 
 
 async def _gemini_extract(text: str, image_path: Optional[str], base: dict) -> dict:
-    """Call Gemini 1.5 Pro Vision to extract structured event data."""
-    import google.generativeai as genai
-
-    api_key = os.getenv("GEMINI_API_KEY", "")
-    if not api_key:
-        logger.warning("[OSINT Extractor] No GEMINI_API_KEY — skipping Gemini extraction")
-        return base
-
-    genai.configure(api_key=api_key)
-    model = genai.GenerativeModel("gemini-1.5-flash")
+    """Extract structured OSINT event data using Ollama local (gemma3:4b). Sin costo de API.
+    Nota: imágenes no soportadas sin API Vision — solo texto."""
+    import aiohttp
 
     prompt = f"""Analyze this OSINT military/geopolitical report and extract tactical data.
 
@@ -139,25 +132,34 @@ Return ONLY a JSON object with these exact keys (no markdown, no explanation):
 }}
 
 Rules:
-- If DMS coordinates found (e.g. 24°03'49"N 47°32'45"E), convert to decimal.
-- If place names mentioned (e.g. 'Prince Sultan Air Base'), estimate coordinates.
+- If DMS coordinates found, convert to decimal.
 - event_type must be one of: strike, naval_movement, deployment, diplomatic
 - brief must be in Spanish, concise, military tone.
-"""
+- Return ONLY valid JSON, no explanation."""
 
-    parts = [prompt]
+    ollama_url = os.getenv("OLLAMA_URL", "http://localhost:11434")
+    model_name = os.getenv("OLLAMA_MODEL_BALANCED", "gemma3:4b")
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.post(f"{ollama_url}/api/chat", json={
+                "model": model_name,
+                "messages": [{"role": "user", "content": prompt}],
+                "stream": False,
+                "options": {"temperature": 0.0, "num_predict": 200}
+            }, timeout=aiohttp.ClientTimeout(total=30)) as resp:
+                data = await resp.json()
+                raw = data.get("message", {}).get("content", "").strip()
+    except Exception as exc:
+        logger.warning(f"[OSINT Extractor] Ollama extraction failed: {exc}")
+        return base
 
-    # Add image if provided
-    if image_path and Path(image_path).exists():
-        import PIL.Image
-        try:
-            img = PIL.Image.open(image_path)
-            parts.append(img)
-        except Exception as e:
-            logger.warning(f"[OSINT Extractor] Could not open image: {e}")
+    # Strip markdown code blocks if present
+    if raw.startswith("```"):
+        raw = re.sub(r"```(?:json)?", "", raw).strip().rstrip("`").strip()
 
-    response = model.generate_content(parts)
-    raw = response.text.strip()
+    # Si hay imagen y Gemini Vision está disponible, úsalo solo para coords (opcional futuro)
+    if image_path:
+        logger.debug("[OSINT Extractor] Imagen ignorada — Vision API desactivada (modo local)")
 
     # Strip markdown code blocks if present
     if raw.startswith("```"):

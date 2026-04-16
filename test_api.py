@@ -3,7 +3,7 @@ import requests
 import json
 import logging
 
-BASE_URL = "http://127.0.0.1:8000"
+BASE_URL = "http://127.0.0.1:8080"
 
 # Configure logging
 log = logging.getLogger(__name__)

@@ -62,11 +62,21 @@ ALTER TABLE public.mensajes ENABLE ROW LEVEL SECURITY;
 
 -- Permitir inserción desde el backend (service_role bypassa RLS por defecto)
 -- Si usas anon key desde el frontend, necesitas estas políticas:
-CREATE POLICY IF NOT EXISTS "service_role_all_sessions"
-  ON public.sessions FOR ALL TO service_role USING (true) WITH CHECK (true);
+-- Crear políticas solo si no existen (IF NOT EXISTS no es válido en PostgreSQL para policies)
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='sessions' AND policyname='service_role_all_sessions') THEN
+        CREATE POLICY "service_role_all_sessions"
+            ON public.sessions FOR ALL TO service_role USING (true) WITH CHECK (true);
+    END IF;
 
-CREATE POLICY IF NOT EXISTS "service_role_all_conversaciones"
-  ON public.conversaciones FOR ALL TO service_role USING (true) WITH CHECK (true);
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='conversaciones' AND policyname='service_role_all_conversaciones') THEN
+        CREATE POLICY "service_role_all_conversaciones"
+            ON public.conversaciones FOR ALL TO service_role USING (true) WITH CHECK (true);
+    END IF;
 
-CREATE POLICY IF NOT EXISTS "service_role_all_mensajes"
-  ON public.mensajes FOR ALL TO service_role USING (true) WITH CHECK (true);
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='mensajes' AND policyname='service_role_all_mensajes') THEN
+        CREATE POLICY "service_role_all_mensajes"
+            ON public.mensajes FOR ALL TO service_role USING (true) WITH CHECK (true);
+    END IF;
+END $$;

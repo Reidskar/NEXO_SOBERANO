@@ -15,17 +15,29 @@ import sqlite3
 import asyncio
 from typing import List, Dict, Optional
 
-from google import genai
 from backend import config
 from backend.services.x_publisher import post_to_x
 
 logger = logging.getLogger(__name__)
 
+async def _ollama_generate(prompt: str, max_tokens: int = 300) -> str:
+    """Genera texto con Ollama local (gemma3:4b). Sin costo."""
+    import aiohttp, os
+    url = os.getenv("OLLAMA_URL", "http://localhost:11434")
+    model = os.getenv("OLLAMA_MODEL_BALANCED", "gemma3:4b")
+    async with aiohttp.ClientSession() as s:
+        async with s.post(f"{url}/api/chat", json={
+            "model": model,
+            "messages": [{"role": "user", "content": prompt}],
+            "stream": False,
+            "options": {"temperature": 0.3, "num_predict": max_tokens}
+        }, timeout=aiohttp.ClientTimeout(total=60)) as r:
+            d = await r.json()
+            return d.get("message", {}).get("content", "").strip()
+
 class AutonomousCommunityAgent:
     def __init__(self):
-        self.api_key = os.getenv("GEMINI_API_KEY")
-        genai.configure(api_key=self.api_key)
-        self.model = genai.GenerativeModel(config.MODELO_FLASH) # Flash para redacción rápida
+        pass  # Sin API key — usa Ollama local
 
     async def review_and_publish_highlight(self) -> Dict:
         """Busca el hallazgo más reciente de alto impacto y genera un post en X."""
@@ -61,8 +73,7 @@ class AutonomousCommunityAgent:
             - Sé directo.
             """
 
-            response = await asyncio.to_thread(self.model.generate_content, prompt)
-            tweet_text = response.text.strip()
+            tweet_text = await _ollama_generate(prompt, max_tokens=80)
 
             # 3. Publicar (Opcional: En un entorno productivo esto requeriría aprobación)
             # Por ahora, simulamos o permitimos si X_API_KEY está presente

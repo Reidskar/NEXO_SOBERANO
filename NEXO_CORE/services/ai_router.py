@@ -12,8 +12,9 @@ from pydantic import BaseModel
 
 logger = logging.getLogger("NEXO.ai_router")
 
-FORCE_LOCAL = os.getenv("FORCE_LOCAL_AI", "false").lower() == "true"
+FORCE_LOCAL    = os.getenv("FORCE_LOCAL_AI", "false").lower() == "true"
 OLLAMA_ENABLED = os.getenv("OLLAMA_ENABLED", "true").lower() == "true"
+GEMMA_ENABLED  = os.getenv("GEMMA_ENABLED", "false").lower() == "true"
 
 
 class AIRequest(BaseModel):
@@ -64,6 +65,7 @@ class AIRouter:
     def __init__(self):
         self._ollama = None
         self._gemini = None
+        self._gemma  = None
         logger.info("AIRouter inicializado — modo soberano activado")
 
     @property
@@ -72,6 +74,13 @@ class AIRouter:
             from NEXO_CORE.services.ollama_service import ollama_service
             self._ollama = ollama_service
         return self._ollama
+
+    @property
+    def gemma(self):
+        if self._gemma is None:
+            from NEXO_CORE.services.gemma_service import gemma_service
+            self._gemma = gemma_service
+        return self._gemma
 
     def _debe_usar_local(self, tipo: str, forzar_cloud: bool) -> bool:
         if forzar_cloud:
@@ -99,12 +108,12 @@ class AIRouter:
         )
 
         if usar_local:
+            # 1️⃣ Intentar Ollama (más rápido en CPU si está corriendo)
             disponible = await self.ollama.is_available()
             if disponible:
                 modelo_ollama = self._modelo_ollama_para_tipo(request.tipo)
                 logger.info(
-                    f"Router → LOCAL ({modelo_ollama}) "
-                    f"tipo={request.tipo}"
+                    f"Router → OLLAMA ({modelo_ollama}) tipo={request.tipo}"
                 )
                 resp = await self.ollama.consultar(
                     prompt=request.prompt,
@@ -120,20 +129,37 @@ class AIRouter:
                         tokens=resp.tokens_used,
                         success=True
                     )
-                logger.warning(
-                    f"Ollama falló ({resp.error})"
-                )
-                if FORCE_LOCAL:
-                    return AIResponse(
-                        texto="Error IA SOBERANA: Ollama no respondió y el fallback a Cloud está deshabilitado por seguridad (FORCE_LOCAL_AI=true).",
-                        modelo_usado="none",
-                        fuente="error_local",
-                        success=False,
-                        error=resp.error
-                    )
-                logger.warning("Intentando fallback a cloud...")
+                logger.warning(f"Ollama falló ({resp.error}), probando Gemma…")
 
-        # Fallback a Gemini si Ollama no disponible o falló
+            # 2️⃣ Fallback a Gemma local (HuggingFace Transformers)
+            if GEMMA_ENABLED and self.gemma.is_available():
+                try:
+                    logger.info(f"Router → GEMMA LOCAL tipo={request.tipo}")
+                    system = request.system or "Eres el asistente de NEXO SOBERANO. Responde en español."
+                    texto = self.gemma.consultar(
+                        prompt=request.prompt,
+                        system=system,
+                    )
+                    return AIResponse(
+                        texto=texto,
+                        modelo_usado=self.gemma.model_id,
+                        fuente="gemma_local",
+                        success=True
+                    )
+                except Exception as e:
+                    logger.warning(f"Gemma local falló: {e}")
+
+            if FORCE_LOCAL:
+                return AIResponse(
+                    texto="Error IA SOBERANA: Ollama y Gemma local fallaron. Fallback a Cloud deshabilitado (FORCE_LOCAL_AI=true).",
+                    modelo_usado="none",
+                    fuente="error_local",
+                    success=False,
+                    error="local_engines_unavailable"
+                )
+            logger.warning("Local no disponible, fallback a cloud…")
+
+        # 3️⃣ Fallback a Gemini cloud
         logger.info(f"Router → CLOUD (gemini) tipo={request.tipo}")
         return await self._consultar_gemini(request)
 

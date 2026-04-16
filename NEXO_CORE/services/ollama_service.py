@@ -16,9 +16,12 @@ from pydantic import BaseModel
 logger = logging.getLogger("NEXO.ollama_service")
 
 OLLAMA_URL      = os.getenv("OLLAMA_URL", "http://localhost:11434")
-MODEL_RAG       = os.getenv("OLLAMA_MODEL_RAG", "qwen3.5:latest")
-MODEL_CODE      = os.getenv("OLLAMA_MODEL_CODE", "qwen2.5-coder:7b")
-MODEL_GENERAL   = os.getenv("OLLAMA_MODEL_GENERAL", "qwen3.5:latest")
+MODEL_RAG       = os.getenv("OLLAMA_MODEL_RAG",      "gemma3:12b")
+MODEL_CODE      = os.getenv("OLLAMA_MODEL_CODE",     "qwen2.5-coder:7b")
+MODEL_GENERAL   = os.getenv("OLLAMA_MODEL_GENERAL",  "gemma3:12b")
+MODEL_FAST      = os.getenv("OLLAMA_MODEL_FAST",     "gemma3:1b")
+MODEL_BALANCED  = os.getenv("OLLAMA_MODEL_BALANCED", "gemma3:4b")
+MODEL_LARGE     = os.getenv("OLLAMA_MODEL_LARGE",    "gemma3:27b")
 ENABLED         = os.getenv("OLLAMA_ENABLED", "true").lower() == "true"
 
 
@@ -112,25 +115,33 @@ class OllamaService:
             )
 
         # Resolver modelo
+        # Tiers Gemma 3: fast(1b) → balanced(4b) → rag/general(12b) → large(27b)
         model_name = {
-            "rag":     MODEL_RAG,
-            "code":    MODEL_CODE,
-            "general": MODEL_GENERAL,
+            "rag":      MODEL_RAG,
+            "code":     MODEL_CODE,
+            "general":  MODEL_GENERAL,
+            "fast":     MODEL_FAST,
+            "balanced": MODEL_BALANCED,
+            "large":    MODEL_LARGE,
         }.get(modelo, modelo)
+
+        # Build messages for /api/chat (works correctly with Gemma 4+)
+        messages = []
+        if system:
+            messages.append({"role": "system", "content": system})
+        messages.append({"role": "user", "content": prompt})
 
         payload = {
             "model":  model_name,
-            "prompt": prompt,
+            "messages": messages,
             "stream": False,
             "options": {"temperature": temperature}
         }
-        if system:
-            payload["system"] = system
 
         try:
             async with aiohttp.ClientSession() as session:
                 async with session.post(
-                    f"{self.base_url}/api/generate",
+                    f"{self.base_url}/api/chat",
                     json=payload,
                     timeout=aiohttp.ClientTimeout(total=180)
                 ) as resp:
@@ -141,8 +152,9 @@ class OllamaService:
                             success=False, error=error_text
                         )
                     data = await resp.json()
+                    text = data.get("message", {}).get("content", "")
                     return OllamaResponse(
-                        text=data.get("response", ""),
+                        text=text,
                         model=model_name,
                         success=True,
                         tokens_used=data.get("eval_count", 0)

@@ -97,7 +97,7 @@ def http_json(
 
 def run_runtime_checks(config: dict[str, Any], api_key: str) -> dict[str, Any]:
     runtime = config.get("runtime", {})
-    base_url = str(runtime.get("base_url", "http://127.0.0.1:8000")).rstrip("/")
+    base_url = str(runtime.get("base_url", "http://127.0.0.1:8080")).rstrip("/")
     timeout_seconds = int(runtime.get("timeout_seconds", 20))
 
     checks = {

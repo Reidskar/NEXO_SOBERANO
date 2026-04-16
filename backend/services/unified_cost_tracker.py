@@ -45,6 +45,17 @@ PRICING_AI_PROVIDERS = {
     # xAI Grok (Beta pricing estimado)
     "grok-beta": {"input": 2.0, "output": 6.0, "free_tier_daily": 0},
     "grok-2": {"input": 2.0, "output": 6.0, "free_tier_daily": 0},
+
+    # Ollama local (costo $0 — se registran tokens para métricas)
+    "gemma4": {"input": 0.0, "output": 0.0, "free_tier_daily": 0},
+    "gemma4:latest": {"input": 0.0, "output": 0.0, "free_tier_daily": 0},
+    "gemma3:27b": {"input": 0.0, "output": 0.0, "free_tier_daily": 0},
+    "gemma3:12b": {"input": 0.0, "output": 0.0, "free_tier_daily": 0},
+    "gemma3:4b": {"input": 0.0, "output": 0.0, "free_tier_daily": 0},
+    "gemma3:1b": {"input": 0.0, "output": 0.0, "free_tier_daily": 0},
+    "qwen2.5-coder:7b": {"input": 0.0, "output": 0.0, "free_tier_daily": 0},
+    "qwen3.5:latest": {"input": 0.0, "output": 0.0, "free_tier_daily": 0},
+    "gemma2:9b": {"input": 0.0, "output": 0.0, "free_tier_daily": 0},
 }
 
 # Costos estimados de servicios externos (por operación o mensual)

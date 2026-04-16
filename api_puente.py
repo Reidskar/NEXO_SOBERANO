@@ -4,15 +4,14 @@ from chromadb.utils.embedding_functions import SentenceTransformerEmbeddingFunct
 from typing import cast
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
-import google.generativeai as genai
-from google.generativeai.generative_models import GenerativeModel
+from google import genai
 from dotenv import load_dotenv
 import logging
 
 # --- CONFIGURACIÓN BASE ---
 load_dotenv()
-genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
-modelo = GenerativeModel("gemini-1.5-flash")
+_client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+_modelo_id = "gemini-2.5-flash-lite"
 log = logging.getLogger(__name__)
 
 app = FastAPI(title="Nexo Soberano - API de Inteligencia", version="1.0")
@@ -60,7 +59,7 @@ async def consultar_boveda(peticion: Peticion):
         {peticion.pregunta}
         """
 
-        respuesta_ia = modelo.generate_content(prompt_maestro)
+        respuesta_ia = _client.models.generate_content(model=_modelo_id, contents=prompt_maestro)
         
         # 4. Respuesta Estructurada
         return {

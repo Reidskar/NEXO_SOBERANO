@@ -53,7 +53,7 @@ pm2 status 2>&1 | findstr nexo-discord-bot
 echo.
 echo [7/7] Verificacion final...
 echo --- API health ---
-curl -s http://localhost:8000/api/health 2>nul || echo [!] API no responde - inicia uvicorn primero
+curl -s http://localhost:8080/api/health 2>nul || echo [!] API no responde - inicia uvicorn primero
 echo.
 echo --- Docker ---
 docker ps --format "table {{.Names}}\t{{.Status}}"

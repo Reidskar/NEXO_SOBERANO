@@ -15,17 +15,27 @@ import sqlite3
 from datetime import datetime, timedelta
 from typing import List, Dict
 
-from google import genai
-from backend import config
-
 logger = logging.getLogger(__name__)
+
+def _ollama_generate_sync(prompt: str, max_tokens: int = 1500) -> str:
+    """Genera texto con Ollama local (gemma3:12b). Sin costo. Síncrono para uso en DailySummarizer."""
+    import requests as _req, os
+    url = os.getenv("OLLAMA_URL", "http://localhost:11434")
+    model = os.getenv("OLLAMA_MODEL_RAG", "gemma3:12b")
+    try:
+        resp = _req.post(f"{url}/api/chat", json={
+            "model": model,
+            "messages": [{"role": "user", "content": prompt}],
+            "stream": False,
+            "options": {"temperature": 0.2, "num_predict": max_tokens}
+        }, timeout=120)
+        return resp.json().get("message", {}).get("content", "").strip()
+    except Exception as e:
+        return f"[Error Ollama: {e}]"
 
 class DailySummarizer:
     def __init__(self):
-        self.api_key = os.getenv("GEMINI_API_KEY")
         self.db_path = "boveda.db"
-        genai.configure(api_key=self.api_key)
-        self.model = genai.GenerativeModel(config.MODELO_PRO) # Pro para síntesis de alta calidad
 
     def get_last_24h_intelligence(self) -> List[Dict]:
         """Obtiene las entradas de inteligencia de las últimas 24 horas."""
@@ -86,7 +96,11 @@ class DailySummarizer:
         """
 
         try:
-            response = self.model.generate_content(prompt)
+            response_text = _ollama_generate_sync(prompt, max_tokens=1500)
+            # Wrapper compatible con código existente
+            class _R:
+                text = response_text
+            response = _R()
             report = response.text
             
             # Guardar el reporte localmente para referencia

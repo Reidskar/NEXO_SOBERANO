@@ -1,2 +1,2 @@
 [InternetShortcut]
-URL=http://localhost:8000/api/stream/status
+URL=http://localhost:8080/api/stream/status

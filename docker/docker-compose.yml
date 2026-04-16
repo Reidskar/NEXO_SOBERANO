@@ -7,7 +7,6 @@ version: "3.9"
 # ═══════════════════════════════════════════════════════════════
 
 services:
-
   # ── BACKEND PRINCIPAL ────────────────────────────────────────
   nexo_api:
     build:
@@ -15,7 +14,7 @@ services:
       dockerfile: docker/Dockerfile
     container_name: nexo_api
     ports:
-      - "8000:8000"
+      - "8080:8000"
     environment:
       - DATABASE_URL=postgresql://nexo:${POSTGRES_PASSWORD}@nexo_db:5432/nexo_soberano
       - REDIS_URL=redis://nexo_redis:6379/0
@@ -81,7 +80,7 @@ services:
 
   # ── POSTGRESQL ───────────────────────────────────────────────
   nexo_db:
-    image: postgres:16-alpine          # Alpine = imagen mínima, más liviana
+    image: postgres:16-alpine # Alpine = imagen mínima, más liviana
     container_name: nexo_db
     environment:
       POSTGRES_DB: nexo_soberano
@@ -94,7 +93,7 @@ services:
       - nexo_postgres_data:/var/lib/postgresql/data
       - ./init_db.sql:/docker-entrypoint-initdb.d/init_db.sql
     ports:
-      - "5432:5432"                    # Solo exponer en desarrollo
+      - "5432:5432" # Solo exponer en desarrollo
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U nexo -d nexo_soberano"]

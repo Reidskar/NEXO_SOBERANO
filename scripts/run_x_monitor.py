@@ -122,4 +122,4 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     result = run_once(limit=args.limit)
-    log.info(json.dumps(result, ensure_ascii=False))
+    logger.info(json.dumps(result, ensure_ascii=False))

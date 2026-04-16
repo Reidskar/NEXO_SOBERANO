@@ -60,7 +60,7 @@ def test_backend_startup():
     log.info("\n🧪 TEST 4: Backend startup")
     log.info("  ℹ️  Backend NO se inicia en tests (evitar puerto ocupado)")
     log.info("  ℹ️  Para iniciar: python run_backend.py")
-    log.info("  ℹ️  Endpoint: http://localhost:8000/agente/consultar")
+    log.info("  ℹ️  Endpoint: http://localhost:8080/agente/consultar")
 
 def test_imports():
     """Test: Imports correctos"""
@@ -86,7 +86,7 @@ def test_imports():
 def test_api_docs():
     """Test: Documentación API"""
     log.info("\n🧪 TEST 6: API Docs")
-    log.info("  📚 URL: http://localhost:8000/api/docs")
+    log.info("  📚 URL: http://localhost:8080/api/docs")
     log.info("  📚 Endpoint: POST /agente/consultar")
     log.info("  📚 Contrato: QueryRequest → QueryResponse")
 

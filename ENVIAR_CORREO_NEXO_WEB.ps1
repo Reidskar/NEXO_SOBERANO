@@ -1,7 +1,7 @@
 param(
     [string]$Recipient = "estefano.solar16@gmail.com",
     [string]$ApiKey = "CAMBIA_ESTA_CLAVE_NEXO",
-    [string]$BaseUrl = "http://localhost:8000"
+    [string]$BaseUrl = "http://localhost:8080"
 )
 
 $ErrorActionPreference = "Stop"

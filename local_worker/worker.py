@@ -8,7 +8,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s - WORKER (LOCAL) - %
 logger = logging.getLogger(__name__)
 
 # En producción, esto apuntará a HTTPS del Railway
-API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:8000/api")
+API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:8080/api")
 
 class LocalWorker:
     def __init__(self):

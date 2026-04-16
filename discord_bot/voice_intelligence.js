@@ -18,7 +18,7 @@
 
 const axios = require('axios');
 
-const NEXO_URL = process.env.FASTAPI_URL || 'http://127.0.0.1:8000';
+const NEXO_URL = process.env.FASTAPI_URL || 'http://127.0.0.1:8080';
 const NEXO_KEY = process.env.NEXO_API_KEY || 'NEXO_LOCAL_2026_OK';
 const HEADERS = { 'x-api-key': NEXO_KEY, 'Content-Type': 'application/json' };
 

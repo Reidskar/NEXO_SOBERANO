@@ -387,20 +387,15 @@ def generate_daily_intelligence_digest(self):
 
 def synthesize_digest_with_ai(signals: list[dict], tenant_slug: str,
                                 cost_mgr) -> str:
-    """Sintetiza señales en un resumen coherente usando Gemini Flash."""
-    from google import genai
-
-    api_key = os.getenv("GEMINI_API_KEY", "")
-    if not api_key:
-        # Sin IA: generar digest textual simple
-        return build_text_digest(signals)
+    """Sintetiza señales en un resumen coherente usando Ollama local. Sin costo de API."""
+    import requests as _req
 
     signals_text = "\n".join([
         f"- [{s.get('type','?')}] {s.get('country','Global')}: {s.get('title','')} (severidad: {s.get('severity',0):.1f})"
         for s in signals[:8]
     ])
 
-    prompt = f"""Eres un analista de inteligencia geopolítica. 
+    prompt = f"""Eres un analista de inteligencia geopolítica.
 Resume en 3-4 párrafos concisos las siguientes señales de inteligencia global del día de hoy.
 Identifica patrones, conexiones entre eventos y riesgos emergentes.
 Sé objetivo y basado en datos. No especules más allá de los datos.
@@ -410,16 +405,21 @@ SEÑALES:
 
 RESUMEN (en español, tono profesional):"""
 
+    ollama_url = os.getenv("OLLAMA_URL", "http://localhost:11434")
+    model_name = os.getenv("OLLAMA_MODEL_RAG", "gemma3:12b")
     try:
-        genai.configure(api_key=api_key)
-        model = genai.GenerativeModel("gemini-1.5-flash")
-        response = model.generate_content(prompt)
-        tokens_used = response.usage_metadata.total_token_count if hasattr(response, 'usage_metadata') else 500
-        cost_mgr.registrar("gemini-1.5-flash", tokens_used // 2, tokens_used // 2, "wm_digest")
-        return response.text
+        resp = _req.post(f"{ollama_url}/api/chat", json={
+            "model": model_name,
+            "messages": [{"role": "user", "content": prompt}],
+            "stream": False,
+            "options": {"temperature": 0.2, "num_predict": 600}
+        }, timeout=120)
+        result = resp.json().get("message", {}).get("content", "").strip()
+        if result:
+            return result
     except Exception as e:
-        log.info(f"⚠️  Error en síntesis IA: {e}")
-        return build_text_digest(signals)
+        log.info(f"⚠️  Error en síntesis IA (Ollama): {e}")
+    return build_text_digest(signals)
 
 
 def build_text_digest(signals: list[dict]) -> str:

@@ -129,16 +129,12 @@ def _generate_recommendations_with_ai(
     inactive_integrations: list[str],
     errors: list[str],
 ) -> list[str]:
-    """Genera recomendaciones usando Gemini (fallback: lista estática)."""
+    """Genera recomendaciones usando Ollama local (sin API key)."""
     try:
-        gemini_key = os.getenv("GEMINI_API_KEY", "").strip()
-        if not gemini_key:
-            raise RuntimeError("GEMINI_API_KEY no configurada")
-
-        import google.generativeai as genai
-        genai.configure(api_key=gemini_key)
-        model = genai.GenerativeModel("gemini-2.5-flash-lite")
-
+        import urllib.request as _req
+        import json as _json
+        ollama_url = os.getenv("OLLAMA_URL", "http://localhost:11434")
+        model_name = os.getenv("OLLAMA_MODEL_BALANCED", "qwen3:4b")
         context = (
             f"Sistema: NEXO SOBERANO (bot Discord + backend FastAPI + RAG con múltiples IAs).\n"
             f"Paquetes recomendados no instalados: {missing_pkgs[:8]}\n"
@@ -147,12 +143,23 @@ def _generate_recommendations_with_ai(
             "Lista 5 recomendaciones técnicas priorizadas (impacto alto primero). "
             "Cada ítem en una sola línea, sin markdown. Español."
         )
-
-        resp = model.generate_content(context)
-        if resp.text:
-            return [line.strip() for line in resp.text.strip().splitlines() if line.strip()][:5]
+        payload = _json.dumps({
+            "model": model_name,
+            "messages": [{"role": "user", "content": context}],
+            "stream": False,
+            "options": {"temperature": 0.2, "num_predict": 300}
+        }).encode("utf-8")
+        request = _req.Request(
+            f"{ollama_url}/api/chat", data=payload,
+            headers={"Content-Type": "application/json"}
+        )
+        with _req.urlopen(request, timeout=30) as r:
+            d = _json.loads(r.read())
+            text = d.get("message", {}).get("content", "").strip()
+        if text:
+            return [line.strip() for line in text.splitlines() if line.strip()][:5]
     except Exception as e:
-        logger.debug("AI recommendations failed: %s", e)
+        logger.debug("AI recommendations (Ollama) failed: %s", e)
 
     # Fallback estático
     recs = []

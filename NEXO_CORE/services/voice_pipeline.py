@@ -24,7 +24,7 @@ async def transcribir(audio_bytes: bytes) -> str:
 async def consultar_nexo(texto: str) -> str:
     try:
         import httpx
-        url = os.getenv("NEXO_BACKEND_URL", "http://localhost:8000")
+        url = os.getenv("NEXO_BACKEND_URL", "http://localhost:8080")
         async with httpx.AsyncClient(timeout=30) as c:
             r = await c.post(f"{url}/api/ai/consultar",
                            json={"query": texto},

@@ -5,7 +5,8 @@
 import sqlite3
 import time
 import json
-from utils.ai_core import get_logger, get_gemini_embedding_model
+import requests
+from utils.ai_core import get_logger, get_gemini_embedding_model, embed_text_gemini2, embed_query_gemini2
 from datetime import datetime
 from typing import Optional, List, Dict, Mapping
 from pathlib import Path
@@ -69,22 +70,24 @@ ensure_db_schema()
 # ════════════════════════════════════════════════════════════════════
 
 def get_embed_model():
-    """Carga modelo de embeddings usando Gemini centralizado"""
+    """Carga modelo de embeddings usando Gemini centralizado (legacy)"""
     return get_gemini_embedding_model(config.GEMINI_API_KEY)
 
 def generar_embedding(texto: str) -> Optional[List[float]]:
-    """Genera embedding del texto usando Gemini centralizado"""
-    try:
-        model = get_embed_model()
-        response = model.generate_content(texto[:2048])
-        import json
-        try:
-            return json.loads(response.text).get('embedding')
-        except Exception:
-            return None
-    except Exception as e:
-        logger.error(f"Error en embedding Gemini: {e}")
-        return None
+    """Genera embedding con Gemini Embedding 2 (gemini-embedding-exp-03-07)."""
+    result = embed_text_gemini2(texto, api_key=config.GEMINI_API_KEY)
+    if result:
+        return result
+    logger.warning("Gemini Embedding 2 falló — embedding no disponible")
+    return None
+
+def generar_embedding_query(texto: str) -> Optional[List[float]]:
+    """Genera embedding de búsqueda (RETRIEVAL_QUERY) con Gemini Embedding 2."""
+    result = embed_query_gemini2(texto, api_key=config.GEMINI_API_KEY)
+    if result:
+        return result
+    logger.warning("Gemini Embedding 2 (query) falló — embedding no disponible")
+    return None
 
 # ════════════════════════════════════════════════════════════════════
 # CHROMADB
@@ -141,7 +144,6 @@ class RAGService:
             {
                 "respuesta": str,
                 "fuentes": List[str],
-        from utils.ai_core import get_logger, get_gemini_embedding_model
                 "ms": int,
                 "total_docs": int,
                 "presupuesto": {...}
@@ -162,8 +164,8 @@ class RAGService:
                 "error": True,
             }
 
-        # Generar embedding de pregunta
-        emb_q = generar_embedding(pregunta)
+        # Generar embedding de pregunta (RETRIEVAL_QUERY para mejor relevancia)
+        emb_q = generar_embedding_query(pregunta)
         if emb_q is None:
             return {
                 "respuesta": "❌ No se pudo generar embedding",
@@ -295,25 +297,37 @@ PREGUNTA: {pregunta}
 
 Análisis:"""
 
+        force_local = getattr(config, 'FORCE_LOCAL_AI', False)
         provider = config.LLM_PROVIDER if config.LLM_PROVIDER in {
-            "auto", "anthropic", "gemini"
+            "auto", "anthropic", "gemini", "gemma", "ollama"
         } else "auto"
 
+        if force_local:
+            provider = "ollama"
+
         order = {
-            "auto": ["anthropic", "gemini"],
+            "auto": ["ollama", "gemini", "anthropic", "gemma"],
+            "ollama": ["ollama"],
             "anthropic": ["anthropic"],
             "gemini": ["gemini"],
-        }.get(provider, ["anthropic", "gemini"])
+            "gemma": ["gemma"],
+        }.get(provider, ["ollama", "gemini", "anthropic", "gemma"])
 
         errors: List[str] = []
         for item in order:
             try:
-                if item == "anthropic":
+                if item == "ollama":
+                    answer, model = self._gen_ollama(prompt)
+                elif item == "anthropic":
                     answer, model = self._gen_anthropic(prompt)
-                # elif item == "grok":
-                #     answer, model = self._gen_grok(prompt)
-                # elif item == "openai":
-                #     answer, model = self._gen_openai_or_copilot(prompt)
+                elif item == "gemma":
+                    answer, model = self._gen_gemma_local(prompt)
+                elif item == "gemini":
+                    answer, model = self._gen_gemini(prompt)
+                elif item == "grok":
+                    answer, model = self._gen_grok(prompt)
+                elif item == "openai":
+                    answer, model = self._gen_openai_or_copilot(prompt)
                 else:
                     answer, model = self._gen_gemini(prompt)
                 tokens_in = len(prompt) // 4
@@ -338,9 +352,9 @@ Análisis:"""
         resp = client.messages.create(
             model=config.CLAUDE_MODEL,
             max_tokens=1200,
-            temperature=0.2,
+            messages=[{"role": "user", "content": prompt}],
         )
-        text = (resp.text or "").strip()
+        text = (resp.content[0].text if resp.content else "").strip()
         if not text:
             raise RuntimeError("Anthropic no devolvió texto")
         
@@ -427,13 +441,14 @@ Análisis:"""
     def _gen_gemini(self, prompt: str) -> tuple[str, str]:
         if not config.GEMINI_API_KEY:
             raise RuntimeError("GEMINI_API_KEY no configurada")
-        import google.generativeai as genai
-        from google.generativeai import GenerativeModel
+        from google import genai as new_genai
 
-        genai.configure(api_key=config.GEMINI_API_KEY)
-        model = GenerativeModel(config.MODELO_FLASH)
-        resp = model.generate_content(prompt)
-        text = (resp.text or "").strip()
+        client = new_genai.Client(api_key=config.GEMINI_API_KEY)
+        resp = client.models.generate_content(
+            model=config.MODELO_FLASH,
+            contents=prompt,
+        )
+        text = (resp.text or "").strip() if hasattr(resp, "text") else ""
         if not text:
             raise RuntimeError("Gemini no devolvió texto")
         
@@ -457,6 +472,51 @@ Análisis:"""
             logger.warning(f"Error tracking Gemini cost: {e}")
         
         return text, config.MODELO_FLASH
+
+    def _gen_ollama(self, prompt: str) -> tuple[str, str]:
+        """Genera respuesta con Ollama local (Gemma 4 / Gemma 3) usando /api/chat."""
+        if not getattr(config, 'OLLAMA_ENABLED', False):
+            raise RuntimeError("Ollama desactivado en config")
+        import requests as _req
+        ollama_url = getattr(config, 'OLLAMA_URL', 'http://localhost:11434')
+        model_name = getattr(config, 'OLLAMA_MODEL_RAG', 'gemma3:12b')
+        payload = {
+            "model": model_name,
+            "messages": [
+                {"role": "system", "content": "Eres NEXO SOBERANO, un Oficial de Inteligencia. Responde de forma precisa y concisa."},
+                {"role": "user", "content": prompt}
+            ],
+            "stream": False,
+            "options": {"temperature": 0.1}
+        }
+        resp = _req.post(f"{ollama_url}/api/chat", json=payload, timeout=180)
+        resp.raise_for_status()
+        data = resp.json()
+        text = data.get("message", {}).get("content", "").strip()
+        if not text:
+            raise RuntimeError("Ollama no devolvió texto")
+        tokens_out = data.get("eval_count", len(text) // 4)
+        tokens_in = data.get("prompt_eval_count", len(prompt) // 4)
+        try:
+            get_cost_tracker().track_ai_call(
+                "ollama_local", model_name, tokens_in, tokens_out, "rag_consulta"
+            )
+        except Exception:
+            pass
+        return text, model_name
+
+    def _gen_gemma_local(self, prompt: str) -> tuple[str, str]:
+        """Genera respuesta con Gemma 4 local — delega al GemmaService compartido."""
+        from NEXO_CORE.services.gemma_service import gemma_service
+        text = gemma_service.consultar(prompt)
+        model_name = gemma_service.model_id.split("/")[-1]
+        try:
+            get_cost_tracker().track_ai_call(
+                "gemma_local", model_name, len(prompt) // 4, len(text) // 4, "rag_consulta"
+            )
+        except Exception:
+            pass
+        return text, model_name
 
     def estado(self) -> Dict:
         """Estado actual del sistema"""

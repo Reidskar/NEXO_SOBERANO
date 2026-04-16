@@ -112,7 +112,7 @@ class NEXOOrchestrator:
                 api_key = (os.getenv("NEXO_API_KEY", "") or "").strip()
                 headers = {"X-NEXO-KEY": api_key} if api_key else {}
                 async with session.get(
-                    "http://localhost:8000/api/health",
+                    "http://localhost:8080/api/health",
                     headers=headers,
                     timeout=aiohttp.ClientTimeout(total=3)
                 ) as response:
@@ -327,7 +327,7 @@ class NEXOOrchestrator:
         
         if all_healthy:
             logger.info("\n✨ Sistema completamente operacional")
-            logger.info("🌐 Panel de control: http://localhost:8000/api/docs")
+            logger.info("🌐 Panel de control: http://localhost:8080/api/docs")
             logger.info("🎮 Control de stream disponible via API")
         else:
             logger.warning("\n⚠️ Sistema iniciado con advertencias")

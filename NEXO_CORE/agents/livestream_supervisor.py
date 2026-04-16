@@ -8,41 +8,53 @@ try:
 except ImportError:
     pass
 
-try:
-    import google.generativeai as genai
-except ImportError:
-    pass
-
 logger = logging.getLogger(__name__)
+
+NEXO_PORT = os.getenv("NEXO_PORT", "8080")
+OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434")
+
+async def _ollama_generate(prompt: str) -> str:
+    import json as _json, urllib.request as _req
+    model = os.getenv("OLLAMA_MODEL_FAST", "gemma3:1b")
+    payload = _json.dumps({
+        "model": model,
+        "messages": [{"role": "user", "content": prompt}],
+        "stream": False,
+        "options": {"temperature": 0.5, "num_predict": 60}
+    }).encode("utf-8")
+    request = _req.Request(
+        f"{OLLAMA_URL}/api/chat", data=payload,
+        headers={"Content-Type": "application/json"}
+    )
+    with _req.urlopen(request, timeout=20) as r:
+        d = _json.loads(r.read())
+        return d.get("message", {}).get("content", "").strip()
 
 class LivestreamSupervisor:
     """
-    Simulates scraping 24/7 news streams (Al Jazeera, SkyNews) by actively using
-    Gemini 1.5 Flash to synthesize breaking geopolitical events into tactical alerts.
+    Simula análisis de streams de noticias 24/7 con Ollama local.
     """
     def __init__(self):
         self._task: Optional[asyncio.Task] = None
         self.running = False
-        self.api_key = os.getenv("GEMINI_API_KEY", "")
-        if self.api_key:
-            genai.configure(api_key=self.api_key)
 
     async def scan_loop(self):
-        logger.info("📡 Iniciando OSINT Livestream Scanner (AI Vision Tracker)...")
+        logger.info("Iniciando OSINT Livestream Scanner (Ollama local)...")
         self.running = True
-        
+
         while self.running:
             try:
-                if not self.api_key:
-                    await asyncio.sleep(60)
+                prompt = (
+                    "Eres analista táctico. Genera UN breaking news alert geopolítico realista "
+                    "en ESPAÑOL. Máximo 15 palabras. Ejemplo: 'Flota del Mar Rojo detecta "
+                    "actividad anómala cerca de Yibuti'."
+                )
+                try:
+                    alert_text = await asyncio.to_thread(_ollama_generate, prompt)
+                    alert_text = alert_text.replace('"', '').split('\n')[0][:120]
+                except Exception:
+                    await asyncio.sleep(120)
                     continue
-
-                # Pedimos a la IA que simule ver el noticiero en vivo y generar inteligencia táctica
-                model = genai.GenerativeModel("gemini-2.5-flash-lite")
-                prompt = "Eres un analista táctico de la NSA procesando feeds de video en vivo (Al Jazeera, DW, Sky News) en marzo 2026. Ha ocurrido un evento táctico (movimientos navales, aéreos o despliegue militar) de EXTREMA URGENCIA. Genera SOLO el subtítulo o 'breaking news alert' en ESPAÑOL. Máximo 15 palabras. Ej: 'Flota del Mar Rojo detecta actividad anómala cerca de Yibuti'."
-                
-                resp = await asyncio.to_thread(model.generate_content, prompt)
-                alert_text = resp.text.strip().replace('"', '')
 
                 payload = {
                     "tenant_slug": "demo",
@@ -55,7 +67,7 @@ class LivestreamSupervisor:
                 # Inyectar al webhook interno para hacer el broadcast al mapa
                 async with httpx.AsyncClient() as client:
                     await client.post(
-                        "http://127.0.0.1:8000/api/webhooks/ingest", 
+                        f"http://127.0.0.1:{NEXO_PORT}/api/webhooks/ingest", 
                         json=payload, 
                         headers={"x-api-key": os.getenv("NEXO_API_KEY", "nexo_dev_key_2025")},
                         timeout=5.0

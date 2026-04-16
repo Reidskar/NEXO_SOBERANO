@@ -16,6 +16,7 @@ from NEXO_CORE.api.ai import router as ai_router
 from NEXO_CORE.api.knowledge import router as knowledge_router
 from NEXO_CORE.api.legacy import router as legacy_router
 from NEXO_CORE.api.stream import router as stream_router
+from NEXO_CORE.api.hunter import router as hunter_router
 from NEXO_CORE.core.errors import register_exception_handlers
 from NEXO_CORE.core.logger import setup_logging
 from NEXO_CORE.middleware.cors import build_cors_options
@@ -96,7 +97,7 @@ async def request_context_middleware(request: Request, call_next):
             "style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; "
             "font-src 'self' https://fonts.gstatic.com data:; "
             "img-src 'self' data: blob: https:; "
-            "connect-src 'self' http://localhost:8000 http://127.0.0.1:8000 https:; "
+            "connect-src 'self' http://localhost:8080 http://127.0.0.1:8080 https:; "
             "frame-ancestors 'none'; base-uri 'self'; object-src 'none'",
         )
         response.headers.setdefault("Cache-Control", "no-store")
@@ -113,6 +114,7 @@ app.include_router(ai_router)
 app.include_router(knowledge_router)
 app.include_router(stream_router)
 app.include_router(legacy_router)
+app.include_router(hunter_router)
 
 
 def _serve_existing_html(candidates: list[str]):

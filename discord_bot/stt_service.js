@@ -95,7 +95,7 @@ async function handleAudioStream(receiver, userId, client, player, guildId) {
 
                 console.log(`[NEXO VOICE] STT Exitoso: "${textInput}"`);
 
-                const FASTAPI_URL = process.env.FASTAPI_URL || 'http://localhost:8000';
+                const FASTAPI_URL = process.env.FASTAPI_URL || 'http://localhost:8080';
                 const nexoResponse = await axios.post(`${FASTAPI_URL}/agente/consultar-rag`, {
                     pregunta: textInput,
                     usuario_id: userId,

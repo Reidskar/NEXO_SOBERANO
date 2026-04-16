@@ -292,6 +292,21 @@ try:
 except ImportError as e:
     logger.warning(f"MCP/Agents no disponible: {e}")
 
+try:
+    from NEXO_CORE.api.hunter import router as hunter_router
+    from fastapi.responses import FileResponse
+    import os as _os_hunter
+    app.include_router(hunter_router)
+
+    @app.get("/hunter")
+    async def hunter_dashboard():
+        path = _os_hunter.path.join(_os_hunter.path.dirname(__file__), "frontend_public", "hunter_dashboard.html")
+        return FileResponse(path)
+
+    logger.info("NEXO HUNTER (/api/hunter/*, /hunter) registrado.")
+except Exception as e:
+    logger.warning(f"NEXO HUNTER no disponible: {e}")
+
 @app.get("/health")
 async def health():
     db_status = await check_db_connection()

@@ -8,13 +8,13 @@ import gsap from 'gsap'
 import axios from 'axios'
 import { MessageCircle, X, Send, Zap } from 'lucide-react'
 
-const API = import.meta.env.VITE_NEXO_API || 'http://localhost:8000'
+const API = import.meta.env.VITE_NEXO_API || 'https://nexo.elanarcocapital.com'
 
 const SUGGESTED = [
   '¿Qué es el anarcocapitalismo?',
   '¿Cuál es la situación en Taiwán?',
   '¿Cómo afecta la geopolítica a los mercados?',
-  '¿Qué es NEXO SOBERANO?',
+  '¿Cómo funciona el ciclo austriaco?',
 ]
 
 export default function AIChat() {
@@ -58,11 +58,15 @@ export default function AIChat() {
     setMessages(m => [...m, { role: 'user', text: q }])
     setLoading(true)
     try {
-      const r = await axios.post(`${API}/api/agente/`, { query: q, user_id: 'public' }, { timeout: 20000 })
-      const resp = r.data?.respuesta || r.data?.mensaje || 'Sin respuesta.'
+      const r = await axios.post(
+        `${API}/api/intel/chat`,
+        { mensaje: q, modelo: 'fast', temperatura: 0.3 },
+        { timeout: 25000 }
+      )
+      const resp = r.data?.respuesta || 'Sin respuesta.'
       setMessages(m => [...m, { role: 'ai', text: resp }])
     } catch {
-      setMessages(m => [...m, { role: 'ai', text: 'Conexión interrumpida. El sistema puede estar procesando datos en tiempo real. Intenta nuevamente.' }])
+      setMessages(m => [...m, { role: 'ai', text: 'Sistema procesando. Intenta nuevamente en un momento.' }])
     } finally {
       setLoading(false)
     }
