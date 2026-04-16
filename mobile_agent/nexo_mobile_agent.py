@@ -158,6 +158,7 @@ def _reportar_resultado(cmd_id: str, tipo: str, data: dict):
 
 # ── Heartbeat con recepción de comandos ───────────────────────────────────────
 def reportar_y_recibir_comandos(metrics: dict) -> list:
+    global BACKEND_URL
     try:
         headers = {"Content-Type": "application/json", "x-api-key": API_KEY}
         resp = requests.post(
@@ -180,7 +181,6 @@ def reportar_y_recibir_comandos(metrics: dict) -> list:
     except requests.exceptions.ConnectionError:
         logger.error(f"Sin conexión a {BACKEND_URL}")
         # Intentar reconectar con otro backend
-        global BACKEND_URL
         BACKEND_URL = get_backend_activo()
         return []
     except Exception as e:
