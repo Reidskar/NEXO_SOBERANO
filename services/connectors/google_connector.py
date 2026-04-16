@@ -49,14 +49,12 @@ SCOPES_DRIVE_MANAGE = [
 SCOPES_FULL = [
     'https://www.googleapis.com/auth/drive.metadata.readonly',
     'https://www.googleapis.com/auth/drive.readonly',
-    'https://www.googleapis.com/auth/photoslibrary',
-    'https://www.googleapis.com/auth/photoslibrary.readonly',
+    'https://www.googleapis.com/auth/drive.photos.readonly',
 ]
 
 SCOPES_MANAGE_FULL = [
     'https://www.googleapis.com/auth/drive',
-    'https://www.googleapis.com/auth/photoslibrary',
-    'https://www.googleapis.com/auth/photoslibrary.readonly',
+    'https://www.googleapis.com/auth/drive.photos.readonly',
 ]
 
 
@@ -182,18 +180,56 @@ def get_google_credentials(require_photos: bool = False, require_drive_write: bo
 
     if token_path.exists():
         try:
-            creds = Credentials.from_authorized_user_file(str(token_path), scopes)
-            if creds and hasattr(creds, "has_scopes") and not creds.has_scopes(scopes):
-                logger.warning("Token en %s no contiene scopes requeridos, solicitando reautorización", token_path)
+            # Load without overriding scopes so refresh uses the original grant
+            creds = Credentials.from_authorized_user_file(str(token_path))
+            token_scopes = set(creds.scopes or [])
+            needed = set(scopes)
+            # Broad scopes cover their readonly counterparts
+            _SCOPE_COVERS = {
+                'https://www.googleapis.com/auth/drive': {
+                    'https://www.googleapis.com/auth/drive.readonly',
+                    'https://www.googleapis.com/auth/drive.metadata.readonly',
+                },
+                'https://www.googleapis.com/auth/drive.readonly': {
+                    'https://www.googleapis.com/auth/drive.metadata.readonly',
+                },
+                'https://www.googleapis.com/auth/photoslibrary': {
+                    'https://www.googleapis.com/auth/photoslibrary.readonly',
+                },
+            }
+            covered = set(token_scopes)
+            for broad, narrows in _SCOPE_COVERS.items():
+                if broad in token_scopes:
+                    covered.update(narrows)
+            if not needed.issubset(covered):
+                logger.warning("Token en %s no cubre scopes requeridos (%s vs %s), solicitando reautorización", token_path, token_scopes, needed)
                 creds = None
         except Exception as exc:
             logger.warning("Token de Google inválido en %s: %s", token_path, exc)
             creds = None
     elif legacy_token_path.exists():
         try:
-            creds = Credentials.from_authorized_user_file(str(legacy_token_path), scopes)
-            if creds and hasattr(creds, "has_scopes") and not creds.has_scopes(scopes):
-                logger.warning("Token legacy en %s no contiene scopes requeridos", legacy_token_path)
+            creds = Credentials.from_authorized_user_file(str(legacy_token_path))
+            token_scopes = set(creds.scopes or [])
+            needed = set(scopes)
+            _SCOPE_COVERS = {
+                'https://www.googleapis.com/auth/drive': {
+                    'https://www.googleapis.com/auth/drive.readonly',
+                    'https://www.googleapis.com/auth/drive.metadata.readonly',
+                },
+                'https://www.googleapis.com/auth/drive.readonly': {
+                    'https://www.googleapis.com/auth/drive.metadata.readonly',
+                },
+                'https://www.googleapis.com/auth/photoslibrary': {
+                    'https://www.googleapis.com/auth/photoslibrary.readonly',
+                },
+            }
+            covered = set(token_scopes)
+            for broad, narrows in _SCOPE_COVERS.items():
+                if broad in token_scopes:
+                    covered.update(narrows)
+            if not needed.issubset(covered):
+                logger.warning("Token legacy en %s no cubre scopes requeridos", legacy_token_path)
                 creds = None
         except Exception as exc:
             logger.debug("No se pudo usar token legacy de Google %s: %s", legacy_token_path, exc)
@@ -226,13 +262,13 @@ def get_google_credentials(require_photos: bool = False, require_drive_write: bo
                 flow = InstalledAppFlow.from_client_secrets_file(
                     str(credentials_path), scopes
                 )
-                creds = flow.run_local_server(port=0)
+                creds = flow.run_console()
             except Exception as e:
                 msg = str(e)
                 if require_photos and ("access_denied" in msg or "Error 403" in msg):
                     raise RuntimeError(
                         "Google Photos bloqueado por verificación OAuth (Error 403 access_denied). "
-                        "Agrega tu correo como usuario de prueba en Google Cloud o publica/verifica la app."
+                        "Ve a Google Cloud Console → OAuth Consent Screen → Test users → agrega tu correo."
                     )
                 logger.error("Error iniciando OAuth con Google: %s", e)
                 raise RuntimeError(
@@ -264,94 +300,81 @@ def get_drive_manage_service():
 
 
 def list_recent_photos(max_results=20):
-    """Lista elementos recientes de Google Photos."""
+    """Lista elementos recientes de Google Photos via Drive API (drive.photos.readonly).
+
+    La Photos Library API fue deprecada para proyectos nuevos. Usamos Drive API
+    con spaces=photos que accede a las fotos cuando Google Photos Backup está activo.
+    """
     page_size = max(1, min(int(max_results or 20), 100))
-
-    def _request_with_creds(creds_obj):
-        headers = {'Authorization': f'Bearer {creds_obj.token}'}
-        url = "https://photoslibrary.googleapis.com/v1/mediaItems"
-        return requests.get(url, headers=headers, params={"pageSize": page_size}, timeout=30)
-
     try:
         creds = get_google_credentials(require_photos=True, allow_interactive=False)
+        service = build('drive', 'v3', credentials=creds)
     except Exception as e:
         logger.warning("Google Photos no disponible: %s", e)
         return []
 
-    resp = _request_with_creds(creds)
+    try:
+        # Intentar primero el espacio photos (si Google Photos Backup está activo)
+        results = service.files().list(
+            spaces='photos',
+            pageSize=page_size,
+            fields="files(id, name, mimeType, modifiedTime, size, imageMediaMetadata, videoMediaMetadata)",
+            orderBy="modifiedTime desc",
+        ).execute()
+        items = results.get("files", [])
+        # Si no hay nada en photos space, buscar imágenes/videos en Drive
+        if not items:
+            results = service.files().list(
+                q="(mimeType contains 'image/' or mimeType contains 'video/') and trashed=false",
+                spaces='drive',
+                pageSize=page_size,
+                fields="files(id, name, mimeType, modifiedTime, size, imageMediaMetadata, videoMediaMetadata)",
+                orderBy="modifiedTime desc",
+            ).execute()
+            items = results.get("files", [])
+    except Exception as e:
+        logger.error("No fue posible listar Google Photos via Drive: %s", e)
+        return []
 
-    if resp.status_code == 403:
-        try:
-            payload = resp.json() if resp.content else {}
-        except Exception:
-            payload = {}
-        err = (payload or {}).get("error") or {}
-        msg = str(err.get("message") or "")
-        if "insufficient authentication scopes" in msg.lower():
-            try:
-                alt_creds = get_google_credentials(
-                    require_photos=True,
-                    require_drive_write=True,
-                    allow_interactive=False,
-                )
-                resp = _request_with_creds(alt_creds)
-            except Exception as alt_exc:
-                logger.warning("Google Photos reintento con token manage_full falló: %s", alt_exc)
-
-    if resp.status_code >= 400:
-        detail = ""
-        action_hint = (
-            "Acción: ejecutar POST /agente/photos/authorize con include_drive_write=true, "
-            "habilitar Photos Library API y agregar tu cuenta en OAuth Test Users."
-        )
-        try:
-            payload = resp.json()
-            err = (payload or {}).get("error") or {}
-            msg = err.get("message") or ""
-            status = err.get("status") or ""
-            code = err.get("code") or resp.status_code
-            detail = f"code={code} status={status} message={msg}".strip()
-        except Exception:
-            detail = resp.text[:500]
-        raise RuntimeError(
-            "Google Photos request failed. "
-            f"HTTP {resp.status_code}. {detail}. {action_hint}"
-        )
-    items = resp.json().get("mediaItems", [])
     normalizados = []
     for p in items:
         normalizados.append({
             "id": p.get("id"),
-            "filename": p.get("filename", "photo.jpg"),
+            "filename": p.get("name", "photo.jpg"),
             "mimeType": p.get("mimeType", ""),
-            "baseUrl": p.get("baseUrl", ""),
-            "productUrl": p.get("productUrl", ""),
-            "mediaMetadata": p.get("mediaMetadata", {}),
+            "baseUrl": "",  # no disponible via Drive API
+            "productUrl": f"https://drive.google.com/file/d/{p.get('id')}/view",
+            "mediaMetadata": p.get("imageMediaMetadata") or p.get("videoMediaMetadata") or {},
+            "modifiedTime": p.get("modifiedTime", ""),
+            "size": p.get("size", 0),
         })
     return normalizados
 
 
 def download_photo(photo_item: dict, destination: str) -> None:
-    """Descarga una foto desde Google Photos usando baseUrl."""
-    base_url = photo_item.get("baseUrl", "")
-    if not base_url:
-        raise ValueError("photo_item no tiene baseUrl")
-    download_url = f"{base_url}=d"
-    resp = requests.get(download_url, timeout=60)
-    resp.raise_for_status()
+    """Descarga una foto via Drive API usando el file id."""
+    file_id = photo_item.get("id", "")
+    if not file_id:
+        raise ValueError("photo_item no tiene id")
+    data = download_photo_bytes(photo_item)
     with open(destination, "wb") as fh:
-        fh.write(resp.content)
+        fh.write(data)
 
 
 def download_photo_bytes(photo_item: dict) -> bytes:
-    """Descarga bytes de una foto desde Google Photos usando baseUrl."""
-    base_url = photo_item.get("baseUrl", "")
-    if not base_url:
-        raise ValueError("photo_item no tiene baseUrl")
-    download_url = f"{base_url}=d"
-    resp = requests.get(download_url, timeout=60)
-    resp.raise_for_status()
-    return resp.content
+    """Descarga bytes de una foto via Drive API."""
+    file_id = photo_item.get("id", "")
+    if not file_id:
+        raise ValueError("photo_item no tiene id")
+    creds = get_google_credentials(require_photos=True, allow_interactive=False)
+    service = build('drive', 'v3', credentials=creds)
+    request = service.files().get_media(fileId=file_id)
+    buf = io.BytesIO()
+    downloader = MediaIoBaseDownload(buf, request)
+    done = False
+    while not done:
+        _, done = downloader.next_chunk()
+    return buf.getvalue()
 
 
 def authorize_drive():

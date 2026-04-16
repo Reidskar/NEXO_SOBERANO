@@ -65,8 +65,8 @@ def get_google_credentials() -> Optional[BaseCredentials]:
                 flow = InstalledAppFlow.from_client_secrets_file(
                     str(GOOGLE_CREDENTIALS_FILE), GOOGLE_SCOPES
                 )
-                log.info("🌐 Abriendo navegador para autorizar Google...")
-                creds = flow.run_local_server(port=0)
+                log.info("🌐 Abre la URL que aparece a continuación en cualquier navegador (cel, PC, etc.):")
+                creds = flow.run_console()
                 log.info("✅ Autorización exitosa.")
             except Exception as e:
                 log.info(f"❌ Fallo en autorización OAuth: {e}")
@@ -83,6 +83,8 @@ def get_google_credentials() -> Optional[BaseCredentials]:
     return creds
 
 
+_PLACEHOLDER_MARKERS = ("TU_TENANT", "TU_CLIENT", "YOUR_", "PLACEHOLDER", "EXAMPLE", "XXXXXXX")
+
 class MicrosoftAuth:
     def __init__(self):
         if not MICROSOFT_CREDENTIALS_FILE.exists():
@@ -91,9 +93,17 @@ class MicrosoftAuth:
         with open(MICROSOFT_CREDENTIALS_FILE, "r") as f:
             data = json.load(f)
         # Expecting client_id, client_secret, tenant_id
-        self.client_id = data.get("client_id")
-        self.client_secret = data.get("client_secret")
-        self.tenant_id = data.get("tenant_id")
+        self.client_id = data.get("client_id") or ""
+        self.client_secret = data.get("client_secret") or ""
+        self.tenant_id = data.get("tenant_id") or ""
+
+        # Detect placeholder credentials BEFORE making any network call
+        for val in (self.client_id, self.client_secret, self.tenant_id):
+            if any(m in str(val) for m in _PLACEHOLDER_MARKERS):
+                raise RuntimeError(
+                    f"TU_TENANT_ID_AZURE / credenciales Microsoft son placeholder — configura las reales primero"
+                )
+
         self.app = msal.ConfidentialClientApplication(
             self.client_id,
             authority=f"https://login.microsoftonline.com/{self.tenant_id}",

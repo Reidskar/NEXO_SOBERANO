@@ -71,9 +71,10 @@ def run_authorization():
             return
 
     try:
-        log.info("[*] Iniciando servidor local para autorización...")
+        log.info("[*] Iniciando flujo de autorización por consola (no requiere navegador local)...")
+        log.info("    Se mostrará una URL — ábrela en cualquier browser (cel, PC, tablet).")
         flow = InstalledAppFlow.from_client_secrets_file(str(CLIENT_SECRETS_FILE), SCOPES)
-        creds = flow.run_local_server(port=0)
+        creds = flow.run_console()
 
         if creds and creds.valid:
             # Guardamos el token en todas las variantes para asegurar compatibilidad con google_connector.py
