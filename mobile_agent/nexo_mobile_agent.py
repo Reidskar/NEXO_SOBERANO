@@ -38,7 +38,7 @@ def get_backend_activo() -> str:
             continue
         try:
             r = requests.get(f"{url}/health", timeout=3)
-            if r.status_code == 200:
+            if r.status_code < 500:
                 logger.info(f"[NEXO MOBILE] Backend activo: {url}")
                 return url
         except Exception:
