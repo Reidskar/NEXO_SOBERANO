@@ -12,8 +12,8 @@ const URLS = {
 function getRequiredConfig(name) {
   const value = process.env[name];
 
-  if (typeof value !== 'string' || value.trim() === '') {
-    throw new Error(`Missing required configuration: ${name}`);
+  if (!value || value.trim() === '') {
+    throw new Error(`Missing or empty required configuration: ${name}`);
   }
 
   return value;
