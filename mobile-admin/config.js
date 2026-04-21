@@ -9,5 +9,15 @@ const URLS = {
   local:      'http://192.168.100.22:8000',    // IP WiFi local de la Torre
 };
 
+function getRequiredConfig(name) {
+  const value = process.env[name];
+
+  if (typeof value !== 'string' || value.trim() === '') {
+    throw new Error(`Missing required configuration: ${name}`);
+  }
+
+  return value;
+}
+
 export const API_URL = URLS[MODO];
-export const ADMIN_KEY = 'NEXO_LOCAL_2026_OK';
+export const ADMIN_KEY = getRequiredConfig('ADMIN_KEY');
